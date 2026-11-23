@@ -432,7 +432,7 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
 
 - **The record's liveness is form data, never chrome.** `IsEnabled` — and any flag meaning "this
   record is active" — renders as a regular field, `NsRecordState`, in the editor's own
-  `NsFormGrid`, which is what marks the surface dirty on toggle; the label is `Common.Enabled`,
+  `NsGrid`, which is what marks the surface dirty on toggle; the label is `Common.Enabled`,
   once. **The component speaks adjective (`Enabled`), the model speaks predicate
   (`IsEnabled`).** Flags that are genuine data (`AllowsNegativeBalance`) work the same way — not
   a special case, the only case (cases).
@@ -446,7 +446,7 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   widths, no third: **content-width** (the default) for *bounded, known* content — a date, a
   document number, a CUIT, an amount, a short select — several flowing onto one line and
   wrapping when the container narrows; **`Grow`** for open-ended text — a name, a description, a
-  search — filling the rest of the line. `NsFormGridItem` has three modes: content-width,
+  search — filling the rest of the line. `NsItem` has three modes: content-width,
   `Grow`, and `Full` (owns its line, wins over `Grow`). Nothing pads a lonely field. **Content
   width is a CAP, half the line**, so two content-width fields share a row wherever the
   container can seat two (the 448px aside included), filling it with the grid's gap between
@@ -872,7 +872,7 @@ CSS hack to make an `Ns*` component behave — the fix belongs in the component 
 
 - Pages arrange content with layout components, never raw `<div class="d-flex ...">` wrappers —
   flex-utility div soup only inside the Stack's own components or as a last-resort escape hatch.
-  `NsFormGrid`/`NsFormGridItem` is the grid for forms, `NsStack` the 1D flow; parameters in
+  `NsGrid`/`NsItem` is the grid for forms, `NsStack` the 1D flow; parameters in
   [ui/styling.md](ui/styling.md).
 - **No vendor typography in pages** — `NsText` renders text with the `NsSize` scale. Spacing
   utilities are fine anywhere; a custom utility MudBlazor lacks lives in `ns-mud.css`, never

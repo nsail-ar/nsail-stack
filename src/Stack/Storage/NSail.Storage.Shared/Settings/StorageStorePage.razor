@@ -17,46 +17,46 @@
     </Header>
     <Content>
         <NsForm @key="Name" TModel="SaveStorageSettings" OnLoad="Load" OnSubmit="OnSubmit">
-            <NsFormGrid>
-                <NsFormGridItem>
+            <NsGrid>
+                <NsItem>
                     <NsSelect TItem="StorageProviderRef" TValue="string?"
                               @bind-Value="context.Provider"
                               Items="_providers"
                               ItemValue="provider => provider.Type"
                               ItemText="provider => provider.DisplayName"
                               Clearable />
-                </NsFormGridItem>
-                <NsFormGridItem Grow>
+                </NsItem>
+                <NsItem Grow>
                     <NsTextField @bind-Value="context.Container" Helper="@ContainerHelper(context)" />
-                </NsFormGridItem>
+                </NsItem>
                 @if (IsRemote(context))
                 {
-                    <NsFormGridItem Grow>
+                    <NsItem Grow>
                         <NsTextField @bind-Value="context.Endpoint" Helper="@EndpointHelper(context)" />
-                    </NsFormGridItem>
+                    </NsItem>
                     @if (IsRepository(context))
                     {
-                        <NsFormGridItem>
+                        <NsItem>
                             <NsTextField @bind-Value="context.Branch" Helper="@Translate("BranchHint")" />
-                        </NsFormGridItem>
-                        <NsFormGridItem Grow>
+                        </NsItem>
+                        <NsItem Grow>
                             <NsTextField @bind-Value="context.LinkTemplate" Helper="@Translate("LinkTemplateHint")" />
-                        </NsFormGridItem>
+                        </NsItem>
                     }
                     else
                     {
-                        <NsFormGridItem>
+                        <NsItem>
                             <NsTextField @bind-Value="context.Region" Helper="@Translate("RegionHint")" />
-                        </NsFormGridItem>
+                        </NsItem>
                     }
-                    <NsFormGridItem Grow>
+                    <NsItem Grow>
                         <NsTextField @bind-Value="context.AccessKey" Helper="@(IsRepository(context) ? Translate("UserHint") : null)" />
-                    </NsFormGridItem>
-                    <NsFormGridItem Grow>
+                    </NsItem>
+                    <NsItem Grow>
                         <NsPasswordField @bind-Value="context.SecretKey" IsStored="_hasSecretKey" Helper="@(IsRepository(context) && !_hasSecretKey ? Translate("TokenHint") : null)" Autocomplete="new-password" />
-                    </NsFormGridItem>
+                    </NsItem>
                 }
-            </NsFormGrid>
+            </NsGrid>
             <NsStack Horizontal Gap="Sm" Justify="End" Align="Center">
                 <NsHelp Key="Storage.StorageStorePage.TestHelp" />
                 @* The probe reaches the target with what is typed and writes nothing back, so

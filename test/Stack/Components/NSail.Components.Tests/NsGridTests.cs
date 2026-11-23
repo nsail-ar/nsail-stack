@@ -17,9 +17,9 @@ namespace NSail.Components.Tests;
 /// the ancestor that will do the measuring. The other half is the flex-wrap and the widths in
 /// ns-mud.css, which only a browser at a real width can run: no assertion here proves that a 320px
 /// panel folds the row, and the stylesheet's own rules are the Architect's pixel probe.</summary>
-public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
+public sealed class NsGridTests : BunitContext, IAsyncLifetime
 {
-    public NsFormGridTests()
+    public NsGridTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
@@ -47,7 +47,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
         await DisposeAsync();
     }
 
-    static string ItemClasses(IRenderedComponent<NsFormGridItem> cut)
+    static string ItemClasses(IRenderedComponent<NsItem> cut)
     {
         return cut.Find("div").GetAttribute("class") ?? string.Empty;
     }
@@ -55,53 +55,76 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
     [Fact]
     public void AnItemThatSaysNothing_isContentWidth()
     {
-        var cut = Render<NsFormGridItem>();
+        var cut = Render<NsItem>();
 
         // The default is the field's own width — never stretched to fill a lonely line. This is
         // the whole point of the retirement: a field that declares no intent is content-width, not
         // a full-row default that inflates a date to 600px.
-        Assert.Equal("ns-form-field", ItemClasses(cut));
+        Assert.Equal("ns-grid-item", ItemClasses(cut));
     }
 
     [Fact]
     public void AGrowItem_carriesTheGrowClass_andNotTheContentOne()
     {
-        var cut = Render<NsFormGridItem>(p => p.Add(x => x.Grow, true));
+        var cut = Render<NsItem>(p => p.Add(x => x.Grow, true));
 
         // Grow is the escape hatch the content-width default leaves open: a field forced to fill
         // when the layout calls for it. It replaces the content class, never rides beside it — two
         // width natures on one item would be the fraction sneaking back as a class pair.
-        Assert.Equal("ns-form-field-grow", ItemClasses(cut));
+        Assert.Equal("ns-grid-item-grow", ItemClasses(cut));
     }
 
     [Fact]
     public void AFullItem_ownsItsRow()
     {
-        var cut = Render<NsFormGridItem>(p => p.Add(x => x.Full, true));
+        var cut = Render<NsItem>(p => p.Add(x => x.Full, true));
 
-        Assert.Equal("ns-form-field-full", ItemClasses(cut));
+        Assert.Equal("ns-grid-item-full", ItemClasses(cut));
     }
 
     [Fact]
     public void FullWinsOverGrow_soABlockAskedForBothIsUnambiguous()
     {
-        var cut = Render<NsFormGridItem>(p => p
+        var cut = Render<NsItem>(p => p
             .Add(x => x.Grow, true)
             .Add(x => x.Full, true));
 
         // Precedence in the component, not a guard at the call site: a block asked to both grow and
         // own its row resolves to the row, deterministically, rather than emitting both classes.
-        Assert.Equal("ns-form-field-full", ItemClasses(cut));
+        Assert.Equal("ns-grid-item-full", ItemClasses(cut));
+    }
+
+    [Theory]
+    [InlineData(true, false, "ns-grid-item ns-grid-item-wide")]
+    [InlineData(false, true, "ns-grid-item ns-grid-item-narrow")]
+    [InlineData(true, true, "ns-grid-item ns-grid-item-wide")]
+    public void AWidthRidesTheContentWidthItem(bool wide, bool narrow, string expected)
+    {
+        var cut = Render<NsItem>(p => p
+            .Add(x => x.Wide, wide)
+            .Add(x => x.Narrow, narrow));
+
+        Assert.Equal(expected, ItemClasses(cut));
+    }
+
+    [Fact]
+    public void AWidthIsIgnored_whenTheItemTakesTheLinesWidth()
+    {
+        var grow = Render<NsItem>(p => p.Add(x => x.Grow, true).Add(x => x.Wide, true));
+        var full = Render<NsItem>(p => p.Add(x => x.Full, true).Add(x => x.Narrow, true));
+
+        Assert.Equal("ns-grid-item-grow", ItemClasses(grow));
+        Assert.Equal("ns-grid-item-full", ItemClasses(full));
     }
 
     [Fact]
     public void TheCallersOwnClassRidesAlong()
     {
-        var cut = Render<NsFormGridItem>(p => p
+        var cut = Render<NsItem>(p => p
             .Add(x => x.Grow, true)
             .Add(x => x.Class, "probe"));
 
-        Assert.Equal("ns-form-field-grow probe", ItemClasses(cut));
+        Assert.Equal("ns-grid-item-grow probe", ItemClasses(cut));
     }
 
     [Fact]
@@ -111,11 +134,11 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
         // `.ns-grid > *:has(> .ns-record-state)` -- a selector that only fires if ns-record-state
         // is a direct child of the item the grid itself parents. This pins that structural
         // assumption; where the switch lands beside a taller neighbour is a browser's to measure.
-        var cut = Render<NsFormGridItem>(p => p.AddChildContent<NsRecordState>());
+        var cut = Render<NsItem>(p => p.AddChildContent<NsRecordState>());
 
         var item = cut.Find("div");
 
-        Assert.Contains("ns-form-field", item.ClassList);
+        Assert.Contains("ns-grid-item", item.ClassList);
         Assert.Contains(item.Children, child => child.ClassList.Contains("ns-record-state"));
     }
 
@@ -126,11 +149,11 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
         // `.ns-grid > *:has(> .ns-form-check)`. NsCheckBox renders a second child (NsFieldHelper,
         // which draws nothing while clean), so the mark has to ride the box itself and not the
         // item; this pins that it does.
-        var cut = Render<NsFormGridItem>(p => p.AddChildContent<NsCheckBox<bool>>());
+        var cut = Render<NsItem>(p => p.AddChildContent<NsCheckBox<bool>>());
 
         var item = cut.Find("div");
 
-        Assert.Contains("ns-form-field", item.ClassList);
+        Assert.Contains("ns-grid-item", item.ClassList);
         Assert.Contains(item.Children, child => child.ClassList.Contains("ns-form-check"));
     }
 
@@ -140,8 +163,8 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
         // nsail#3038: `.ns-grid > *:has(> .ns-filter-submit)` lines a list's filter submit up with
         // its partner's input, and fires only if the mark rides the button the item parents. The
         // form's own submit wears no mark: it owns a footer, not a row of fields.
-        var filter = Render<NsFormGridItem>(p => p.AddChildContent<NsSubmit>(s => s.Add(x => x.As, NsAs.Filter)));
-        var submit = Render<NsFormGridItem>(p => p.AddChildContent<NsSubmit>());
+        var filter = Render<NsItem>(p => p.AddChildContent<NsSubmit>(s => s.Add(x => x.As, NsAs.Filter)));
+        var submit = Render<NsItem>(p => p.AddChildContent<NsSubmit>());
 
         Assert.Contains(filter.Find("div").Children, child => child.ClassList.Contains("ns-filter-submit"));
         Assert.DoesNotContain(submit.Find("div").Children, child => child.ClassList.Contains("ns-filter-submit"));
@@ -164,7 +187,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
         // A neighbour with a hint is taller than its input, so the row's centre is not the
         // input's. The check takes the field's own geometry: the 8px label gutter and a 40px box
         // it is centred in — the vendor's input control, a flex column, is that box.
-        var cut = Render<NsFormGridItem>(p => p.AddChildContent<NsCheckBox<bool>>());
+        var cut = Render<NsItem>(p => p.AddChildContent<NsCheckBox<bool>>());
 
         var check = cut.Find("div").Children.Single(child => child.ClassList.Contains("ns-form-check"));
         Assert.Contains("mud-input-control", check.ClassList);
@@ -185,7 +208,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
     [Fact]
     public void TheGridIsAFlexWrapBand_andItsDefaultGapIsTheHouseDefault()
     {
-        var cut = Render<NsFormGrid>();
+        var cut = Render<NsGrid>();
 
         // The class stays ns-grid — the flex-wrap band the stylesheet now defines — and gap-4 is
         // 16px, the same gutter the grid has always used, so migrating a form changes how it packs
@@ -203,7 +226,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
     [InlineData(NsSize.Xxl, "gap-10")]
     public void TheGapIsTheHouseScale(NsSize gap, string expected)
     {
-        var cut = Render<NsFormGrid>(p => p.Add(x => x.Gap, gap));
+        var cut = Render<NsGrid>(p => p.Add(x => x.Gap, gap));
 
         Assert.Equal($"ns-grid {expected}", cut.Find("div").GetAttribute("class"));
     }
@@ -211,7 +234,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
     [Fact]
     public void InsideAnAside_theElementThatMeasures_isThePanelAndNotTheWindow()
     {
-        var cut = Render<FormGridAsideHost>(p => p.Add(x => x.RouteTable, BuildRouteTable()));
+        var cut = Render<GridAsideHost>(p => p.Add(x => x.RouteTable, BuildRouteTable()));
 
         var grid = cut.Find(".ns-grid");
 
@@ -240,7 +263,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
 
         // The items are DIRECT children of the grid: the width rules are written `.ns-grid > .ns-*`,
         // so an item one level deeper is silently just a block at no width the stylesheet answers.
-        Assert.Equal(["ns-form-field", "ns-form-field-grow"],
+        Assert.Equal(["ns-grid-item", "ns-grid-item-grow"],
             grid.Children.Select(child => child.GetAttribute("class")));
     }
 
@@ -252,7 +275,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
         // service reports the real one -- so on first paint, a phone's aside opens believing
         // itself docked and renders MudBlazor's Persistent variant, not Temporary. MudDrawer's
         // own inline "--mud-drawer-width" override is conditional on (!IsFixed || Temporary):
-        // a docked, IsFixed drawer (real MudLayout ancestor, which FormGridAsideHost's story
+        // a docked, IsFixed drawer (real MudLayout ancestor, which GridAsideHost's story
         // is precisely about) fails that condition and omits the override entirely -- so
         // "wrongly docked" is not just a variant/class difference, it is a WIDTH story too.
         // What saves the Xl ask is a second path: MudLayout publishes every registered
@@ -264,7 +287,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
         // is CSS inheritance, which only a browser runs.
         Services.AddScoped<IBrowserViewportService>(_ => new NeverRespondingViewportService());
 
-        var cut = Render<FormGridAsideHost>(p => p.Add(x => x.RouteTable, BuildRouteTable()));
+        var cut = Render<GridAsideHost>(p => p.Add(x => x.RouteTable, BuildRouteTable()));
 
         var drawer = cut.Find(".mud-drawer");
 
@@ -279,6 +302,6 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
 
     static RouteTable BuildRouteTable()
     {
-        return new(typeof(NsFormGridTests).Assembly, Array.Empty<System.Reflection.Assembly>());
+        return new(typeof(NsGridTests).Assembly, Array.Empty<System.Reflection.Assembly>());
     }
 }

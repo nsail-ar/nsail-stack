@@ -297,7 +297,7 @@ public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
     /// rendered alone on the main surface — ruled a defect: standing alone above the panel is
     /// chrome, not a field. NsTitleBar carries no Enabled concept anymore (the parameter is gone,
     /// so nothing can bind one back), and NsRecordState renders as an ordinary NsFieldBase, at
-    /// home in whichever NsFormGrid an editor places it.</summary>
+    /// home in whichever NsGrid an editor places it.</summary>
     [Fact]
     public void TheBarCarriesNoRecordStateAndTheFieldStandsOnItsOwn()
     {

@@ -12,35 +12,35 @@
             <NsTitleBar Title="@GetTitle()" />
         </Header>
         <Content>
-            <NsFormGrid>
-                <NsFormGridItem Grow>
+            <NsGrid>
+                <NsItem Grow>
                     <NsTextField @bind-Value="context.Name" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsSelect @bind-Value="context.Kind" Items="@(GetItems<ContactKind>(all: false))" />
-                </NsFormGridItem>
-                <NsFormGridItem Grow>
+                </NsItem>
+                <NsItem Grow>
                     <NsEmailField @bind-Value="context.Email" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsPhoneField @bind-Value="context.Phone" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsDateField TValue="DateOnly?" @bind-Value="context.BirthDate" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsNumericField TValue="int" @bind-Value="context.Rating" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsCheckBox TValue="bool" @bind-Value="context.IsFavorite" />
-                </NsFormGridItem>
-                <NsFormGridItem Full>
+                </NsItem>
+                <NsItem Full>
                     <NsTextArea @bind-Value="context.Notes" />
-                </NsFormGridItem>
-                <NsFormGridItem Full>
+                </NsItem>
+                <NsItem Full>
                     <AddressesEditor Items="context.Addresses" />
-                </NsFormGridItem>
-            </NsFormGrid>
+                </NsItem>
+            </NsGrid>
         </Content>
         <Footer>
             <NsSubmit />

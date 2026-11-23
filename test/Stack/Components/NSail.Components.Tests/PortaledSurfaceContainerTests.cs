@@ -85,7 +85,7 @@ public sealed class PortaledSurfaceContainerTests : BunitContext, IAsyncLifetime
 
     /// <summary>The aside's verdict, and it is "nothing to do" — recorded rather than assumed.
     /// A drawer that declared itself a container would measure the panel's own padding into the
-    /// width the panel then measures against (NsFormGridTests pins that the element a form's
+    /// width the panel then measures against (NsGridTests pins that the element a form's
     /// grid resolves against is the hosted NsPanel, and that the drawer is not it). What an
     /// aside hosts is a routed page, and a page inside a surface composes NsPanel by doctrine —
     /// so the container is already there, one level in.</summary>

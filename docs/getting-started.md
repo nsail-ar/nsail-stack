@@ -447,14 +447,14 @@ form validates with the message's own annotations, the same ones the server chec
             <NsTitleBar Title="@GetTitle()" />
         </Header>
         <Content>
-            <NsFormGrid>
-                <NsFormGridItem Grow>
+            <NsGrid>
+                <NsItem Grow>
                     <NsTextField @bind-Value="_model.Name" AutoFocus />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsDateField TValue="DateOnly?" @bind-Value="_model.DueDate" />
-                </NsFormGridItem>
-            </NsFormGrid>
+                </NsItem>
+            </NsGrid>
         </Content>
         <Footer>
             <NsSubmit />

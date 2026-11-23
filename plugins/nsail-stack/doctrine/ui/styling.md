@@ -13,7 +13,7 @@ marked *(cases)* has its story there.
 
 ## Grid, stack, growth, scroll
 
-- **Grid vs Stack**: `NsFormGrid`/`NsFormGridItem` is the grid for forms — a flex-wrap band
+- **Grid vs Stack**: `NsGrid`/`NsItem` is the grid for forms — a flex-wrap band
   where each item declares its **width nature, never a fraction** (the core doc's *Form
   density*); there are no column spans and no `.ns-col-*` rules. `NsStack` (`Horizontal`, `Gap`,
   `Margin`, `Align`, `Justify`, `Grow`, `Scroll`) is for 1D flows; both axes share `NsAlign`.
@@ -23,7 +23,7 @@ marked *(cases)* has its story there.
     where half a line is narrower than that, so two content-width fields always share a row in a
     448px aside and nothing moves on a surface wide enough for two at 14rem. Under two fields at
     the growing basis — the phone — the cap lifts and each field owns its row. `--ns-field-width`
-    (`.ns-field-narrow` 6rem, `.ns-field-money` 10rem, `.ns-field-wide` 20rem) is a field's *own*
+    (`NsItem Narrow` 6rem, `.ns-field-money` 10rem, `NsItem Wide` 20rem) is a field's *own*
     width and is never capped: it is what a label too long for half a line asks for, and
     `.ns-field-money` is the other direction — a **block** of money figures read together (Cerrar
     Caja's four) at the same 10rem `.ns-money-slot` calls a price's own, so four share one line
@@ -46,8 +46,8 @@ marked *(cases)* has its story there.
     (`.ns-title-icon-slot` after the `.ns-money-slot`) inside that padding, so the field keeps
     the whole slot.
     `.ns-field-slot` is the other half of that row — a field laid out by hand reading the same
-    `--ns-field-width` the grid's items read, so `ns-field-wide` means 20rem
-    wherever a field is placed (a job card's Armazón, which spans the whole card's row and is
+    `--ns-field-width` the grid's items read, so `ns-grid-item-wide` (what `NsItem Wide` renders)
+    means 20rem wherever a field is placed (a job card's Armazón, which spans the whole card's row and is
     not the whole card's business).
   - `.ns-select-gutter` mirrors a selecting `NsTable`'s own checkbox column width, by hand, on
     a persistent add row laid out beside the table rather than inside it — so the row's fields
@@ -151,7 +151,7 @@ marked *(cases)* has its story there.
     siblings, never to a document's leading fields wrapped for a background alone: a header of
     Party and Fecha standing in its own `NsCard` ahead of the lines below frames the fields twice
     the moment the page opens in the aside, whose own ground already carries that lift. The
-    fields sit directly in the page's `NsFormGrid`, and whatever says the document's subject —
+    fields sit directly in the page's `NsGrid`, and whatever says the document's subject —
     their own order and width — says it without a sheet under them.
   - **A card's ink is `TextPrimary` and its title's glyph steps down to the muted rank** —
     `.ns-card-header .mud-card-header-content .mud-icon-root` → `TextSecondary`: the word is the
@@ -174,7 +174,7 @@ marked *(cases)* has its story there.
   - **A card with no title draws no header at all** — `NsCard` renders the box only while
     `Header` (or `Door`) is non-null, so a titleless card never pays for a near-empty row above
     the content for its lone act. The act rides the content instead, as the sibling of whatever
-    it acts on inside a horizontal `NsStack` (never inside an `NsFormGrid` — that band wraps,
+    it acts on inside a horizontal `NsStack` (never inside an `NsGrid` — that band wraps,
     which would drop the act under the fields), so the row stays at the fields' own height and
     never owns a row of its own (a job card's delete beside its Receta/Medida line).
   - **A glyph inside the content is a different slot and inherits none of that rank**: a mark
@@ -204,7 +204,7 @@ marked *(cases)* has its story there.
   the expander's sheet would cover exactly what is being pasted next to it (ARCA's Clave privada
   (PEM) under its certificate). It is not a component: the line is an ordinary `Inline` `NsButton`
   carrying its own word with `Expanded` — the state a disclosure trigger owes is `aria-expanded`,
-  which that parameter is — beside an `@if` that renders the field's `NsFormGridItem`, and the
+  which that parameter is — beside an `@if` that renders the field's `NsItem`, and the
   class is only the chevron's two states and the sentence case a face that is read rather than
   pressed needs. Choose it over `NsExpander` wherever the detail is a field in a form and nothing
   above the line derives from what it holds; closing it withdraws the field from the document, so

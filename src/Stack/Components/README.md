@@ -48,9 +48,9 @@ is guarded by the message it sends, and binds messages:
     <NsPanel>
         <Header><NsTitleBar Title="@GetTitle()" /></Header>
         <Content>
-            <NsFormGrid>
-                <NsFormGridItem Grow><NsTextField @bind-Value="_model.Name" AutoFocus /></NsFormGridItem>
-            </NsFormGrid>
+            <NsGrid>
+                <NsItem Grow><NsTextField @bind-Value="_model.Name" AutoFocus /></NsItem>
+            </NsGrid>
         </Content>
         <Footer><NsSubmit /></Footer>
     </NsPanel>
@@ -103,7 +103,7 @@ follows the OS).
 | Fields | `NsTextField`, `NsEmailField`, `NsPhoneField`, `NsUrlField`, `NsTextArea`, `NsPasswordField`, `NsSearchField`, `NsNumericField`, `NsMoneyField`, `NsPercentField`, `NsDateField`, `NsTimeField`, `NsDateTimeField`, `NsDurationField`, `NsColorField`, `NsCheckBox`, `NsSelect`, `NsMultiSelect`, `NsAutocomplete`, `NsRadioGroup`, `NsFileUpload`, `NsMultiFileUpload`, `NsHelp`, `NsHint`, `NsMissing`. Common parameters: `Label` (derived when omitted), `Value`, `For`, `Disabled`, `ReadOnly`, `Placeholder`, `Helper`, `Required`, `AutoFocus`, `Grow` | [fields.md](../../../plugins/nsail-stack/doctrine/ui/fields.md) |
 | Actions | `NsButton`, `NsAction`, `NsLink`, `NsPageLink`, `NsActionOutlet`, `NsActionToolbar`, `ActionItem`; navigating is `NsLink`, executing is an action component | [actions.md](../../../plugins/nsail-stack/doctrine/ui/actions.md), [menus.md](../../../plugins/nsail-stack/doctrine/ui/menus.md) |
 | Hosts of many things | `NsTable`/`NsTh`/`NsTd` (`Rows`, `OnQuery`, `RowTemplate`, `RowEditor`, `Mode`, `Exportable`, `MaxExportRows`: the most rows an export writes, at least 1, `TableExport.DefaultRowCap` unless set; past it the export is refused with a message), `NsTabs`/`NsTab`, `NsListEditor`, `NsTree`, `NsTimeGrid`/`NsTimeBlock`, `NsDashboard`/`NsSubjectDashboard`, `NsLoad` (`OnLoad`: loading, content, failure with retry where a second try can pass) | [hosts.md](../../../plugins/nsail-stack/doctrine/ui/hosts.md) |
-| Layout and styling | `NsPanel`, `NsPageHeader`, `NsTitleBar`, `NsToolBar`, `NsFormGrid`/`NsFormGridItem`, `NsStack`, `NsCard`, `NsPaper`, `NsExpander`, `NsAlert`, `NsText`, `NsChip`, `NsStatusText`/`NsStatusDot`, `NsMeter`, `NsBarChart`, `NsTooltip`, `NsSince`, `NsRemoteImage`, `NsIcon` | [styling.md](../../../plugins/nsail-stack/doctrine/ui/styling.md) |
+| Layout and styling | `NsPanel`, `NsPageHeader`, `NsTitleBar`, `NsToolBar`, `NsGrid`/`NsItem`, `NsStack`, `NsCard`, `NsPaper`, `NsExpander`, `NsAlert`, `NsText`, `NsChip`, `NsStatusText`/`NsStatusDot`, `NsMeter`, `NsBarChart`, `NsTooltip`, `NsSince`, `NsRemoteImage`, `NsIcon` | [styling.md](../../../plugins/nsail-stack/doctrine/ui/styling.md) |
 | Shell and surfaces | `NsRouter`, `NsMainLayout`, `NsContainer`, `NsSurface` (`Surfaces.Aside`, `Modal`, `Dialog`), `NsDrawer`, `NsDialog`, `NsCompanion`, `NsErrorBoundary`, `NsPageNotFound`, `NsPageError`, `DialogManager` | [surfaces.md](../../../plugins/nsail-stack/doctrine/ui/surfaces.md), [focus.md](../../../plugins/nsail-stack/doctrine/ui/focus.md) |
 | Navigation | `NavMenuItem` (`Name`, `Icon`, `PageType`, `Url`, `Command`, `Chord`, `Weight`, `Permission`, ...), `INavMenuContributor`, `HelpMenu`, `NsNavMenu` | [navigation.md](../../../plugins/nsail-stack/doctrine/ui/navigation.md) |
 | Guided flows | `NsWizard`, `WizardContext`, `NsFullLayout`, `IRouteGate`; `NsGuide`, `NsGuideLink`; `ISkillContributor` | [wizard.md](../../../plugins/nsail-stack/doctrine/ui/wizard.md), [guide.md](../../../plugins/nsail-stack/doctrine/ui/guide.md), [skills.md](../../../plugins/nsail-stack/doctrine/ui/skills.md) |

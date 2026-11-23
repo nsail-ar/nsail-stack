@@ -9,26 +9,26 @@
 
 @* One of each field shape that renders a vendor input control, because the anchor the message
    hangs off is that box: a plain text field, a select, a picker, and the chrome-only NsField.
-   Laid on a real NsFormGrid, because the gap it draws between rows is what hosts the message
+   Laid on a real NsGrid, because the gap it draws between rows is what hosts the message
    and its own bottom reservation is where the LAST row's lands. *@
 <MudPopoverProvider />
 
 <NsForm TModel="ReservedGeometryModel" Model="Model" OnSubmit="HandleSubmit">
-    <NsFormGrid>
-        <NsFormGridItem>
+    <NsGrid>
+        <NsItem>
             <NsTextField @bind-Value="context.Name" />
-        </NsFormGridItem>
-        <NsFormGridItem>
+        </NsItem>
+        <NsItem>
             <NsSelect TItem="SelectOption" TValue="Guid?" @bind-Value="context.Choice"
                       Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
-        </NsFormGridItem>
-        <NsFormGridItem>
+        </NsItem>
+        <NsItem>
             <NsDateField TValue="DateOnly?" @bind-Value="context.Date" />
-        </NsFormGridItem>
-        <NsFormGridItem>
+        </NsItem>
+        <NsItem>
             <NsField Label="Composed">composed</NsField>
-        </NsFormGridItem>
-    </NsFormGrid>
+        </NsItem>
+    </NsGrid>
     <NsSubmit />
 </NsForm>
 

@@ -18,13 +18,13 @@
                 <NsPageLink TPage="CreateContactPage" As="NsAs.Main" Icon="@NsIcons.Add" Target="@Aside" Label="@Translate("Common.New")" />
             </Actions>
             <Filter>
-                <NsFormGrid>
-                    <NsFormGridItem>
+                <NsGrid>
+                    <NsItem>
                         <NsSelect TItem="Option<ContactKind?>" TValue="ContactKind?"
                                   Value="_filter.Kind" ValueChanged="OnKindChanged"
                                   Items="@(GetItems<ContactKind>())" />
-                    </NsFormGridItem>
-                </NsFormGrid>
+                    </NsItem>
+                </NsGrid>
             </Filter>
         </NsPageHeader>
     </Header>
