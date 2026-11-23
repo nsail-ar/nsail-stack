@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using NSail.Localization
 @using NSail.Metadata
+@using NSail.Text
 
 @inherits NsActBase
 
@@ -18,11 +19,13 @@
 @* The form's word reaches a row through the menu that drew it (NsMenu), which is what lets a
    row answer it from inside the vendor's popover: a row whose act is a way IN is not offered
    where the form refuses writes, and the kit that drew the menu names nothing. *@
-@if (_allowed && Offers(Action))
+@if (_allowed && Offers(Action) && !Refused)
 {
     <MudMenuItem Icon="@(Action.Running ? NsIcons.Progress.Markup : Action.Icon?.Markup)"
                  Disabled="@(Action.Disabled || Action.Running)"
                  Class="@(Selected == true ? "ns-menu-item ns-menu-item-selected" : "ns-menu-item")"
+                 Href="@Address"
+                 Target="@(Address is null ? null : Surfaces.Blank.Name)"
                  UserAttributes="@Choice"
                  OnClick="Run">
         @* The row is laid out here rather than by a rule on the vendor's own text slot: the
@@ -63,18 +66,44 @@
         ["aria-checked"] = "true",
     };
 
+    // The same three for a row that is an anchor, which also keeps the tab it opens from
+    // reaching back into this one through window.opener.
+    static readonly Dictionary<string, object> VerbDoor = Opening(Verb);
+
+    static readonly Dictionary<string, object> OfferedDoor = Opening(Offered);
+
+    static readonly Dictionary<string, object> ChosenDoor = Opening(Chosen);
+
     Dictionary<string, object> Choice
     {
         get
         {
-            return Selected switch
+            return (Selected, Address is null) switch
             {
-                true => Chosen,
-                false => Offered,
-                null => Verb
+                (true, true) => Chosen,
+                (false, true) => Offered,
+                (null, true) => Verb,
+                (true, false) => ChosenDoor,
+                (false, false) => OfferedDoor,
+                (null, false) => VerbDoor
             };
         }
     }
+
+    static Dictionary<string, object> Opening(Dictionary<string, object> attributes)
+    {
+        return new Dictionary<string, object>(attributes) { ["rel"] = "noopener" };
+    }
+
+    // An address that arrives written is drawn only where WebAddress admits it: a "javascript:"
+    // row is withheld rather than offered as a row that does nothing.
+    bool Refused => Action.PageType is null && Action.Url is not null && !WebAddress.IsNavigable(Action.Url, withinApp: true);
+
+    // The row is a real anchor so the browser opens the tab on the gesture itself: a window
+    // opened from a handler, after a round trip, is what a popup blocker drops. Dropped while
+    // the row is greyed, because the vendor draws the anchor whenever Href is set and an anchor
+    // ignores the disabled attribute.
+    string? Address => Action.PageType is null && !Refused && !Action.Disabled && !Action.Running ? Action.Url : null;
 
     // Deny-by-default only once a gate exists to ask: a command row carries no destination and
     // a host with no security registered (a component test, a surface without security) must still
@@ -84,7 +113,8 @@
     [CascadingParameter]
     Task<AuthenticationState>? AuthenticationState { get; set; }
 
-    /// <summary>The row's behavior and its face: a link (PageType) or a command (OnClick),
+    /// <summary>The row's behavior and its face: a link (PageType, or a Url drawn as an anchor
+    /// that opens a new browser tab) or a command (OnClick),
     /// exactly as every other action in the house is modelled. Nothing new is written for a
     /// row that already exists elsewhere on the page — NsPartial.GetLink builds the link half.
     /// The COMMAND half is a bare handler here, never NsPartial.GetAction: that one wraps the
@@ -133,7 +163,9 @@
             return;
         }
 
-        if (Action.OnClick is null)
+        // An address row is the anchor's own: the browser opens the tab, and the vendor closes
+        // the menu.
+        if (Action.Url is not null || Action.OnClick is null)
         {
             return;
         }

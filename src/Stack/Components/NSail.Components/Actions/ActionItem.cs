@@ -9,9 +9,9 @@ using NSail.Metadata;
 
 namespace NSail.Components;
 
-/// <summary>Contributed action: a link (PageType), a command (OnClick) or a menu (Menu) —
-/// exactly one of the three. The URL comes from the route table at render, never written.
-/// Name drives the localized label ("Actions.{Name}").</summary>
+/// <summary>Contributed action: a link (PageType, or Url for an address the route table does not
+/// hold), a command (OnClick) or a menu (Menu) — exactly one of them. A page's URL comes from the
+/// route table at render, never written. Name drives the localized label ("Actions.{Name}").</summary>
 public sealed class ActionItem
 {
     public required string Name { get; init; }
@@ -35,6 +35,14 @@ public sealed class ActionItem
     /// one of the reserved targets (Surfaces.Auto, Surfaces.Main), or the browser
     /// (Surfaces.Blank).</summary>
     public Surface? Target { get; init; }
+
+    /// <summary>A destination the route table does not hold — a document this host serves outside
+    /// the router, another site — which the act opens in a new browser tab, always: there is no
+    /// surface for the router to hand it to, so Target is not read. Drawn as a real anchor only
+    /// where WebAddress.IsNavigable admits it (a root-relative path, http, https, mailto) and
+    /// withheld otherwise; never asked of the PageGate, which has no page to ask. A presenter
+    /// that draws no address (NsMenuItem and NsActionToolbar do) draws nothing for it.</summary>
+    public string? Url { get; init; }
 
     public Func<Task>? OnClick { get; init; }
 

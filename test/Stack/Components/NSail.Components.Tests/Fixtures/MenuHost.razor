@@ -16,6 +16,13 @@
     <NsMenuItem Action="@Switch" Label="Beta" Selected="false" />
     <NsMenuDivider />
     <NsMenuItem Action="@Profile" />
+    <NsMenuItem Action="@Report" Selected="ReportSelected" />
+    <NsMenuItem Action="@Refused" />
+    <NsMenuItem Action="@Unavailable" />
+    @if (Extra is not null)
+    {
+        <NsMenuItem Action="@Extra" />
+    }
     <NsMenu Label="Change organization">
         <NsMenuItem Action="@Switch" Label="Gamma" Selected="false" />
     </NsMenu>
@@ -36,6 +43,20 @@
     public bool Locked { get; set; }
 
     ActionItem Switch => new() { Name = "SelectOrganization", OnClick = () => OnSwitch.InvokeAsync() };
+
+    /// <summary>The address row standing as one of a single choice, unset as a verb.</summary>
+    [Parameter]
+    public bool? ReportSelected { get; set; }
+
+    /// <summary>One more row a case needs and the rest of the menu does not.</summary>
+    [Parameter]
+    public ActionItem? Extra { get; set; }
+
+    ActionItem Report => new() { Name = "Report", Icon = NsIcons.Print, Url = "/files/report.pdf", Target = Surfaces.Blank, Writes = false };
+
+    ActionItem Refused => new() { Name = "Refused", Url = "javascript:alert(1)", Target = Surfaces.Blank, Writes = false };
+
+    ActionItem Unavailable => new() { Name = "Unavailable", Url = "/files/later.pdf", Target = Surfaces.Blank, Disabled = true, Writes = false };
 
     ActionItem Profile => new() { Name = "Profile", PageType = typeof(ProbeAdminPage), Target = Surfaces.Main };
 }
