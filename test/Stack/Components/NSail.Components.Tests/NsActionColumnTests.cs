@@ -465,10 +465,15 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
 
     IRenderedComponent<ActionColumnHost> Grouped(int declared, int rest)
     {
+        return Kebab(Commands(declared, "Standing", Affinity.Standing).Concat(Commands(rest, "Verb")).ToList());
+    }
+
+    IRenderedComponent<ActionColumnHost> Kebab(List<ActionItem> leading)
+    {
         var cut = Render<ActionColumnHost>();
 
         cut.Render(p => p
-            .Add(x => x.Leading, Commands(declared, "Standing", Affinity.Standing).Concat(Commands(rest, "Verb")).ToList())
+            .Add(x => x.Leading, leading)
             .Add(x => x.Door, Door())
             .Add(x => x.MaxVisible, 0));
 
@@ -504,6 +509,21 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         var rows = await Menu(Grouped(declared: 1, rest: 1));
 
         Assert.Equal(["Standing1", "rule", "Verb1"], rows);
+    }
+
+    // A heading is drawn by the presenter that groups, never ruled by the kebab: acts that share a
+    // Group and differ in Heading stand in one run, in the order they were handed.
+    [Fact]
+    public async Task AHeadingDrawsNoRuleAndMovesNoAct()
+    {
+        var cut = Kebab(
+        [
+            new() { Name = "Card", Heading = "North", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+            new() { Name = "Link", Heading = "South", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+            new() { Name = "Cash", Heading = "North", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+        ]);
+
+        Assert.Equal(["Card", "Link", "Cash"], await Menu(cut));
     }
 
     // Any enum the caller owns; the Stack names no affinity of its own, because an affinity is
