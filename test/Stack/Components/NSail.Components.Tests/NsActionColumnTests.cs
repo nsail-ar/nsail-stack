@@ -506,6 +506,26 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         Assert.Equal(["Standing1", "rule", "Verb1"], rows);
     }
 
+    // A heading is drawn by the presenter that groups, never ruled by the kebab: acts that share a
+    // Group and differ in Heading stand in one run, in the order they were handed.
+    [Fact]
+    public async Task AHeadingDrawsNoRuleAndMovesNoAct()
+    {
+        var cut = Render<ActionColumnHost>();
+
+        cut.Render(p => p
+            .Add(x => x.Leading, new List<ActionItem>
+            {
+                new() { Name = "Card", Heading = "North", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+                new() { Name = "Link", Heading = "South", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+                new() { Name = "Cash", Heading = "North", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+            })
+            .Add(x => x.Constant, Constant())
+            .Add(x => x.MaxVisible, 0));
+
+        Assert.Equal(["Card", "Link", "Cash"], await Menu(cut));
+    }
+
     // Any enum the caller owns; the Stack names no affinity of its own, because an affinity is
     // domain vocabulary and the Stack has none.
     enum Affinity
