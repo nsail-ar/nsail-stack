@@ -7,6 +7,8 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NSail.Harness.Api;
 using NSail.Harness.Lanes;
+using NSail.Harness.Planning;
+using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Tests;
 
@@ -83,7 +85,7 @@ public sealed class OpsReporterTests : IDisposable
         return new OpsReporter(null!, options, new Clients(ops), new OpsLedger(root, history), log ?? new Warnings());
     }
 
-    static Task<HarnessReport> Read(int running = 0)
+    static Task<HarnessReport> Read(int running = 0, Pass? last = null)
     {
         var item = new WorkItem(WorkKind.Dev, 42, null, "p1", "work", Worker: "dev");
         var jobs = Enumerable.Range(1, running).Select(n => new RunningJob($"1109100000-dev-{n}", item, n, DateTimeOffset.UtcNow, $"/work/logs/{n}.log")
@@ -91,7 +93,34 @@ public sealed class OpsReporterTests : IDisposable
             Doing = new string('x', JobActivity.LineCap),
             LastWrote = DateTimeOffset.UtcNow,
         }).ToList();
-        return Task.FromResult(new HarnessReport { Machine = "box", Status = new HarnessStatus { Repository = "acme/app", Machine = "box", Running = jobs } });
+        return Task.FromResult(new HarnessReport { Machine = "box", Status = new HarnessStatus { Repository = "acme/app", Machine = "box", Running = jobs, Last = last } });
+    }
+
+    static Pass Passed(BoardView? board, string? error = null)
+    {
+        return new Pass(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(2), null, [], [], error) { Board = board };
+    }
+
+    // Stories in several stages, each hold once, a gate red and one green, and a closed story.
+    static BoardView Board()
+    {
+        var snapshot = new Fixture()
+            .Story(1, "Backlog")
+            .Story(2, "Backlog", labels: "blocked")
+            .Story(4107, "Ready", labels: "ruling", title: "the report carries the board")
+            .Story(4, "In-Progress", labels: "claimed,stalled")
+            .Pr(4, 40, gate: CiState.Red)
+            .Story(5, "In-Progress")
+            .Pr(5, 50, ci: CiState.Red, gate: CiState.Green)
+            .Story(6, "QA", labels: "unwalkable,ruling")
+            .Story(7, "Closed", labels: "ruling")
+            .Build();
+        return BoardViews.Of(snapshot);
+    }
+
+    static HarnessReport Body(Ops ops, int post)
+    {
+        return JsonSerializer.Deserialize<HarnessReport>(ops.Bodies[post], JsonSerializerOptions.Web)!;
     }
 
     void Ran(JobHistory history, int count, int from = 0)
@@ -121,6 +150,70 @@ public sealed class OpsReporterTests : IDisposable
     }
 
     [Fact]
+    public async Task AReportCarriesTheBoardItsLastPassReadWithEveryStageCounted()
+    {
+        var ops = new Ops();
+        var board = Board();
+
+        await Reporter(History(), _root, ops).Tick(_ => Read(last: Passed(board)), default);
+
+        var sent = Body(ops, 0).Status.Last!.Board!;
+        Assert.Equal("acme/app", sent.Repository);
+        Assert.Equal(board.ReadAt, sent.ReadAt);
+        Assert.Equal(
+            [new("Backlog", 2), new("Analyze", 0), new("Ready", 1), new("In-Progress", 2), new("Merged", 0), new("Released", 0), new("QA", 1)],
+            sent.Stages);
+    }
+
+    [Fact]
+    public async Task AReportNamesEveryHeldStoryOncePerHoldAndNoOther()
+    {
+        var ops = new Ops();
+
+        await Reporter(History(), _root, ops).Tick(_ => Read(last: Passed(Board())), default);
+
+        Assert.Equal(
+            [
+                new HeldStory(4, "story 4", "In-Progress", "stalled"),
+                new HeldStory(4, "story 4", "In-Progress", "gate"),
+                new HeldStory(6, "story 6", "QA", "ruling"),
+                new HeldStory(6, "story 6", "QA", "unwalkable"),
+                new HeldStory(4107, "the report carries the board", "Ready", "ruling"),
+            ],
+            Body(ops, 0).Status.Last!.Board!.Held.OrderBy(h => h.Story));
+        Assert.Contains("\"hold\":\"ruling\"", ops.Bodies[0]);
+    }
+
+    [Fact]
+    public async Task BeforeAnyPassOrAfterAFailedReadTheReportCarriesNoBoard()
+    {
+        var ops = new Ops();
+        var reporter = Reporter(History(), _root, ops);
+
+        await reporter.Tick(_ => Read(), default);
+        await reporter.Tick(_ => Read(last: Passed(null, error: "502 Bad Gateway")), default);
+
+        Assert.Null(Body(ops, 0).Status.Last);
+        Assert.Null(Body(ops, 1).Status.Last!.Board);
+        Assert.DoesNotContain("stages", ops.Bodies[1]);
+    }
+
+    [Fact]
+    public void ABodyWithoutABoardStillReads()
+    {
+        const string body = """
+            {"machine":"box","version":"1.0","status":{"repository":"acme/app","machine":"box","running":[],
+             "last":{"at":"2026-11-09T10:00:00+00:00","took":"00:00:02","plan":null,"wouldTake":[],"started":[],"error":null}},
+             "jobs":[]}
+            """;
+
+        var report = JsonSerializer.Deserialize<HarnessReport>(body, JsonSerializerOptions.Web)!;
+
+        Assert.Equal("box", report.Machine);
+        Assert.Null(report.Status.Last!.Board);
+    }
+
+    [Fact]
     public async Task AJobWhoseOutcomeOutweighsTheLimitStillGoesWithItsOutcomeCut()
     {
         var history = History();
@@ -146,9 +239,10 @@ public sealed class OpsReporterTests : IDisposable
         var ops = new Ops();
         var options = new HarnessOptions { Machine = "box", Ops = new OpsOptions { Url = "https://ops.example.com/", Token = Token, MaxBytes = 0 } };
 
-        await new OpsReporter(null!, options, new Clients(ops), new OpsLedger(_root, history), new Warnings()).Tick(_ => Read(running: 16), default);
+        await new OpsReporter(null!, options, new Clients(ops), new OpsLedger(_root, history), new Warnings()).Tick(_ => Read(running: 16, last: Passed(Board())), default);
 
         Assert.Equal(["job-0", "job-1", "job-2"], ops.Jobs(0).Select(j => j.Id));
+        Assert.NotNull(Body(ops, 0).Status.Last!.Board);
     }
 
     [Fact]
@@ -180,7 +274,7 @@ public sealed class OpsReporterTests : IDisposable
 
         for (var tick = 0; tick < 12; tick++)
         {
-            await reporter.Tick(_ => Read(), default);
+            await reporter.Tick(_ => Read(last: Passed(Board())), default);
         }
 
         Assert.All(ops.Bodies, b => Assert.True(Encoding.UTF8.GetByteCount(b) <= new OpsOptions().MaxBytes));
@@ -188,6 +282,7 @@ public sealed class OpsReporterTests : IDisposable
         Assert.Equal(Enumerable.Range(0, 400).Select(n => $"job-{n}"), accepted);
         Assert.True(ops.Jobs(2).Count < 400, "the first accepted report is one piece, not all of them");
         Assert.Empty(ops.Jobs(ops.Bodies.Count - 1));
+        Assert.All(ops.Bodies, b => Assert.Equal(5, JsonSerializer.Deserialize<HarnessReport>(b, JsonSerializerOptions.Web)!.Status.Last!.Board!.Held.Count));
     }
 
     [Fact]

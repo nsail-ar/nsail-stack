@@ -15,6 +15,9 @@ public static class Stages
     public const string Qa = "QA";
     public const string Closed = "Closed";
 
+    // The stages a story is open in, in the pipeline's order.
+    public static readonly string[] Open = [Backlog, Analyze, Ready, InProgress, Merged, Released, Qa];
+
     // A story out of these has landed: its code rides main.
     public static readonly string[] Landed = [Merged, Released, Qa, Closed];
 }

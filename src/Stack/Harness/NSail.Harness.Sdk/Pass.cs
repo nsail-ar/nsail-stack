@@ -6,10 +6,14 @@ using NSail.Harness.Planning;
 namespace NSail.Harness;
 
 // One read-plan-start round of the loop: what it planned, what fit, what it started, or why it failed.
+// Board: what it read of the board, null when the read failed.
 public sealed record Pass(
     DateTimeOffset At,
     TimeSpan Took,
     Plan? Plan,
     IReadOnlyList<WorkItem> WouldTake,
     IReadOnlyList<string> Started,
-    string? Error);
+    string? Error)
+{
+    public BoardView? Board { get; init; }
+}

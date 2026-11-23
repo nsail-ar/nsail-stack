@@ -434,6 +434,12 @@ list no longer is. The jobs go oldest first, as many as keep the body under `Max
 reports, and a report that owes jobs and fits none costs a warning. The token travels only in the header. Ops
 down or refusing costs one warning per report and never touches a pass.
 
+The last pass (`Pass`, in the status and the report to Ops) carries the board it planned from
+(`Pass.Board`, a `BoardView`, from the pass's own read, never a second one): the repository, when it
+was read, the open stories in each stage of `Stages.Open` (a stage with none reads 0), and the held
+ones, an entry per hold — `ruling`, `stalled`, `unwalkable`, or `gate` when the PR's gate is red at its
+head. A pass whose read failed carries none, and neither does a status before the first pass.
+
 A running job (`RunningJob`, in the status, the jobs and the report to Ops) says what it is doing
 and when its log last moved, read off the log at each look (`JobActivity`): an agent's job (dev,
 analyze, review, QA by seat or by script) its last words — the last text it said itself in its

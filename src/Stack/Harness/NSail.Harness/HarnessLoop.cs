@@ -684,6 +684,7 @@ public sealed class HarnessLoop(
     {
         var started = DateTimeOffset.UtcNow;
         var call = PassCall.Planning;
+        BoardView? seen = null;
         try
         {
             await LiftSharedPause();
@@ -703,6 +704,7 @@ public sealed class HarnessLoop(
                 LastQaAt = StatusMark.LastAt(marks, Markers.QaContext),
                 UnjudgedFixes = unjudged,
             };
+            seen = BoardViews.Of(snapshot);
             var limits = new Limits(o.Agents, o.Builds, o.Browsers);
             leases.Limit = limits.Builds;
             var conditions = _workers.SelectMany(w => w.Options.When.Use.Select(u => o.Conditions[u]).Append(w.Options.When));
@@ -741,7 +743,7 @@ public sealed class HarnessLoop(
             log.LogInformation("pass: {Items} planned, {Take} fit, {Started} started, {Running} running, {Took:F1}s",
                 plan.Items.Count, take.Count, startedNow.Count, _running.Count, took.TotalSeconds);
             metrics.Passed(failed: false);
-            return new Pass(started, took, plan, take, startedNow, null);
+            return new Pass(started, took, plan, take, startedNow, null) { Board = seen };
         }
         catch (Exception e) when (!stop.IsCancellationRequested)
         {
@@ -749,7 +751,7 @@ public sealed class HarnessLoop(
             {
                 lock (_gate) _limitedUntil = LaterWall(_limitedUntil, DateTimeOffset.UtcNow + LimitHold(after));
             }
-            return Failed(log, metrics, e, call, started);
+            return Failed(log, metrics, e, call, started) with { Board = seen };
         }
     }
 
