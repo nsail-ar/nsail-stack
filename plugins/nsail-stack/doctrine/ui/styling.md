@@ -232,7 +232,8 @@ marked *(cases)* has its story there.
     the hairline is what sets it apart. Primary is the action's colour, so a panel painted in it
     would read as something to press.
   - **The mark is always top right** and says what the panel is: `Label` is its accessible
-    name, the panel's when it has no `Title`, and its tooltip. It spans the title's row and the
+    name and its tooltip, and the section takes only the `Title`, so a reader never hears the
+    `Label` twice. It spans the title's row and the
     content's, so a panel with no title spends no row on it. The glyph is the severity's —
     `NsIcons.Info` at the neutral, `Warning`, `Error`, `Success` — so the tint is never colour
     alone; `Info` draws the neutral, whose mark already is the information one.
@@ -493,14 +494,15 @@ keeps `As="Title"`, which is a role and not a scale.
   a list row that takes padding and a rounded edge of its own keeps the tint
   (`PartyWorkOrdersCard`: four separated bands, and only the ones whose condition fires). Both
   forms are the same three severity classes, so the vocabulary is one either way.
-- **The channel is a LIST's, and its two edges are edges rather than gaps.** A *ficha* shows one
-  document and has no column to scan, so its state is a fact of the page's `NsInfoPanel`, read
-  by its label in a walk, never a disabled field standing in for a value. And where the state is a SEGMENT
-  of a joined sentence — a dashboard card's `N° 14 · Encargado · vence hoy` line — it stays in
-  that sentence: one `NsText` is one `<p>`, a status cannot nest inside it, and a clause painted on
-  its own reads as a highlight rather than as a state. One rule still answers what the tone IS
-  wherever a list prints it (`WorkOrderSeverity.OfStatus`), which is what keeps the edges from
-  becoming a second vocabulary.
+- **The channel reaches a *ficha*, and its one edge is an edge rather than a gap.** A ficha's
+  state is a fact of the page's `NsInfoPanel`, never a disabled field standing in for a value:
+  the panel stays neutral and the fact's value is the toned word, the datum carrying the colour
+  as it does on a card. A ficha has no row to wash, so the word is all the channel says there.
+  Where the state is a SEGMENT of a joined sentence — a dashboard card's
+  `N° 14 · Encargado · vence hoy` line — it stays in that sentence: one `NsText` is one `<p>`, a
+  status cannot nest inside it, and a clause painted on its own reads as a highlight rather than
+  as a state. One rule answers what the tone IS wherever the word is printed
+  (`WorkOrderSeverity.OfStatus`), which is what keeps the ficha and the list one vocabulary.
 - **A state in flight wears the neutral.** Work still moving is neither an alert nor an outcome,
   so it reads with history rather than beside it: on the OT grid an Encargado order still inside
   its promise and Anulado carry the same ink. That lost distinction is deliberate — the word

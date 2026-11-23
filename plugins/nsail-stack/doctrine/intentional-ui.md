@@ -938,10 +938,10 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   condition earns a second reading close up — the OT grid's word carries the same
   vencido/por-vencer/Listo tones as its wash (`WorkOrdersPage`, and the person's own card, which
   lists the same orders) — but that is a widening a screen argues for, never a default, and what
-  argues for it is a LIST: one order on a ficha has no column to scan and declares its state as a
-  fact of its `NsInfoPanel`. **Shared vocabulary is not shared PRECEDENCE**: each
-  channel answers its own question, so a row can read Listo on the word while its wash calls
-  the promise overdue. **Where a word does not fit, the same tone rides a dot** — an agenda
+  argues for it is a LIST: one order on a ficha has no row to wash, so its state is a fact of its
+  `NsInfoPanel` whose word carries the tone alone. **Shared vocabulary is not shared
+  PRECEDENCE**: each channel answers its own question, so a row can read Listo on the word while
+  its wash calls the promise overdue. **Where a word does not fit, the same tone rides a dot** — an agenda
   block's right edge — added BESIDE the words the surface already prints, never in their place:
   colour is never the only signal. One vocabulary for both forms; no screen owns a palette
   (`NsStatusText`/`NsStatusDot`, [ui/styling.md](ui/styling.md)). **A row's VERB may carry the
