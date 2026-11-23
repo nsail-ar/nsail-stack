@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Components.Tests.Fixtures;
 using NSail.Icons;
 using NSail.Localization;
 using NSail.Metadata;
@@ -19,7 +20,7 @@ public sealed class ActionItemHeadingTests
 
     static StringManager Strings(string language)
     {
-        var catalog = new StringCatalog([new BilingualStrings()]);
+        var catalog = new StringCatalog([new TwoLanguageStrings("Actions.Headings.North", "North side", "Norte")]);
 
         return new StringManager(catalog, new LanguageProvider { Current = language }, new MetadataProvider());
     }
@@ -73,20 +74,5 @@ public sealed class ActionItemHeadingTests
 
         Assert.Equal(NsIcons.Edit, heading.Icon);
         Assert.Equal(3, heading.Items.Count);
-    }
-
-    sealed class BilingualStrings : IStringSource
-    {
-        public IReadOnlyCollection<string> Languages { get; } = ["es", "en"];
-
-        public Task<IReadOnlyDictionary<string, string>> GetStrings(string language)
-        {
-            IReadOnlyDictionary<string, string> entries = new Dictionary<string, string>
-            {
-                ["Actions.Headings.North"] = language == "es" ? "Norte" : "North side",
-            };
-
-            return Task.FromResult(entries);
-        }
     }
 }

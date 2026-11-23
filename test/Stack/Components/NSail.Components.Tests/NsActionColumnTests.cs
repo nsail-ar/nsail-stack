@@ -465,10 +465,15 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
 
     IRenderedComponent<ActionColumnHost> Grouped(int declared, int rest)
     {
+        return Kebab(Commands(declared, "Standing", Affinity.Standing).Concat(Commands(rest, "Verb")).ToList());
+    }
+
+    IRenderedComponent<ActionColumnHost> Kebab(List<ActionItem> leading)
+    {
         var cut = Render<ActionColumnHost>();
 
         cut.Render(p => p
-            .Add(x => x.Leading, Commands(declared, "Standing", Affinity.Standing).Concat(Commands(rest, "Verb")).ToList())
+            .Add(x => x.Leading, leading)
             .Add(x => x.Constant, Constant())
             .Add(x => x.MaxVisible, 0));
 
@@ -511,17 +516,12 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     [Fact]
     public async Task AHeadingDrawsNoRuleAndMovesNoAct()
     {
-        var cut = Render<ActionColumnHost>();
-
-        cut.Render(p => p
-            .Add(x => x.Leading, new List<ActionItem>
-            {
-                new() { Name = "Card", Heading = "North", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
-                new() { Name = "Link", Heading = "South", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
-                new() { Name = "Cash", Heading = "North", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
-            })
-            .Add(x => x.Constant, Constant())
-            .Add(x => x.MaxVisible, 0));
+        var cut = Kebab(
+        [
+            new() { Name = "Card", Heading = "North", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+            new() { Name = "Link", Heading = "South", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+            new() { Name = "Cash", Heading = "North", OnClick = () => Task.CompletedTask, Group = Affinity.Standing },
+        ]);
 
         Assert.Equal(["Card", "Link", "Cash"], await Menu(cut));
     }
