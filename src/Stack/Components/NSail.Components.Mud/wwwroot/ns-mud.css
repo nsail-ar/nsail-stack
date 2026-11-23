@@ -1493,8 +1493,8 @@
     flex-basis: 100%;
 }
 
-.ns-nav-brand:has(.ns-chip-stretch) > :not(:has(.ns-chip-stretch), .ns-chip-stretch, img, svg),
-.ns-nav-brand :has(.ns-chip-stretch) > :not(:has(.ns-chip-stretch), .ns-chip-stretch, img, svg) {
+.ns-nav-brand:has(.ns-chip-stretch) > :not(:has(.ns-chip-stretch), .ns-chip-stretch, img, svg, .ns-remote-image),
+.ns-nav-brand :has(.ns-chip-stretch) > :not(:has(.ns-chip-stretch), .ns-chip-stretch, img, svg, .ns-remote-image) {
     flex: 1 1 0;
 }
 

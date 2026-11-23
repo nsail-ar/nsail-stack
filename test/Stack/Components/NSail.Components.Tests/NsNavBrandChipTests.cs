@@ -100,7 +100,7 @@ public sealed class NsNavBrandChipTests : BunitContext
         Assert.Matches(@"\.ns-nav-brand \.ns-chip-stretch\.mud-chip\s*\{[^}]*max-width:\s*100%;", css);
         Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-stretch\)\s*\{[^}]*max-width:\s*none;", css);
         Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-stretch\)\s*\{[^}]*flex-wrap:\s*wrap;", css);
-        Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-stretch\) > :not\([^)]*\(\.ns-chip-stretch\)[^{]*\{[^}]*flex:\s*1 1 0;", css);
+        Assert.Matches(@"\.ns-nav-brand:has\(\.ns-chip-stretch\) > :not\([^{]*\.ns-remote-image\),\s*\.ns-nav-brand :has\(\.ns-chip-stretch\) > :not\([^{]*\.ns-remote-image\)\s*\{[^}]*flex:\s*1 1 0;", css);
         Assert.True(
             css.IndexOf(".ns-nav-brand :has(.ns-chip-stretch) {\n    max-width: none;", StringComparison.Ordinal)
             > css.IndexOf(".ns-nav-brand * ~ :has(.ns-chip-ellipsis)", StringComparison.Ordinal),
