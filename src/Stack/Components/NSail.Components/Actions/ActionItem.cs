@@ -57,6 +57,18 @@ public sealed class ActionItem
     /// contributed action lands without declaring anything.</summary>
     public Enum? Group { get; init; }
 
+    /// <summary>The heading this act sits under, for a presenter that draws its acts as a
+    /// grouped list: a key several contributors join without knowing each other, its label
+    /// "Actions.Headings.{Heading}" at render (ActionHeading). Unlike Group it is drawn, not
+    /// ruled — the toolbar's kebab ignores it, and no Stack presenter draws it. Null sits under
+    /// no heading.</summary>
+    public string? Heading { get; init; }
+
+    /// <summary>Glyph of the Heading this act joins, not of the act itself — ignored when Heading
+    /// is null. Contributors sharing a Heading need not agree: the last one contributed wins,
+    /// the convention SettingsItem.GroupIcon keeps.</summary>
+    public Glyph? HeadingIcon { get; init; }
+
     public bool Disabled { get; init; }
 
     /// <summary>Whether the work this act starts is still going, by the page's own state — a

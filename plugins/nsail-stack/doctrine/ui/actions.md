@@ -328,8 +328,8 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
 
 ### `ActionItem`
 
-- `ActionItem` (`NSail.Components/Actions/`): `Name`, `Icon`, `Weight`, `Group`, `Disabled`,
-  `Running`, `Severity`, `Writes`, and exactly
+- `ActionItem` (`NSail.Components/Actions/`): `Name`, `Icon`, `Weight`, `Group`, `Heading`,
+  `HeadingIcon`, `Disabled`, `Running`, `Severity`, `Writes`, and exactly
   one of `PageType` (+ optional `Parameters`/`Target`), `OnClick` or `Menu`. The URL derives from
   the route table at render. **Links render as real anchors, commands as buttons** — the golden
   rule at the model level. **`Menu` is the third kind of act: offering a CHOICE** rather than a
@@ -374,6 +374,16 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   and the act needs a gate that says so: `NsPartial.CanSend<TMessage>(field, subjectId)` where
   the difference is a party or organization pin (permissions.md, The client consumes policies),
   the product's own where it is not (Optical's clients page: a warranty claim).
+- **`Heading` is the heading an act sits under, for a presenter that draws its acts as a
+  grouped list** — a card of ways to pay, one heading per provider, where the ways arrive from
+  contributors that must not name the provider to the card. It is a string key, like
+  `SettingsItem.Group`, because contributors that know nothing of each other join it; its label
+  resolves as `Actions.Headings.{Heading}` at render (then the raw key), never a string the
+  contributor wrote, and `HeadingIcon` is its glyph, the last one contributed winning, the
+  convention `SettingsItem.GroupIcon` keeps. `ActionHeading.Of(actions)` hands the presenter the
+  headings in the order each first appears, each with its acts; an act with no heading is the
+  presenter's to place. **No Stack presenter draws a heading**, and the kebab neither rules nor
+  moves on it — the presenter that groups is the kit's.
 - Labels resolve as `Actions.{Name}`, then — for a link — the destination page's own title, then
   the raw name; so moving a row's `NsPageLink` into an `ActionItem` writes no string. Pass a
   `name` only where the row reaches that page for a meaning its title does not carry.
@@ -468,7 +478,8 @@ visible — are the core doc's. How the cell composes:
   draws an `NsMenuDivider` between two *consecutive* overflow items that do not share a group,
   never at either end of the menu and never when the whole menu shares one. It groups nothing
   and sorts nothing — `Weight` is still what puts a family in one run, and the rule only
-  reports what the order already says.
+  reports what the order already says. **It is not `Heading`**: an affinity is ruled, never
+  named or drawn; a heading is named and drawn by the presenter that groups, and rules nothing.
   - **The type is any enum the caller owns** (`group: Affinity.Standing`). The Stack names no
     affinity of its own — an affinity is domain vocabulary — and typing it as an enum instead
     of an int is what keeps a page from writing a number nothing explains. `NsPartial.GetLink`
