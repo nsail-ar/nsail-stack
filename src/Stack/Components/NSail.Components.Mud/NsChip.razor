@@ -95,7 +95,10 @@ else
 
     string GetClass()
     {
-        return Stretch ? "ns-chip-ellipsis ns-chip-stretch" : "ns-chip-ellipsis";
+        return new NsClassBuilder()
+            .Add("ns-chip-ellipsis")
+            .Add("ns-chip-stretch", Stretch)
+            .ToString();
     }
 
     Color GetColor()
