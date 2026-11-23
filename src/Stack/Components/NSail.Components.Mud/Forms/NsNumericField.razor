@@ -23,8 +23,8 @@
                  OnBlur="Leaving"
                  OnKeyDown="Pressing"
                  @attributes="StepAttribute"
-                 HideSpinButtons="Compact"
-                 Class="@(Compact ? "ns-numeric-compact" : null)"
+                 HideSpinButtons="Stepper"
+                 Class="@(Stepper ? "ns-numeric-stepper" : null)"
                  Format="@(Format ?? NsQuantityText.Format)"
                  Culture="@FigureCulture"
                  Converter="_figures"
@@ -55,7 +55,7 @@
     /// digits, centered, and without the vendor's spin buttons, which would be a second way to
     /// step it beside the caller's. Typing still writes the value.</summary>
     [Parameter]
-    public bool Compact { get; set; }
+    public bool Stepper { get; set; }
 
     /// <summary>The spin/keyboard increment (the vendor's own Step knob, never named in a
     /// page). Unset keeps the vendor's default (1) — the sentinel is whether the parameter was

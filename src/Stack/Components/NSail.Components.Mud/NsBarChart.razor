@@ -12,7 +12,7 @@
    --mud-palette-* variable, so both schemes read. The hover is the SVG's own <title>. The <g>
    around each <text> is there because Razor does not open markup with <text> inside a code block. *@
 <div class="ns-bar-chart">
-    <svg viewBox="0 0 @N(W) @N(H)" width="100%" role="img" aria-label="@AriaLabel">
+    <svg viewBox="0 0 @N(W) @N(H)" width="100%" role="img" aria-label="@Label">
         @foreach (var tick in Ticks())
         {
             var y = Y(tick);
@@ -86,7 +86,7 @@
 
     /// <summary>The chart's accessible name, translated by the caller.</summary>
     [Parameter]
-    public string? AriaLabel { get; set; }
+    public string? Label { get; set; }
 
     double Slot
     {

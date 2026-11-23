@@ -15,15 +15,15 @@ namespace NSail.Components.Tests;
 /// boundaries are the whole of the rule, and the words are the feature: the catalog here is the
 /// assembly's own shipped strings, not a fixture dictionary, so a reading that resolved a key
 /// instead of a sentence fails.</summary>
-public sealed class NsSinceTests : BunitContext, IAsyncLifetime
+public sealed class NsTimeAgoTests : BunitContext, IAsyncLifetime
 {
     static readonly DateTime Noon = new(2026, 10, 21, 12, 0, 0, DateTimeKind.Utc);
 
-    public NsSinceTests()
+    public NsTimeAgoTests()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
-        Services.AddStringsFromAssembly(typeof(NsSince).Assembly);
+        Services.AddStringsFromAssembly(typeof(NsTimeAgo).Assembly);
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
@@ -54,7 +54,7 @@ public sealed class NsSinceTests : BunitContext, IAsyncLifetime
     [InlineData(259_200, "Days", 3)]
     public void EachUnitHandsTheReadingOnAtItsOwnBoundary(int secondsAgo, string unit, int value)
     {
-        Assert.Equal(($"Components.NsSince.{unit}", value), NsSince.Elapsed(Noon.AddSeconds(-secondsAgo), Noon));
+        Assert.Equal(($"Components.NsTimeAgo.{unit}", value), NsTimeAgo.Elapsed(Noon.AddSeconds(-secondsAgo), Noon));
     }
 
     /// <summary>A box whose own clock runs ahead of this one reads as the nearest unit, never as
@@ -62,7 +62,7 @@ public sealed class NsSinceTests : BunitContext, IAsyncLifetime
     [Fact]
     public void AMomentAheadOfTheClockReadsAsMomentsAgo()
     {
-        Assert.Equal(("Components.NsSince.Moments", 0), NsSince.Elapsed(Noon.AddMinutes(30), Noon));
+        Assert.Equal(("Components.NsTimeAgo.Moments", 0), NsTimeAgo.Elapsed(Noon.AddMinutes(30), Noon));
     }
 
     [Theory]
@@ -196,7 +196,7 @@ public sealed class NsSinceTests : BunitContext, IAsyncLifetime
     {
         var civil = DateTime.SpecifyKind(Noon.ToLocalTime(), DateTimeKind.Unspecified);
 
-        Assert.Equal(("Components.NsSince.Minutes", 5), NsSince.Elapsed(civil, Noon.AddMinutes(5)));
+        Assert.Equal(("Components.NsTimeAgo.Minutes", 5), NsTimeAgo.Elapsed(civil, Noon.AddMinutes(5)));
 
         var cut = Render("es", civil);
 
@@ -210,7 +210,7 @@ public sealed class NsSinceTests : BunitContext, IAsyncLifetime
         return RegionCulture.For(new LanguageProvider { Current = language });
     }
 
-    IRenderedComponent<NsSince> Render(
+    IRenderedComponent<NsTimeAgo> Render(
         string language,
         DateTime? at,
         string? missing = null,
@@ -219,7 +219,7 @@ public sealed class NsSinceTests : BunitContext, IAsyncLifetime
     {
         Services.GetRequiredService<LanguageProvider>().Current = language;
 
-        return Render<NsSince>(ps => ps
+        return Render<NsTimeAgo>(ps => ps
             .Add(p => p.At, at)
             .Add(p => p.Missing, missing)
             .Add(p => p.StaleAfter, staleAfter)

@@ -15,7 +15,7 @@
     <span id="subject">@Context</span>
     @if (Mounted)
     {
-        <ProbeRowOutlet Context="@Context" Leading="Leading" Constant="Constant" />
+        <ProbeRowOutlet Context="@Context" Leading="Leading" Door="Door" />
     }
 </div>
 
@@ -31,5 +31,5 @@
     public IReadOnlyList<ActionItem> Leading { get; set; } = [];
 
     [Parameter]
-    public ActionItem? Constant { get; set; }
+    public ActionItem? Door { get; set; }
 }

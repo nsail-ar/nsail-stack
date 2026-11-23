@@ -13,9 +13,9 @@
 <MudPopoverProvider />
 
 <NsForm TModel="TestModel" Model="_message" OnSubmit="Send" Untracked @key="_message">
-    <NsSendMessage @bind-Text="context.Name" Disabled="Disabled">
+    <NsComposer @bind-Text="context.Name" Disabled="Disabled">
         <button type="button" class="beside">Camino</button>
-    </NsSendMessage>
+    </NsComposer>
 </NsForm>
 
 @code {

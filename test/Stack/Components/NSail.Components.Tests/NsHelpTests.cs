@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
+using NSail.Icons;
 using NSail.Localization;
 using NSail.Metadata;
 
@@ -184,10 +185,11 @@ public sealed class NsHelpTests : BunitContext, IAsyncLifetime
         Assert.Equal("true", cut.Find(".ns-help button").GetAttribute("aria-expanded"));
     }
 
-    /// <summary>The API promise: one parameter, the key. Anything a page could use to name the
-    /// bubble's mechanics — a placement, a width, a vendor surface — has to break this first.</summary>
+    /// <summary>The API promise: what the paragraph says (a key or a resolved text), the glyph and
+    /// its tone. Anything a page could use to name the bubble's mechanics — a placement, a width,
+    /// a vendor surface — has to break this first.</summary>
     [Fact]
-    public void NsHelp_ExposesOnlyKey()
+    public void NsHelp_ExposesOnlyWhatItSays()
     {
         var parameters = typeof(NsHelp)
             .GetProperties()
@@ -196,7 +198,74 @@ public sealed class NsHelpTests : BunitContext, IAsyncLifetime
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["Key"], parameters);
+        Assert.Equal(["Class", "Icon", "Key", "Severity", "Text"], parameters);
+    }
+
+    /// <summary>A per-row fact ("Solo quedan {0} en stock") that no key could name: the caller's
+    /// own text is the paragraph and the trigger's accessible name both, the same string a hover
+    /// reads on a desktop and a click reveals in full on a phone.</summary>
+    [Fact]
+    public async Task AResolvedText_IsTheParagraphAndTheTriggersName()
+    {
+        var cut = Render<HelpHost>(p => p.Add(x => x.Text, "Solo quedan 0 en stock"));
+
+        Assert.Equal("Solo quedan 0 en stock", cut.Find(".ns-help button").GetAttribute("aria-label"));
+        Assert.Empty(cut.FindAll(".ns-help-text"));
+
+        await cut.InvokeAsync(() => cut.Find(".ns-help button").Click());
+
+        Assert.Equal("Solo quedan 0 en stock", cut.Find(".ns-help-text").TextContent.Trim());
+    }
+
+    [Fact]
+    public void WithNoIcon_TheGlyphIsHelp()
+    {
+        var cut = Render();
+
+        Assert.Contains(NsIcons.Help.Markup, cut.Find(".ns-help button").InnerHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AGivenIcon_ReplacesTheHelpGlyph()
+    {
+        var cut = Render<HelpHost>(p => p
+            .Add(x => x.Text, "Solo quedan 2")
+            .Add(x => x.Icon, NsIcons.Warning));
+
+        var button = cut.Find(".ns-help button");
+
+        Assert.Contains(NsIcons.Warning.Markup, button.InnerHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain(NsIcons.Help.Markup, button.InnerHtml, StringComparison.Ordinal);
+    }
+
+    /// <summary>The glyph carries the tone, since the text it opens does not render until clicked:
+    /// Error and Warning wear their class, and Info keeps the glyph's ordinary colour.</summary>
+    [Theory]
+    [InlineData(NsSeverity.Error, "ns-help-error")]
+    [InlineData(NsSeverity.Warning, "ns-help-warning")]
+    [InlineData(NsSeverity.Info, null)]
+    public void TheSeverityColoursTheGlyph(NsSeverity severity, string? expected)
+    {
+        var cut = Render<HelpHost>(p => p
+            .Add(x => x.Key, "Directory.Organization.DomainHelper")
+            .Add(x => x.Severity, severity));
+
+        var help = cut.Find(".ns-help");
+        var tones = help.ClassList.Where(c => c is "ns-help-error" or "ns-help-warning").ToArray();
+
+        Assert.Equal(expected is null ? [] : [expected], tones);
+    }
+
+    [Theory]
+    [InlineData("ns-help-error", "--mud-palette-error")]
+    [InlineData("ns-help-warning", "--mud-palette-warning")]
+    public void EachToneIsItsSeveritysColour(string tone, string palette)
+    {
+        var css = HouseStylesheet.Read();
+
+        var rule = css.IndexOf($".{tone} .mud-icon-root {{", StringComparison.Ordinal);
+        Assert.True(rule >= 0, $"the {tone} rule was not found in the stylesheet.");
+        Assert.Contains($"color: var({palette});", css[rule..css.IndexOf('}', rule)], StringComparison.Ordinal);
     }
 
     /// <summary>No vendor type in a public NSail API — the whole point of the popover living

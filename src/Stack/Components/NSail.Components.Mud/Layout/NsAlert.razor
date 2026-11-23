@@ -4,12 +4,12 @@
 @namespace NSail.Components
 
 @* Read out, not only painted: a refusal that arrives with the page is a block of colour to
-   everyone who cannot see it, and the vendor marks none of it. Danger is the tone that has to be
-   heard before the person acts, so it carries the same role the house puts on the fieldless
-   refusal box (NsForm, NsPanel). No other tone is marked: those are copy that sits on the screen
+   everyone who cannot see it, and the vendor marks none of it. Error and Warning are the tones
+   that have to be heard before the person acts, so they carry the same role the house puts on
+   the fieldless refusal box (NsForm, NsPanel). Info and Success are copy that sits on the screen
    rather than news, and an aria-live region around static text announces nothing. *@
 <MudAlert Severity="@GetSeverity()" Variant="Variant.Filled" Dense="false" Class="@Class"
-          role="@(As == NsAs.Danger ? "alert" : null)">
+          role="@(Interrupts ? "alert" : null)">
     @ChildContent
 </MudAlert>
 
@@ -18,21 +18,22 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    /// <summary>What the message is, in the same word the action components use: Danger is
-    /// the one that says "read this before you continue".</summary>
     [Parameter]
-    public NsAs As { get; set; } = NsAs.Default;
+    public NsSeverity Severity { get; set; } = NsSeverity.Info;
 
     [Parameter]
     public string? Class { get; set; }
 
-    Severity GetSeverity()
+    bool Interrupts => Severity is NsSeverity.Error or NsSeverity.Warning;
+
+    MudBlazor.Severity GetSeverity()
     {
-        return As switch
+        return Severity switch
         {
-            NsAs.Danger => Severity.Warning,
-            NsAs.Main => Severity.Success,
-            _ => Severity.Info
+            NsSeverity.Error => MudBlazor.Severity.Error,
+            NsSeverity.Warning => MudBlazor.Severity.Warning,
+            NsSeverity.Success => MudBlazor.Severity.Success,
+            _ => MudBlazor.Severity.Info
         };
     }
 }

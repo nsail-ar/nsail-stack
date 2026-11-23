@@ -50,7 +50,7 @@
                 <NsTd For="() => row.UpdatedAt">@row.UpdatedAt.ToLocalTime().ToString("g")</NsTd>
                 <NsTd>
                     <NsActionToolbar Leading="@(new[] { GetAction(Delete, row, NsIcons.Delete) })"
-                                     Constant="@(GetLink<UpdateContactPage>(NsIcons.Edit, new { id = row.Id }, Aside))" />
+                                     Door="@(GetLink<UpdateContactPage>(NsIcons.Edit, new { id = row.Id }, Aside))" />
                 </NsTd>
             </RowTemplate>
         </NsTable>

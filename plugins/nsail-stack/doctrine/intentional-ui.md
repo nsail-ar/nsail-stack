@@ -144,7 +144,7 @@ it).
 
 **The one exception: a screen whose footer is a COMPOSER carries its one state act in the title
 row.** A thread answered from the bottom has no footer left to put a verb in — the foot is
-`NsSendMessage` ([ui/forms.md](ui/forms.md), *The composer*), the box the reply is typed into, and
+`NsComposer` ([ui/forms.md](ui/forms.md), *The composer*), the box the reply is typed into, and
 a state act wedged above it reads as part of the message. So it rides the title row with the
 utilities, last of them, left of the guide's `?` (the ticket workspace's Resolver). **One act, not
 a row of them**: a second verb up there is a screen that owes itself a surface of its own for the
@@ -210,7 +210,7 @@ add it (the `new-icon` skill) rather than borrow a neighbour's (cases).
   dropdown's permanent last item. The field's edge belongs to the dropdown arrow, and to nothing
   at all on a `Lazy` lookup, which draws no adornment ([ui/fields.md](ui/fields.md)).
   **The one exception is an empty set**, where the dropdown is a place nobody opens: the picker
-  then draws `NsMissing` UNDER the field — the concept by name and a link to where one is made —
+  then draws `NsNoOptions` UNDER the field — the concept by name and a link to where one is made —
   in the under-field zone the hint and the refusal share, and only while there is genuinely
   nothing to pick (cases).
 - **A question the chosen row still owes is asked INSIDE the dropdown, never under the field**:
@@ -404,7 +404,7 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
    second row clicked into the same aside is one place, not a stack — and **a surface reached by
    a pasted URL or a reload closes by replacing**, having no entry of its own to spend. **The one
    caller-declared exception is `NoHistory`, already declared**: the satellite create — the
-   lookup's inline create entry (`NsAutocomplete`) and the empty picker's door (`NsMissing`),
+   lookup's inline create entry (`NsAutocomplete`) and the empty picker's door (`NsNoOptions`),
    marked inside those two components, never at a call site, a lookup wrapper or `NsPageLink` —
    opens a window that feeds a value back into the form underneath and that the save then
    closes; its own entry would leave that finished window one Back away from the form it fed.
@@ -927,7 +927,7 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   kit contributing a rare action never widens a row ([ui/actions.md](ui/actions.md)).
 - **State paints its text; condition washes the row.** Two channels, apart by default: the
   status column is quiet text whose colour carries the state's tone — **no chip**, which
-  decorates every state equally loudly — while the row wash (`.ns-row-danger`) is reserved for
+  decorates every state equally loudly — while the row wash (`.ns-row-error`) is reserved for
   CONDITIONS the row's own data settles (overdue, ready). They may deliberately OVERLAP where a
   condition earns a second reading close up — the OT grid's word carries the same
   vencido/por-vencer/Listo tones as its wash (`WorkOrdersPage`, and the person's own card, which

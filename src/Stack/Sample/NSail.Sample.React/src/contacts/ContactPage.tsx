@@ -4,7 +4,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useForm, useLoad, useMediator, type Form } from "@nsail/stack";
-import { NsButton, NsCard, NsField, NsForm, NsLoad, NsPage, NsSaved, NsTable, NsToolBar } from "@nsail/ui";
+import { NsButton, NsCard, NsField, NsForm, NsLoad, NsPage, NsSaved, NsTable, NsToolbar } from "@nsail/ui";
 import { ContactAddressModel, CreateContact, GetContact, UpdateContact, type ContactModel } from "../sdk";
 import { routes } from "../routes";
 
@@ -30,11 +30,11 @@ function Fields<T extends CreateContact | UpdateContact>({ form, children }: { f
       <NsField<T> name="isFavorite" />
       <NsField<T> name="notes" multiline />
       {children}
-      <NsToolBar>
+      <NsToolbar>
         <NsButton text="Common.Submit" type="submit" variant="primary" busy={form.submitting} />
         <NsButton text="Common.Back" onClick={() => navigate(routes.contacts.href())} />
         <NsSaved />
-      </NsToolBar>
+      </NsToolbar>
     </>
   );
 }

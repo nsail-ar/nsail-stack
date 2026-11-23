@@ -108,7 +108,7 @@ public sealed class NsTitleBarProgressTests : BunitContext
 
         // The accessible name the appended indicator used to carry travels with it into the
         // slot — the swap is a change of glyph, never a loss of what it says.
-        Assert.Equal("Cargando", icons[0].Instance.Title);
+        Assert.Equal("Cargando", icons[0].Instance.Label);
     }
 
     [Fact]

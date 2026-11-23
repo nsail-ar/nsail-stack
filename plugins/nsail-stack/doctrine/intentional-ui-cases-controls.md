@@ -359,7 +359,7 @@ that has rows** — the entry is the dropdown's last item, and the field's edge 
 its own. For an EMPTY set the dropdown is a place nobody opens: the affordance is discoverable
 only by opening a control that visibly offers nothing.
 
-So `NsMissing<TItem>` draws the fact and the act **under** the field, in the under-field zone the
+So `NsNoOptions<TItem>` draws the fact and the act **under** the field, in the under-field zone the
 hint and the refusal share (`ns-field-missing`, `ns-mud.css`), and only while the set is
 genuinely empty — a picker with rows spends no pixel on it, nor does one still reading. It is not
 a second create affordance: both sentences derive from the same two keys the dropdown entry

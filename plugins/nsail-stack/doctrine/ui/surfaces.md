@@ -82,7 +82,7 @@ door.** Four transitions, and the caller influences one:
 - **closed → open** (the name's key absent, now present) **pushes** — a surface is a place, so
   Back closes it — unless the opener passes `NoHistory`, which replaces. `NoHistory` is a
   parameter on **`NsLink`** and is set inside the two Stack components that compose the satellite
-  create — `NsAutocomplete`'s inline create entry and `NsMissing`'s empty-picker door — and
+  create — `NsAutocomplete`'s inline create entry and `NsNoOptions`'s empty-picker door — and
   nowhere else; `NsPageLink` does not forward it and no lookup wrapper sees it.
 - **open → open** (a link pointing an already-open name at another route) **always replaces.** No
   flag changes it, or a back-stack would grow by one per click inside one open surface.

@@ -11,7 +11,7 @@
    nothing at all in a dialog. *@
 <CascadingValue Value="RouteTable">
     <NsSurfaceContext Name="Name" Close="Close" Context="surface">
-        <NsTabs BindQuery="BindQuery" @bind-ActivePanelIndex="ActiveTab">
+        <NsTabs BindQuery="BindQuery" @bind-ActiveIndex="ActiveTab">
             <NsTab Title="Identity" Name="@Named("identity")">
                 <div class="tab-identity"></div>
             </NsTab>
@@ -45,7 +45,7 @@
     [Parameter]
     public bool Unnamed { get; set; }
 
-    /// <summary>The page's own field behind @@bind-ActivePanelIndex — public so a test can read
+    /// <summary>The page's own field behind @@bind-ActiveIndex — public so a test can read
     /// which tab the screen believes is showing, not merely which panel the vendor painted.</summary>
     public int ActiveTab { get; set; }
 

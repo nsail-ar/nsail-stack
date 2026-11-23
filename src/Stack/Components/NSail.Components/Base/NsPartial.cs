@@ -469,7 +469,7 @@ public abstract class NsPartial : NsComponent
     }
 
     /// <summary>The link twin of GetAction: an ActionItem that opens a page — what a grid row
-    /// hands its one toolbar as a fixed verb (Leading) or as its constant. The URL comes from
+    /// hands its one toolbar as a fixed verb (Leading) or as its door. The URL comes from
     /// the route table at render and the label from the page's own title, so moving a row's
     /// NsPageLink in here writes neither of them. Weight is the counter-frequency order the
     /// toolbar's cap reads. Name is the escape hatch NsPageLink's Label is: pass one only

@@ -256,7 +256,7 @@
             return;
 
         // A text area's Enter is the line it writes, and Ctrl+Enter above is what submits the
-        // document from inside one -- except in a COMPOSER (NsSendMessage), where the words
+        // document from inside one -- except in a COMPOSER (NsComposer), where the words
         // being typed ARE the message and nothing else is being written: there Enter sends and
         // Shift+Enter writes the line, which is what every chat on earth has taught the hand.
         // The modified keystroke never reaches here, so the Shift half is the policy standing
@@ -277,7 +277,7 @@
 
             // What it presses is the composer's own send, so a blank box and a send already in
             // flight refuse the key for the single reason they grey that face out
-            // (NsSendMessage's blank rule, NsSubmit's FormRunning) -- no second rule here to
+            // (NsComposer's blank rule, NsSubmit's FormRunning) -- no second rule here to
             // come apart from it.
             const send = composer.querySelector('button[type="submit"]');
 

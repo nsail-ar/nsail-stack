@@ -4,18 +4,18 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { NsButton } from "./button";
-import { NsToolBar } from "./toolbar";
+import { NsToolbar } from "./toolbar";
 import { clear, draw } from "./app.test-support";
 
 afterEach(clear);
 
-describe("NsToolBar", () => {
+describe("NsToolbar", () => {
   it("lays its controls in one row that wraps", async () => {
     const { host } = await draw(
-      <NsToolBar>
+      <NsToolbar>
         <NsButton text="Common.Save" />
         <NsButton text="Common.Back" />
-      </NsToolBar>,
+      </NsToolbar>,
       { catalog: { "Common.Save": "Guardar", "Common.Back": "Volver" } },
     );
     const row = host.querySelector("button")!.parentElement!;

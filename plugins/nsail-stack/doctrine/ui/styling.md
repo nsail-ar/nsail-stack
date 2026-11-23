@@ -353,7 +353,7 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   screen in the tree wears one.
 - `NsBarChart` is stacked bars over ordered buckets (an hour, a day), drawn as plain SVG — `Buckets`
   (label and a value per series key), `Series` (key, translated name, `NsChartColor`), `Markers`
-  (a vertical line at a bucket index with its hover text) and `AriaLabel`. Use it for counts over
+  (a vertical line at a bucket index with its hover text) and `Label`. Use it for counts over
   time; lines, pies and zoom are not in it. Colours are palette slots, never a hex, so both schemes
   read. `Info`, `Success`, `Warning`, `Error` and `Neutral` are scheme constants and always tell
   apart; `Primary` is the install's accent and can land on one of them. Secondary and Tertiary
@@ -361,7 +361,7 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   `<title>` and the legend sits under the chart; the exact value living only on a hover is the
   one deliberate exception to the tooltip rule above. Nothing to draw (no buckets, or all zero)
   keeps the axis and says "no data", never a blank box.
-- `NsSince` is how long ago something happened, said in the one unit a person would say it in
+- `NsTimeAgo` is how long ago something happened, said in the one unit a person would say it in
   ("hace 5 min", "3 d ago") with the exact moment on the whisper — `At`, `Missing`, `StaleAfter`,
   `Format`, and nothing else. Days is as coarse as it gets: a cell dumped three weeks ago and one
   dumped twenty-one days ago are the same alarm. **What counts as late is the caller's own
@@ -480,7 +480,7 @@ keeps `As="Title"`, which is a role and not a scale.
   and the two date-derived conditions the row wash already paints (vencido, por vencer) earn the
   same word too, so the channel reads four things there rather than one.
 - **Theme severity variables only, never a hex** — the same rule the row wash keeps.
-- **Colour is never the only signal.** `NsStatusDot.Title` is the state in words and is
+- **Colour is never the only signal.** `NsStatusDot.Label` is the state in words and is
   required: it renders as `role="img"` + `aria-label` + `title`, and the surface around the dot
   still says the state in text of its own. A dot that only has a tooltip is colour alone, which
   a printout and a colour-blind reader both lose.

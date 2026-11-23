@@ -20,11 +20,11 @@ namespace NSail.Components.Tests;
 /// concept from the item type's own key, the act from the same Common.CreateNew template the
 /// dropdown's create entry composes — so no field, no screen and no kit writes either, and no
 /// caller writes an address.</summary>
-public sealed class NsMissingTests : BunitContext
+public sealed class NsNoOptionsTests : BunitContext
 {
     const string Concept = "Components.MissingProbe";
 
-    public NsMissingTests()
+    public NsNoOptionsTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddComponentServices();
@@ -32,7 +32,7 @@ public sealed class NsMissingTests : BunitContext
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();
         Services.AddSingleton<StringManager>();
-        Services.AddSingleton(new RouteTable(typeof(NsMissingTests).Assembly, []));
+        Services.AddSingleton(new RouteTable(typeof(NsNoOptionsTests).Assembly, []));
         Services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
         Services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
     }
@@ -44,7 +44,7 @@ public sealed class NsMissingTests : BunitContext
     {
         Translated();
 
-        var cut = Render<NsMissing<MissingProbe>>(p => p.Add(x => x.CreateRoute, "products/stores/new"));
+        var cut = Render<NsNoOptions<MissingProbe>>(p => p.Add(x => x.CreateRoute, "products/stores/new"));
 
         var door = Assert.Single(cut.FindAll(".ns-field-missing"));
 
@@ -68,7 +68,7 @@ public sealed class NsMissingTests : BunitContext
 
         navigation.NavigateTo("/optical/work-orders/new");
 
-        var cut = Render<NsMissing<MissingProbe>>(p => p
+        var cut = Render<NsNoOptions<MissingProbe>>(p => p
             .Add(x => x.CreateRoute, "products/stores/new")
             .Add(x => x.Target, Surfaces.Aside));
 
@@ -96,7 +96,7 @@ public sealed class NsMissingTests : BunitContext
             }),
         ]));
 
-        var cut = Render<NsMissing<MissingProbe>>(p => p.Add(x => x.CreateRoute, "products/stores/new"));
+        var cut = Render<NsNoOptions<MissingProbe>>(p => p.Add(x => x.CreateRoute, "products/stores/new"));
 
         Assert.Empty(cut.FindAll(".ns-field-missing"));
     }

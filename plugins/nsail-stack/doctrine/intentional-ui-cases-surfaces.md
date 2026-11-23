@@ -61,7 +61,7 @@ same open. Marking the special case is more intuitive than putting history every
   feeding the form underneath.
 - **The special case is marked where it is written, never at a call site.** Fourteen lookup
   wrappers pass `CreateRoute`/`CreateTarget` to one shared `NsAutocomplete`, and the empty
-  picker's door is one shared `NsMissing`, so `NoHistory` costs two internal changes instead of
+  picker's door is one shared `NsNoOptions`, so `NoHistory` costs two internal changes instead of
   a parameter every lookup must remember.
 - **Four transitions, not one switch.** Moving inside an open surface keeps replacing, or every
   intra-aside click would grow the back-stack; that is not a caller's choice, so it is not a flag.

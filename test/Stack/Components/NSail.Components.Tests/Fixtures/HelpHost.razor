@@ -2,15 +2,25 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @using MudBlazor
+@using NSail.Icons
 
 @* The bubble and the click-catcher under it are both portals: the provider has to be in the
    tree for either to exist at all (LookupCreateHost carries the same note). *@
 <MudPopoverProvider />
 
-<NsHelp Key="@Key" />
+<NsHelp Key="@Key" Text="@Text" Icon="@Icon" Severity="Severity" />
 
 @code {
 
     [Parameter]
-    public string Key { get; set; } = string.Empty;
+    public string? Key { get; set; }
+
+    [Parameter]
+    public string? Text { get; set; }
+
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    [Parameter]
+    public NsSeverity Severity { get; set; }
 }

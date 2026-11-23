@@ -65,7 +65,7 @@
                 <span class="ns-title-icon-slot">
                     @if (Surface?.HasWork == true)
                     {
-                        <NsIcon Icon="@NsIcons.Progress" Title="@Strings.Translate("Common.Loading")" />
+                        <NsIcon Icon="@NsIcons.Progress" Label="@Strings.Translate("Common.Loading")" />
                     }
                     else if (GetIcon() is { } icon)
                     {
@@ -94,7 +94,7 @@ else if (!Hoisted)
             <span class="ns-title-icon-slot">
                 @if (Surface?.HasWork == true)
                 {
-                    <NsIcon Icon="@NsIcons.Progress" Title="@Strings.Translate("Common.Loading")" />
+                    <NsIcon Icon="@NsIcons.Progress" Label="@Strings.Translate("Common.Loading")" />
                 }
                 else if (GetIcon() is { } icon)
                 {

@@ -58,7 +58,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
             .ToList();
     }
 
-    static ActionItem Constant()
+    static ActionItem Door()
     {
         return new ActionItem { Name = "Ficha", OnClick = () => Task.CompletedTask };
     }
@@ -195,7 +195,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     IRenderedComponent<ActionColumnHost> Row(
         int leading,
         int contributed = 0,
-        bool constant = true,
+        bool door = true,
         int maxVisible = 3,
         bool resolving = false)
     {
@@ -204,7 +204,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         cut.Render(p => p
             .Add(x => x.Leading, Commands(leading, "Verb"))
             .Add(x => x.Actions, Commands(contributed, "Contributed"))
-            .Add(x => x.Constant, constant ? Constant() : null)
+            .Add(x => x.Door, door ? Door() : null)
             .Add(x => x.MaxVisible, maxVisible)
             .Add(x => x.Resolving, resolving));
 
@@ -269,7 +269,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     public void ADoorHandedNoGlyphDrawsTheChevron()
     {
         var cut = Render<ActionColumnHost>(p => p
-            .Add(x => x.Constant, new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage) }));
+            .Add(x => x.Door, new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage) }));
 
         var door = cut.Find(".ns-action-toolbar a");
 
@@ -280,7 +280,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     public void ADisabledDoorHandedNoGlyphDrawsTheChevron()
     {
         var cut = Render<ActionColumnHost>(p => p
-            .Add(x => x.Constant, new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage), Disabled = true }));
+            .Add(x => x.Door, new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage), Disabled = true }));
 
         var door = cut.Find(".ns-action-toolbar");
 
@@ -291,7 +291,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     public void ADoorHandedAGlyphDrawsItAsPassed()
     {
         var cut = Render<ActionColumnHost>(p => p
-            .Add(x => x.Constant, new ActionItem { Name = "Editar", PageType = typeof(ProbeOtherPage), Icon = NsIcons.Edit }));
+            .Add(x => x.Door, new ActionItem { Name = "Editar", PageType = typeof(ProbeOtherPage), Icon = NsIcons.Edit }));
 
         var door = cut.Find(".ns-action-toolbar a");
 
@@ -324,7 +324,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
 
     // The sweep of 2026-08-11 (stories.md, "el espacio antes de la lupa"): the page's own
     // fixed verbs stopped standing beside the toolbar and became its Leading, so the cell is
-    // ONE toolbar with one cap, one overflow and one reserve — and the row's constant is
+    // ONE toolbar with one cap, one overflow and one reserve — and the row's door is
     // pinned at the trailing edge of it.
 
     [Fact]
@@ -348,9 +348,9 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     {
         var cut = Row(leading: 5);
 
-        // Three verbs, the constant, then the kebab holding the other two: the overflow is
+        // Three verbs, the door, then the kebab holding the other two: the overflow is
         // what absorbs a long row, never the fixed target — and the kebab is what closes the
-        // row now (Leonardo, 2026-08-11: "el kebab cierra la fila"), not the constant.
+        // row now (Leonardo, 2026-08-11: "el kebab cierra la fila"), not the door.
         Assert.Equal(["Verb1", "Verb2", "Verb3", "Ficha", "kebab"], Controls(cut));
 
         var menu = cut.Find(".ns-action-toolbar .mud-menu");
@@ -376,7 +376,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         // row a lápiz plus a tacho, in two different compositions — "horrendo!", columns
         // zigzagging between rows. One toolbar answers it structurally: whatever the row
         // offers, the reserve is the same width, regardless of which control closes it —
-        // the constant when the row does not overflow, the kebab when it does (2026-08-11
+        // the door when the row does not overflow, the kebab when it does (2026-08-11
         // ruling: "el kebab cierra la fila").
         var cut = Row(leading: verbs);
 
@@ -394,7 +394,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     [Fact]
     public void ARowWithNoConstantReservesOneSlotLess()
     {
-        var toolbar = Row(leading: 1, constant: false).Find(".ns-actions .ns-action-toolbar");
+        var toolbar = Row(leading: 1, door: false).Find(".ns-actions .ns-action-toolbar");
 
         Assert.Contains("--ns-action-slots: 4", toolbar.GetAttribute("style"), StringComparison.Ordinal);
     }
@@ -427,8 +427,8 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     // Personas (nsail#657): Leonardo asked for one visible verb on a row that offered five, so
-    // the cap goes to zero and the constant is the edit. Zero is the honest end of MaxVisible's
-    // own range — the constant was never inside the cap, so the cell is still exactly the two
+    // the cap goes to zero and the door is the edit. Zero is the honest end of MaxVisible's
+    // own range — the door was never inside the cap, so the cell is still exactly the two
     // boxes it reserves.
 
     [Fact]
@@ -469,7 +469,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
 
         cut.Render(p => p
             .Add(x => x.Leading, Commands(declared, "Standing", Affinity.Standing).Concat(Commands(rest, "Verb")).ToList())
-            .Add(x => x.Constant, Constant())
+            .Add(x => x.Door, Door())
             .Add(x => x.MaxVisible, 0));
 
         return cut;
@@ -535,7 +535,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     // The Stack's own Sample (ContactsPage) draws it the other way round: Delete is the row's
-    // contributed Leading verb and Edit is its Constant, so Delete renders FIRST, not last —
+    // contributed Leading verb and Edit is its Door, so Delete renders FIRST, not last —
     // the one order the fact above never exercises, and the one a first-child-only rule could
     // never reach (nsail#2696, review round 2).
     [Fact]
@@ -548,13 +548,13 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
             {
                 new() { Name = "Delete", Icon = NsIcons.Delete, OnClick = () => Task.CompletedTask },
             })
-            .Add(x => x.Constant, new ActionItem { Name = "Edit", Icon = NsIcons.Edit, OnClick = () => Task.CompletedTask }));
+            .Add(x => x.Door, new ActionItem { Name = "Edit", Icon = NsIcons.Edit, OnClick = () => Task.CompletedTask }));
 
         var destructive = cut.Find(".ns-action-toolbar .ns-action-destructive");
 
         Assert.Equal("Delete", destructive.QuerySelector("button")!.GetAttribute("aria-label"));
 
-        // Delete IS :first-child here (Visible() draws before Constant) — the exact shape
+        // Delete IS :first-child here (Visible() draws before Door) — the exact shape
         // :not(:first-child) missed. :only-child is what the rule has to key off instead, so
         // pin the precondition directly: the destructive span is not alone in its row.
         Assert.True(destructive.ParentElement!.Children.Length > 1);
@@ -574,7 +574,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     // itself. One side each, not margin-inline on both: the
     // toolbar packs to its own trailing edge, so whichever control is last sits on the cell's
     // fixed right border — a margin on THAT side pushes it inside the border the moment
-    // Delete itself closes the row (Leading = [Edit, Delete], Constant nil), which is the
+    // Delete itself closes the row (Leading = [Edit, Delete], Door nil), which is the
     // raggedness this column exists to end. :not(:last-child) pays the trailing gap,
     // :not(:first-child) pays the leading one, and either reduces to :only-child's own
     // exclusion when Delete has no neighbour on that side.

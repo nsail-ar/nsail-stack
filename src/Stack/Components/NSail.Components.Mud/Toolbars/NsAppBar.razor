@@ -42,7 +42,7 @@
         <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="min-w-0">
             @if (Surface?.HasWork == true)
             {
-                <NsIcon Icon="@NsIcons.Progress" Title="@Strings.Translate("Common.Loading")" />
+                <NsIcon Icon="@NsIcons.Progress" Label="@Strings.Translate("Common.Loading")" />
             }
             else if (Surface?.Icon is { } icon)
             {

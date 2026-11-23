@@ -511,7 +511,7 @@ public sealed class SurfaceContext
     /// Four transitions, and only the first is the caller's to influence. A surface whose key
     /// the address did not carry and now does was CLOSED and is being opened: that is a place,
     /// and it pushes unless <paramref name="noHistory"/> says the open is a satellite feeding
-    /// a form still standing underneath (NsAutocomplete's inline create, NsMissing's door). A
+    /// a form still standing underneath (NsAutocomplete's inline create, NsNoOptions's door). A
     /// surface already open whose route changes is moving inside one place and always replaces
     /// — no flag changes that, or the back-stack would grow by one per click inside an open
     /// aside. A path change is a different place and pushes, as any navigation does. And a move

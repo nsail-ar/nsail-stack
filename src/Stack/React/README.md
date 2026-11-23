@@ -121,7 +121,7 @@ palette.
 | `useConfirm` | `confirm(text, danger?)` resolves to a boolean; one native `<dialog>` hosted by `NsApp` |
 | `NsNavMenu` | `label` (a key naming the navigation), `entries` (`text` key, `href` from your route table, `icon?`), `current?` (the href the reader is on), `onNavigate?` (your router's navigate; a plain click is handed to it) |
 | `NsCard` | `title?`, `subtitle?` (keys), `aside?`, `actions?`, `children` |
-| `NsToolBar` | `children`: a row of controls that wraps |
+| `NsToolbar` | `children`: a row of controls that wraps |
 | `NsList` + `NsListItem` | `primary`, `secondary?` (data, not sentences), `icon?`, `aside?`, `href?` or `onClick?` |
 | `NsAlert` | `text` (a key), `args?` (named arguments), `severity?` (`info`, `success`, `warning`, `error`; the last two are read out), `action?` |
 | `NsChip` | `text` (a key), `severity?`, `solid?` (the filled face) |

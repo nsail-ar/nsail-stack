@@ -28,7 +28,7 @@
         </div>
     }
 
-    @if (_hasToolBar)
+    @if (_hasToolbar)
     {
         @* No inset of its own, at any width: the toolbar is one of the page's BLOCKS, and every
            other one — the cards, the filter panel, the footer — starts at the content gutter.
@@ -36,7 +36,7 @@
            gutter inward, and the toolbar does NOT follow it there: lining a search box up with a
            heading that a button displaced is one row agreeing with another at the cost of the
            page's only grid. *@
-        <NsToolBar>
+        <NsToolbar>
             @* Its own width, whatever it is: the search zone below is the one thing in this row
                that declares one, and a control that is not a search has no business inheriting
                it. *@
@@ -81,7 +81,7 @@
             }
 
             @Actions
-        </NsToolBar>
+        </NsToolbar>
     }
 
     @if (Filter is not null && (FilterAlwaysOpen || FilterOpenValue))
@@ -228,7 +228,7 @@
     // its own. Asked from the render, like the claim itself.
     bool _exportBesideGuide => !_hasControls && _hasExport;
 
-    bool _hasToolBar => _hasControls || (_hasExport && !_exportBesideGuide);
+    bool _hasToolbar => _hasControls || (_hasExport && !_exportBesideGuide);
 
     bool FilterOpenValue => FilterOpen ?? _filterOpen;
 

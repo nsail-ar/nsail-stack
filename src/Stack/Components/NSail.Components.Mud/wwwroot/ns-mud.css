@@ -571,7 +571,7 @@
 
    A slot is one icon button (a 1.5rem glyph inside 3px of padding) plus the 4px separating
    two of them, and the reserve below is --ns-action-slots of those less that last separation
-   — the toolbar's own cap, the kebab overflow raises, and the row's constant where it carries
+   — the toolbar's own cap, the kebab overflow raises, and the row's door where it carries
    one, held whether the kebab renders or not. The cell IS one toolbar (intentional-ui, grids:
    the page's fixed verbs ride in as Leading), so that reserve covers the whole cell
    rather than a fragment of it sitting between two hand-written icons — which is what the
@@ -581,9 +581,9 @@
    past its content and the data columns take the rest. The strip packs to the column's
    trailing edge — the cell aligns the toolbar (it is inline-flex, so text-align reaches it)
    and the toolbar packs its own icons the same way, which pins whichever control closes the
-   row (the kebab when the row overflows, the constant otherwise) at the fixed edge, and lets
+   row (the kebab when the row overflows, the door otherwise) at the fixed edge, and lets
    the rest grow leftward from it. Rows sharing the same overflow state then line their trailing
-   control up on the same x; a row that overflows sits its constant one slot short of that edge,
+   control up on the same x; a row that overflows sits its door one slot short of that edge,
    the kebab past it. */
 /* The selection tick is the action column's mirror at the leading edge: it asks for nothing
    past the box it draws. */
@@ -665,16 +665,16 @@
    only widen that row's slot past the others' (NsActionToolbar.razor, IsDestructive — read off
    NsIcons.Delete, so every existing call site gets this without declaring anything).
 
-   Both sides, not just the leading one: the toolbar draws Visible() before Constant
-   (NsActionToolbar.razor), so a row whose Constant is its edit and whose only contributed verb
+   Both sides, not just the leading one: the toolbar draws Visible() before Door
+   (NsActionToolbar.razor), so a row whose Door is its edit and whose only contributed verb
    is Delete (the Stack's own Sample, ContactsPage) has Delete FIRST, not last — a single
-   margin-inline-start would sit on the edge nothing is beside and never reach the Constant
+   margin-inline-start would sit on the edge nothing is beside and never reach the Door
    that comes after it.
 
    One side each, not both on every Delete: the toolbar packs to its own trailing edge (above),
    so whichever control is LAST is the one sitting on the cell's fixed right border, and a
    margin on that side pushes the glyph 8px inside it — the exact raggedness this column
-   exists to end, the moment Delete itself closes the row (Leading = [Edit, Delete], Constant
+   exists to end, the moment Delete itself closes the row (Leading = [Edit, Delete], Door
    nil). :not(:last-child) pays the trailing gap only when something sits past Delete to
    separate from; :not(:first-child) pays the leading one only when something sits before it;
    a Delete in the middle of the strip earns both, same as before, and either side it costs
@@ -827,7 +827,7 @@
    hole that moves with the cluster whichever edge this rule packs it to. The toolbar packs its
    own content to ITS box's trailing edge, at every width (the action column's rule above), so
    the reserve sits on its leading side, hidden inside the cluster; the icons read as one
-   strip, and whichever control closes the row (the constant, or the kebab past it once the
+   strip, and whichever control closes the row (the door, or the kebab past it once the
    row overflows) stands at the trailing edge in a card exactly as in a row. */
 @media (max-width: 960px) {
     .ns-table.mud-sm-table .ns-actions {
@@ -1899,16 +1899,14 @@
     width: auto;
 }
 
-/* NsHint's warning variant (a per-row fact, such as stock falling short of a quantity): the
-   glyph itself carries the severity, since the text it opens does not render until clicked. */
-.ns-hint-warning .mud-icon-root {
+/* NsHelp's severity (a per-row fact, such as stock falling short of a quantity): the glyph
+   itself carries it, since the text it opens does not render until clicked. Error is the same
+   channel as the row mark beside it (ns-row-error), so colour stays one vocabulary. */
+.ns-help-warning .mud-icon-root {
     color: var(--mud-palette-warning);
 }
 
-/* The same hint at the severity above it: a fact the row cannot act on by itself — a taller
-   that does not quote the article the line names. Same channel as the row mark beside it
-   (ns-row-danger), so colour stays one vocabulary. */
-.ns-hint-danger .mud-icon-root {
+.ns-help-error .mud-icon-root {
     color: var(--mud-palette-error);
 }
 
@@ -2334,9 +2332,9 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* A line that flags a broken record inline (a row whose stored document could not be
-   loaded) — the same severity colour NsAlert's Danger uses, without the block-level
+   loaded) — the same severity colour NsAlert's Error uses, without the block-level
    padding an alert would force into a table cell. */
-.ns-text-danger {
+.ns-text-error {
     color: var(--mud-palette-error);
 }
 
@@ -2410,7 +2408,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    something is typed, which is why nothing is reserved for it. Theme
    severity colors only, like the row semaphore below — a bar with a palette of its own would
    be the one place in the app inventing colour. */
-/* The door under a picker whose set is empty (NsMissing): the same under-field zone the hint
+/* The door under a picker whose set is empty (NsNoOptions): the same under-field zone the hint
    and the refusal use, in normal flow, so it costs its own height honestly like both of them.
    It only exists while there is genuinely nothing to pick, which is why nothing is reserved
    for it. */
@@ -2541,7 +2539,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    variable a value per washed row wins without a selector fight (the .ns-status-text note below
    is the same move: cascade instead of compete), and the answer to the pointer becomes the row's
    tone DEEPENED — BrandTone.RowWashPointed — which keeps the channel and the reading both. */
-.ns-row-danger {
+.ns-row-error {
     background-color: color-mix(in srgb, var(--mud-palette-error) 6%, transparent);
     --mud-palette-table-hover: color-mix(in srgb, var(--mud-palette-error) 10%, transparent);
 }
@@ -2569,7 +2567,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     border-inline-start: 3px solid transparent;
 }
 
-.ns-row-mark.ns-row-danger {
+.ns-row-mark.ns-row-error {
     background-color: transparent;
     border-inline-start-color: var(--mud-palette-error);
 }
@@ -3445,7 +3443,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* A FOOTER ACT NEVER GIVES UP ITS CONTENT WIDTH — the row WRAPS, the same answer the title row
-   and the toolbar row above it give (NsTitleBar, NsToolBar). A row that cannot wrap has only
+   and the toolbar row above it give (NsTitleBar, NsToolbar). A row that cannot wrap has only
    flex-shrink left when the acts outgrow the width, and a shrunk worded button breaks its own
    LABEL into two lines with the glyph parked between them. Stated once here, outside the phone
    container query below, because one declaration is the whole behaviour at every width.
@@ -5093,14 +5091,14 @@ div.mud-input-slot.mud-input-root::placeholder {
     white-space: nowrap;
 }
 
-/* THE FIGURE OF A STEPPER (NsNumericField Compact): sized for a few digits and centered between
+/* THE FIGURE OF A STEPPER (NsNumericField Stepper): sized for a few digits and centered between
    the caller's own − and + buttons, never stretched to whatever the cell offers. */
-.ns-numeric-compact.mud-input-control {
+.ns-numeric-stepper.mud-input-control {
     flex: 0 0 auto;
     width: 5rem;
 }
 
-.ns-numeric-compact .mud-input-control-input-container input.mud-input-root {
+.ns-numeric-stepper .mud-input-control-input-container input.mud-input-root {
     text-align: center;
 }
 

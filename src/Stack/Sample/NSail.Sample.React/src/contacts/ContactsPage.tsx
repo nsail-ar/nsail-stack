@@ -4,7 +4,7 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import { useLoad, useMediator, useStrings } from "@nsail/stack";
-import { NsButton, NsEnumSelect, NsLoad, NsPage, NsPager, NsSearch, NsTable, NsToolBar, useConfirm } from "@nsail/ui";
+import { NsButton, NsEnumSelect, NsLoad, NsPage, NsPager, NsSearch, NsTable, NsToolbar, useConfirm } from "@nsail/ui";
 import { ContactRow, DeleteContact, ListContacts, type ContactKind } from "../sdk";
 import { routes } from "../routes";
 
@@ -34,14 +34,14 @@ export function ContactsPage() {
       title="Sample.ContactsPage.Title"
       actions={<NsButton text="Common.New" variant="primary" onClick={() => navigate(routes.newContact.href())} />}
     >
-      <NsToolBar>
+      <NsToolbar>
         <NsSearch field={ListContacts.fields.search} value={filter.search} onSearch={search} />
         <NsEnumSelect<ContactKind>
           field={ListContacts.fields.kind}
           value={filter.kind}
           onChange={(kind) => setFilter((current) => ({ ...current, kind, pageIndex: 0 }))}
         />
-      </NsToolBar>
+      </NsToolbar>
       <NsLoad load={contacts}>
         {(page) => (
           <>

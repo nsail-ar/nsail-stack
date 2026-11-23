@@ -21,7 +21,7 @@ namespace NSail.Components.Tests;
 /// What is held here is the base's own answer (NsPickerBase.IsReadOnly / IsDisabled) and the
 /// one gate the Stack owns on top of it — a lookup nobody may write to hands its field no
 /// create route, which is the same sentence for the dropdown's entry and for the empty
-/// picker's door, since NsMissing is drawn from that route too.</summary>
+/// picker's door, since NsNoOptions is drawn from that route too.</summary>
 public sealed class NsPickerWritabilityTests : BunitContext, IAsyncLifetime
 {
     public NsPickerWritabilityTests()

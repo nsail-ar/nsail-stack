@@ -74,7 +74,7 @@ public sealed class NsPageHeaderLeadTests : BunitContext, IAsyncLifetime
             .Add(header => header.Title, "Conversación")
             .Add(header => header.Lead, Marked("probe-lead")));
 
-        Assert.Single(cut.FindComponents<NsToolBar>());
+        Assert.Single(cut.FindComponents<NsToolbar>());
     }
 
     // The two zones are not the same zone: a list with a scope selector on the left can still

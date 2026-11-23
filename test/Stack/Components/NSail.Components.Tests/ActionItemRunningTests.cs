@@ -118,7 +118,7 @@ public sealed class ActionItemRunningTests : BunitContext, IAsyncLifetime
     {
         var door = new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage), Running = true };
 
-        var cut = Render<ActionColumnHost>(p => p.Add(x => x.Constant, door));
+        var cut = Render<ActionColumnHost>(p => p.Add(x => x.Door, door));
 
         var toolbar = cut.Find(".ns-action-toolbar");
 
