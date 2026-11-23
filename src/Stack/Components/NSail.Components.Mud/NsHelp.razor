@@ -12,11 +12,11 @@
    shares no subtree with the button that opened it, so Escape is caught here or nowhere. While
    open it stops the key there: the innermost open thing wins Escape, and the surface around it
    hears only the next one. *@
-<span class="ns-help d-inline-flex align-center" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="_open">
+<span class="@GetClasses()" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="_open">
     <NsButton As="@NsAs.Inline" Breakpoint="NsBreakpoint.Never"
-              Icon="@NsIcons.Help"
+              Icon="@(Icon ?? NsIcons.Help)"
               Size="@NsSize.Sm"
-              Label="@Strings.Translate("Common.Help")"
+              Label="@GetLabel()"
               Expanded="_open"
               OnClick="Toggle" />
 
@@ -30,7 +30,7 @@
                     TransformOrigin="@Origin.TopLeft"
                     Style="@($"z-index:{SurfaceContext.VendorZIndex}")"
                     Class="ns-help-popover">
-            <div class="ns-help-text">@Strings.Translate(Key)</div>
+            <div class="ns-help-text">@GetText()</div>
         </MudPopover>
 
         @* Phones have no hover, so the help opens on click — and anything that opens on a
@@ -53,8 +53,54 @@
     /// <summary>The localization key of the paragraph this ? carries. Global, because the
     /// component cannot see the page whose prefix would scope it — the same full key a page
     /// already writes when it translates a string another type owns.</summary>
-    [Parameter, EditorRequired]
-    public string Key { get; set; } = string.Empty;
+    [Parameter]
+    public string? Key { get; set; }
+
+    /// <summary>The paragraph already resolved, for a fact that changes with the data ("Solo
+    /// quedan {0} en stock"). It is also the button's accessible name and tooltip: a fact worth
+    /// a click is worth saying in full on hover too. Wins over <see cref="Key"/>.</summary>
+    [Parameter]
+    public string? Text { get; set; }
+
+    /// <summary>The glyph; the Help ? when none is given.</summary>
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    /// <summary>The tone the glyph carries, since the text it opens does not render until
+    /// clicked: Error red, Warning yellow, Info and Success the glyph's ordinary colour.</summary>
+    [Parameter]
+    public NsSeverity Severity { get; set; } = NsSeverity.Info;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-help d-inline-flex align-center")
+            .Add(GetSeverityClass())
+            .Add(Class)
+            .ToString();
+    }
+
+    string? GetSeverityClass()
+    {
+        return Severity switch
+        {
+            NsSeverity.Error => "ns-help-error",
+            NsSeverity.Warning => "ns-help-warning",
+            _ => null
+        };
+    }
+
+    string GetLabel()
+    {
+        return Text is { Length: > 0 } ? Text : Strings.Translate("Common.Help");
+    }
+
+    string GetText()
+    {
+        return Text is { Length: > 0 } ? Text : Strings.Translate(Key ?? string.Empty);
+    }
 
     void Toggle()
     {

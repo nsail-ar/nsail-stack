@@ -240,7 +240,7 @@ public sealed class BrandThemeContrastTests
     // row — so every ink in this file is read on a ground a tenth darker in light and lighter in
     // dark than the surface it was tuned against. The sweep is a cross product and not a pairing
     // of each word with its own row: an order that is Listo and overdue at once wears Success on
-    // a danger-washed row, and the two kit grids that print a toned state carry no wash at all,
+    // an error-washed row, and the two kit grids that print a toned state carry no wash at all,
     // which is the plain pointed row and the worst ground of the lot. That the classes carry
     // these mixes is read off the stylesheet in NsStatusToneTests; what they RESOLVE to is this.
     [Theory]

@@ -39,7 +39,7 @@ caller's own breakpoint reaches the same shape for as long as the query holds. W
 like is the intention's business:
 
 - **`Inline` in that state is the flat glyph** — the vendor's bare icon button, which is what
-  a grid row's actions, a title bar's utilities, the header X, `NsHelp` and `NsHint` wear.
+  a grid row's actions, a title bar's utilities, the header X and `NsHelp` wear.
 - **`NsLink` alone also draws a third `Inline` face no other primitive has**: a bare `<a>`
   carrying both an `Icon` and a word, the two laid out as one row (`ns-link-iconed`) on the
   same box every worded Inline face gets (below), rather than wherever the browser's own
@@ -355,7 +355,7 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   long after the click returned. Beside `Disabled` because it is state the page sets on the
   item, and every presenter that draws it as an act honours it: `NsAction` draws the face of a
   click in flight (`NsIcons.Progress` turning, the loading word, disabled, and a press never
-  reaches `OnClick`), the toolbar carries it to its leading items and its constant (a running
+  reaches `OnClick`), the toolbar carries it to its leading items and its door (a running
   link draws that command face, not an anchor), and a kebab row turns its glyph and is
   disabled. An item with a `Menu` is drawn as that menu and ignores it: a menu offers a choice
   and starts no work. The page hands a new item with `Running` false when its state says the
@@ -432,9 +432,9 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   rows above and below never move (cases) — the reserve is the column's geometry, not a count of
   what rendered, so a form going read-only never moves it.
 - **While the outlet is still asking, the slot its first contribution will fill carries the
-  loading mark** — `NsIcons.Progress`, at the slot's own box, standing before the constant so
+  loading mark** — `NsIcons.Progress`, at the slot's own box, standing before the door so
   the row's fixed target does not move when the verb replaces it. Nothing else waits for it: the
-  host's `Leading` and `Constant` are drawn from the first frame, and an outlet whose
+  host's `Leading` and `Door` are drawn from the first frame, and an outlet whose
   contributors answer without yielding never draws the mark at all. **That mark is a different
   moment from a verb's own call in flight**: this one is the outlet still deciding whether the
   verb exists at all, before there is a face to press; once a verb is drawn, pressing it is
@@ -444,9 +444,9 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   click, for as long as the page's state says its work goes on: the third moment, and the only
   one a page sets.
 - **A page's own row actions are `ActionItem`s handed to the same toolbar** — `Leading` for its
-  verbs, `Constant` for the row's fixed target, built with `NsPartial.GetLink<TPage>` or
+  verbs, `Door` for the row's fixed target, built with `NsPartial.GetLink<TPage>` or
   `GetAction`. **Never markup beside the outlet.** **The cap is the cell's**: `MaxVisible` bounds
-  host verbs and contributions together, the constant outside it. The page still decides when the
+  host verbs and contributions together, the door outside it. The page still decides when the
   contribution point exists — a create form doesn't mount an outlet, so contributors never see
   unsaved models.
 
@@ -454,13 +454,13 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
 
 ## The action cell of a grid row
 
-The rules — one action cell per row and it is ONE toolbar, the constant last, three verbs
+The rules — one action cell per row and it is ONE toolbar, the door last, three verbs
 visible — are the core doc's. How the cell composes:
 
-- The page hands its fixed verbs in as `Leading` and its constant as `Constant`; the outlet,
+- The page hands its fixed verbs in as `Leading` and its door as `Door`; the outlet,
   where the row has one, passes both through to the same toolbar. **The cell right-aligns and
   the toolbar packs to its own trailing edge** (cases).
-- **The constant never counts against the cap and never folds into the overflow**, because
+- **The door never counts against the cap and never folds into the overflow**, because
   anchoring it there is what gives muscle memory a stable target while the variable verbs grow
   leftward.
 - `MaxVisible` (3) bounds the whole cell: the host's `Leading` first, ordered among itself by
@@ -469,7 +469,7 @@ visible — are the core doc's. How the cell composes:
   contributing a rare action never widens a row. The kebab only exists when there is a
   remainder, and it counts as a slot.
 - **`MaxVisible="0"` is the honest end of that range, not a trick**: the cell becomes the
-  constant and the kebab, `[✎][⋮]`, and the reserve still comes out right because the constant
+  door and the kebab, `[✎][⋮]`, and the reserve still comes out right because the door
   was never inside the cap. It is what a list says when **one** verb is worth a box of muscle
   memory and everything else — the page's own and every contributor's — is worth a menu row
   (Personas). The cap is the host's, so it reaches the toolbar through the outlet's own
@@ -488,11 +488,11 @@ visible — are the core doc's. How the cell composes:
     knows nothing about the host's families lands on the far side of the rule by declaring
     nothing.
 - **The row's door defaults to `NsIcons.ChevronRight`, decided by the toolbar, not the page.**
-  A `Constant` made by `GetLink<TPage>()` with no glyph draws the chevron, disabled or not, and
+  A `Door` made by `GetLink<TPage>()` with no glyph draws the chevron, disabled or not, and
   an `NsCard` `Door` wears the same one, so no page names it and one line changes every grid. A
   glyph passed is drawn as passed: the lápiz of a row with no ficha stays. The magnifier is
   `NsAs.Filter`'s glyph; one glyph never means both "run the filter" and "open the row". A
-  `Constant` that carries its own `Content` (an avatar) keeps it.
+  `Door` that carries its own `Content` (an avatar) keeps it.
 - **The verb that destroys never sits at the plain `gap-1` from its neighbour.** The toolbar
   reads this off the glyph (`item.Icon == NsIcons.Delete`), not a flag a contributor sets: every
   `GetAction(Delete, row, NsIcons.Delete)` already passes the house's one Delete icon, so the

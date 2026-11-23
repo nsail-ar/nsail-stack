@@ -294,7 +294,7 @@ What it never does is save a document in the middle of being written:
   open*, above).
 - **In a COMPOSER, Enter sends and Shift+Enter writes the line** — the one textarea whose plain
   Enter is never a line, because the words being typed ARE the message and there is no document
-  around them to save by accident. What says so is the composer around the box (`NsSendMessage`
+  around them to save by accident. What says so is the composer around the box (`NsComposer`
   writes `ns-send`, read from the keystroke's own target upwards), and the key presses that
   composer's own send face — and it presses no face a hand could not press, so a blank box and a
   send in flight answer the key with **nothing at all** rather than with a blank line nobody
@@ -324,7 +324,7 @@ keystrokes themselves are walked in a browser.
 
 ## The composer
 
-**A screen that sends WORDS draws `NsSendMessage` and never a text area with a button beside
+**A screen that sends WORDS draws `NsComposer` and never a text area with a button beside
 it**: an assistant's question, a ticket's answer, a note on a conversation. The control is the
 box and the send face together because the rules of sending are one set, and every one of them
 is read off what it renders:

@@ -96,20 +96,20 @@
     @if (Resolving)
     {
         @* Where the first contribution is going to land, so what arrives replaces the mark
-           instead of pushing the row's fixed target sideways: the constant and the kebab close
+           instead of pushing the row's fixed target sideways: the door and the kebab close
            the row and the strip packs to that edge (ns-mud.css), so the mark grows leftward
            from a target that never moves. *@
         <span class="ns-action-mark d-inline-flex align-center">
-            <NsIcon Icon="@NsIcons.Progress" Title="@Strings.Translate("Common.Loading")" />
+            <NsIcon Icon="@NsIcons.Progress" Label="@Strings.Translate("Common.Loading")" />
         </span>
     }
-    @if (_constant is not null)
+    @if (_door is not null)
     {
-        @icon(_constant)
+        @icon(_door)
     }
     @if (_items.Count > MaxVisible)
     {
-        @* The kebab CLOSES the row: the constant is the fixed
+        @* The kebab CLOSES the row: the door is the fixed
            target muscle memory aims at, and a row that just grew a fourth verb must not
            shove that target sideways every time the overflow appears or disappears — the
            kebab is the one whose presence is conditional, so it is the one that moves. Left
@@ -144,7 +144,7 @@
 @code {
 
     List<ActionItem> _items = [];
-    ActionItem? _constant;
+    ActionItem? _door;
 
     [CascadingParameter]
     Task<AuthenticationState>? AuthenticationState { get; set; }
@@ -168,18 +168,18 @@
     [Parameter]
     public IReadOnlyList<ActionItem> Leading { get; set; } = [];
 
-    /// <summary>The row's constant — its ficha, or its edit where there is none. Rendered
+    /// <summary>The row's door — its ficha, or its edit where there is none. Rendered
     /// right after the visible verbs and before the kebab (the kebab closes the row, not the
-    /// constant): it is the fixed target muscle memory aims at, so it never counts against
+    /// door): it is the fixed target muscle memory aims at, so it never counts against
     /// the cap and never folds into the overflow.</summary>
     [Parameter]
-    public ActionItem? Constant { get; set; }
+    public ActionItem? Door { get; set; }
 
     /// <summary>Actions shown as icons before the rest fold into the kebab. Three is what a
     /// grid's action column reserves room for beside that kebab, so a row never grows past
     /// the column it is in. Zero is the honest end of the same range — the row shows its
-    /// constant and its kebab and nothing else — and the reserve still comes out right,
-    /// because the constant was never inside the cap.</summary>
+    /// door and its kebab and nothing else — and the reserve still comes out right,
+    /// because the door was never inside the cap.</summary>
     [Parameter]
     public int MaxVisible { get; set; } = 3;
 
@@ -198,13 +198,13 @@
     public NsBreakpoint? Breakpoint { get; set; }
 
     /// <summary>What the action column reserves: the cap, the overflow beside it, and the
-    /// constant when the row carries one — the whole cell, since the whole cell is this one
+    /// door when the row carries one — the whole cell, since the whole cell is this one
     /// toolbar.</summary>
-    int Slots => MaxVisible + 1 + (_constant is null ? 0 : 1);
+    int Slots => MaxVisible + 1 + (_door is null ? 0 : 1);
 
     protected override async Task OnParametersSetAsync()
     {
-        // Actions arrive gated by the outlet that resolved them; Leading and Constant are the
+        // Actions arrive gated by the outlet that resolved them; Leading and Door are the
         // host's own and reach the same single gate here, so a row action to a page the
         // session cannot open never renders — whoever wrote it.
         var leading = await Allowed(Leading);
@@ -219,7 +219,7 @@
         // counted, so the visible slice would spend slots on nothing and the remainder would
         // open a kebab with nothing in it.
         _items = leading.OrderBy(item => item.Weight).Concat(Actions).Where(Offers).ToList();
-        _constant = Constant is not null && Offers(Constant) && await Allows(Constant) ? WithDoorGlyph(Constant) : null;
+        _door = Door is not null && Offers(Door) && await Allows(Door) ? WithDoorGlyph(Door) : null;
     }
 
     async Task<List<ActionItem>> Allowed(IReadOnlyList<ActionItem> items)
@@ -256,7 +256,7 @@
         return item.GetLabel(Strings, Metadata);
     }
 
-    // The row's door is the one link the house draws the same everywhere: a page-link constant
+    // The row's door is the one link the house draws the same everywhere: a page-link door
     // handed no glyph wears the chevron, so no page names it; a glyph passed is drawn as passed
     // (a pencil, on a row whose door edits rather than opens). A Content (an avatar) is the
     // door's own face.

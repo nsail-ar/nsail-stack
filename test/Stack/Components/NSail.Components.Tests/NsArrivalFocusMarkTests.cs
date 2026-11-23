@@ -106,12 +106,12 @@ public sealed class NsArrivalFocusMarkTests : BunitContext, IAsyncLifetime
     [Fact]
     public void TheComposer_TellsTheArrivalFromTheCaretItKeeps()
     {
-        var marked = Render<NsSendMessage>(p => p.Add(x => x.AutoFocus, true));
+        var marked = Render<NsComposer>(p => p.Add(x => x.AutoFocus, true));
 
         Assert.Equal("true", marked.Find("textarea").GetAttribute("data-ns-arrival-focus"));
         Assert.False(marked.FindComponent<MudBlazor.MudTextField<string>>().Instance.AutoFocus);
 
-        var rearmed = Render<NsSendMessage>(p => p.Add(x => x.FocusOnRender, true));
+        var rearmed = Render<NsComposer>(p => p.Add(x => x.FocusOnRender, true));
 
         Assert.Null(rearmed.Find("textarea").GetAttribute("data-ns-arrival-focus"));
         Assert.True(rearmed.FindComponent<MudBlazor.MudTextField<string>>().Instance.AutoFocus);

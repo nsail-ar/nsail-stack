@@ -267,11 +267,11 @@ public sealed class NsEnterPolicyMarkTests : BunitContext, IAsyncLifetime
     /// typed ARE the message, so the policy sends instead of standing down. Both marks it reads
     /// are pinned here — the composer around the box, which it finds from the keystroke's own
     /// target upwards, and the send face inside it, which is what the key presses
-    /// (NsSendMessageTests holds what that face does).</summary>
+    /// (NsComposerTests holds what that face does).</summary>
     [Fact]
     public void AComposer_CarriesTheMarkAndTheFaceTheKeyPresses()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         var composer = cut.Find("textarea").Closest(".ns-send");
 

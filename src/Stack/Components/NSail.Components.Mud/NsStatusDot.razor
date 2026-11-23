@@ -3,7 +3,7 @@
 
 @namespace NSail.Components
 
-<span class="@GetClasses()" role="img" aria-label="@Title" title="@Title"></span>
+<span class="@GetClasses()" role="img" aria-label="@Label" title="@Label"></span>
 
 @code {
 
@@ -15,7 +15,7 @@
     /// <summary>The state in words, the dot's accessible name and its tooltip. Required: a
     /// dot without it is colour alone.</summary>
     [Parameter, EditorRequired]
-    public string? Title { get; set; }
+    public string? Label { get; set; }
 
     string GetClasses()
     {

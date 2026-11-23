@@ -115,7 +115,7 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
         var header = cut.FindComponent<NsPageHeader>();
 
         Assert.Single(header.FindAll(".ns-table-export"));
-        Assert.Empty(header.FindComponents<NsToolBar>());
+        Assert.Empty(header.FindComponents<NsToolbar>());
         Assert.Empty(cut.FindComponent<NsTable<ExportRowModel>>().FindAll(".ns-table-export"));
     }
 
@@ -132,7 +132,7 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
         var header = cut.FindComponent<NsPageHeader>();
 
         Assert.Single(header.FindAll(".ns-table-export"));
-        Assert.Empty(header.FindComponents<NsToolBar>());
+        Assert.Empty(header.FindComponents<NsToolbar>());
         Assert.NotEmpty(header.FindAll(".test-filter"));
     }
 
@@ -145,7 +145,7 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
 
         var header = cut.FindComponent<NsPageHeader>();
 
-        Assert.Single(header.FindComponent<NsToolBar>().FindAll(".ns-table-export"));
+        Assert.Single(header.FindComponent<NsToolbar>().FindAll(".ns-table-export"));
     }
 
     [Fact]

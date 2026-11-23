@@ -92,11 +92,11 @@
   "Components.NsPasswordField.Stored": "••••••••",
   "Components.NsPasswordField.StoredHint": "Guardado. Vacío para conservarlo.",
 
-  "Components.NsSince.Moments": "hace instantes",
-  "Components.NsSince.Minutes": "hace {0} min",
-  "Components.NsSince.Hours": "hace {0} h",
-  "Components.NsSince.Days": "hace {0} día",
-  "Components.NsSince.Days.Plural": "hace {0} días",
+  "Components.NsTimeAgo.Moments": "hace instantes",
+  "Components.NsTimeAgo.Minutes": "hace {0} min",
+  "Components.NsTimeAgo.Hours": "hace {0} h",
+  "Components.NsTimeAgo.Days": "hace {0} día",
+  "Components.NsTimeAgo.Days.Plural": "hace {0} días",
 
   "Components.NsBarChart.NoData": "Sin datos",
 

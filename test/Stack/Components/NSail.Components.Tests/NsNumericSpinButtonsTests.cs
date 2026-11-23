@@ -65,10 +65,10 @@ public sealed class NsNumericSpinButtonsTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<NsNumericField<decimal>>(ps => ps
             .Add(p => p.Value, 1m)
-            .Add(p => p.Compact, true));
+            .Add(p => p.Stepper, true));
 
         Assert.Empty(cut.FindAll(".mud-input-numeric-spin"));
-        Assert.NotEmpty(cut.FindAll(".ns-numeric-compact.mud-input-control .mud-input-control-input-container input.mud-input-root"));
+        Assert.NotEmpty(cut.FindAll(".ns-numeric-stepper.mud-input-control .mud-input-control-input-container input.mud-input-root"));
     }
 
     [Fact]

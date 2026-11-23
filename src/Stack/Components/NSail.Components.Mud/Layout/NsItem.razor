@@ -28,6 +28,18 @@
     [Parameter]
     public bool Full { get; set; }
 
+    /// <summary>A content-width field whose floating label is a whole sentence: 20rem instead of
+    /// the 14rem a date or a short select fits in. Ignored when <see cref="Grow"/> or
+    /// <see cref="Full"/> is set.</summary>
+    [Parameter]
+    public bool Wide { get; set; }
+
+    /// <summary>A content-width field that holds 3-5 characters (a street number, a floor): 6rem,
+    /// so the growing field beside it keeps its line. Ignored when <see cref="Wide"/>,
+    /// <see cref="Grow"/> or <see cref="Full"/> is set.</summary>
+    [Parameter]
+    public bool Narrow { get; set; }
+
     [Parameter]
     public string? Class { get; set; }
 
@@ -38,6 +50,7 @@
     string GetClasses()
     {
         return new NsClassBuilder(ModeClass())
+            .Add(WidthClass())
             .Add(Class)
             .ToString();
     }
@@ -46,9 +59,25 @@
     {
         if (Full)
         {
-            return "ns-form-field-full";
+            return "ns-grid-item-full";
         }
 
-        return Grow ? "ns-form-field-grow" : "ns-form-field";
+        return Grow ? "ns-grid-item-grow" : "ns-grid-item";
+    }
+
+    // A width answers only the content-width nature: grow and full take the line's.
+    string? WidthClass()
+    {
+        if (Full || Grow)
+        {
+            return null;
+        }
+
+        if (Wide)
+        {
+            return "ns-grid-item-wide";
+        }
+
+        return Narrow ? "ns-grid-item-narrow" : null;
     }
 }

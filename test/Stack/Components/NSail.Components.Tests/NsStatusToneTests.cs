@@ -57,7 +57,7 @@ public sealed class NsStatusToneTests : BunitContext
     {
         var cut = Render<NsStatusDot>(p => p
             .Add(x => x.Severity, severity)
-            .Add(x => x.Title, "Confirmado"));
+            .Add(x => x.Label, "Confirmado"));
 
         Assert.Contains(expected, cut.Find(".ns-status-dot").ClassList);
     }
@@ -140,7 +140,7 @@ public sealed class NsStatusToneTests : BunitContext
     /// is no variable there). What the two mixes resolve to is graded in
     /// BrandThemeContrastTests; that the row sets them both is read off the stylesheet here.</summary>
     [Theory]
-    [InlineData("danger", "error")]
+    [InlineData("error", "error")]
     [InlineData("warning", "warning")]
     [InlineData("success", "success")]
     public void AWashedRowKeepsItsToneUnderThePointer(string row, string severity)
@@ -225,7 +225,7 @@ public sealed class NsStatusToneTests : BunitContext
     {
         var cut = Render<NsStatusDot>(p => p
             .Add(x => x.Severity, NsSeverity.Warning)
-            .Add(x => x.Title, "Ausente"));
+            .Add(x => x.Label, "Ausente"));
 
         var dot = cut.Find(".ns-status-dot");
 
@@ -241,7 +241,7 @@ public sealed class NsStatusToneTests : BunitContext
     {
         var cut = Render<NsStatusDot>(p => p
             .Add(x => x.Severity, (NsSeverity?)null)
-            .Add(x => x.Title, "Completado"));
+            .Add(x => x.Label, "Completado"));
 
         var classes = cut.Find("span").ClassList;
 

@@ -23,7 +23,7 @@
         <NsTd For="() => row.Name">@row.Name</NsTd>
         <NsTd DataLabel="Total">@row.Age</NsTd>
         <NsTd>
-            <NsActionToolbar Actions="Actions" Resolving="Resolving" Leading="Leading" Constant="Constant" MaxVisible="MaxVisible" Breakpoint="Breakpoint" />
+            <NsActionToolbar Actions="Actions" Resolving="Resolving" Leading="Leading" Door="Door" MaxVisible="MaxVisible" Breakpoint="Breakpoint" />
         </NsTd>
     </RowTemplate>
 </NsTable>
@@ -37,7 +37,7 @@
     public IReadOnlyList<ActionItem> Leading { get; set; } = [];
 
     [Parameter]
-    public ActionItem? Constant { get; set; }
+    public ActionItem? Door { get; set; }
 
     [Parameter]
     public int MaxVisible { get; set; } = 3;

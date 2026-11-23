@@ -114,11 +114,11 @@ public sealed class ActionItemRunningTests : BunitContext, IAsyncLifetime
     // The constant passes through WithDoorGlyph, which copies an item field by field: a field
     // it does not copy is lost there, so a running door handed no glyph is the case to hold.
     [Fact]
-    public void ARunningConstantKeepsTheFaceThroughTheDoorsChevron()
+    public void ARunningDoorKeepsTheFaceThroughItsChevron()
     {
         var door = new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage), Running = true };
 
-        var cut = Render<ActionColumnHost>(p => p.Add(x => x.Constant, door));
+        var cut = Render<ActionColumnHost>(p => p.Add(x => x.Door, door));
 
         var toolbar = cut.Find(".ns-action-toolbar");
 

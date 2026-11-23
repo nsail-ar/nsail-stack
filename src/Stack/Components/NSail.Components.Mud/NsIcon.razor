@@ -3,7 +3,7 @@
 
 @namespace NSail.Components
 
-<MudIcon Icon="@(Icon?.Markup)" Size="@GetSize()" Title="@Title" Class="@GetClasses()" />
+<MudIcon Icon="@(Icon?.Markup)" Size="@GetSize()" Title="@Label" Class="@GetClasses()" />
 
 @code {
 
@@ -23,7 +23,7 @@
     /// <summary>Accessible name and tooltip. Set it whenever the icon carries meaning the
     /// surrounding text does not already give.</summary>
     [Parameter]
-    public string? Title { get; set; }
+    public string? Label { get; set; }
 
     /// <summary>The tone the glyph carries, in the status channel's own vocabulary
     /// (NsStatusText, NsStatusDot): a warning mark beside the sentence that says what is

@@ -71,7 +71,7 @@ public sealed class NsActionOutletMarkTests : BunitContext, IAsyncLifetime
             .Add(x => x.Mounted, true)
             .Add(x => x.Context, context)
             .Add(x => x.Leading, [new ActionItem { Name = "Edit", OnClick = () => Task.CompletedTask }])
-            .Add(x => x.Constant, new ActionItem { Name = "Ficha", OnClick = () => Task.CompletedTask }));
+            .Add(x => x.Door, new ActionItem { Name = "Ficha", OnClick = () => Task.CompletedTask }));
 
         return cut;
     }

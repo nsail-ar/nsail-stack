@@ -144,7 +144,7 @@ it).
 
 **The one exception: a screen whose footer is a COMPOSER carries its one state act in the title
 row.** A thread answered from the bottom has no footer left to put a verb in — the foot is
-`NsSendMessage` ([ui/forms.md](ui/forms.md), *The composer*), the box the reply is typed into, and
+`NsComposer` ([ui/forms.md](ui/forms.md), *The composer*), the box the reply is typed into, and
 a state act wedged above it reads as part of the message. So it rides the title row with the
 utilities, last of them, left of the guide's `?` (the ticket workspace's Resolver). **One act, not
 a row of them**: a second verb up there is a screen that owes itself a surface of its own for the
@@ -210,7 +210,7 @@ add it (the `new-icon` skill) rather than borrow a neighbour's (cases).
   dropdown's permanent last item. The field's edge belongs to the dropdown arrow, and to nothing
   at all on a `Lazy` lookup, which draws no adornment ([ui/fields.md](ui/fields.md)).
   **The one exception is an empty set**, where the dropdown is a place nobody opens: the picker
-  then draws `NsMissing` UNDER the field — the concept by name and a link to where one is made —
+  then draws `NsNoOptions` UNDER the field — the concept by name and a link to where one is made —
   in the under-field zone the hint and the refusal share, and only while there is genuinely
   nothing to pick (cases).
 - **A question the chosen row still owes is asked INSIDE the dropdown, never under the field**:
@@ -404,7 +404,7 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
    second row clicked into the same aside is one place, not a stack — and **a surface reached by
    a pasted URL or a reload closes by replacing**, having no entry of its own to spend. **The one
    caller-declared exception is `NoHistory`, already declared**: the satellite create — the
-   lookup's inline create entry (`NsAutocomplete`) and the empty picker's door (`NsMissing`),
+   lookup's inline create entry (`NsAutocomplete`) and the empty picker's door (`NsNoOptions`),
    marked inside those two components, never at a call site, a lookup wrapper or `NsPageLink` —
    opens a window that feeds a value back into the form underneath and that the save then
    closes; its own entry would leave that finished window one Back away from the form it fed.
@@ -432,7 +432,7 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
 
 - **The record's liveness is form data, never chrome.** `IsEnabled` — and any flag meaning "this
   record is active" — renders as a regular field, `NsRecordState`, in the editor's own
-  `NsFormGrid`, which is what marks the surface dirty on toggle; the label is `Common.Enabled`,
+  `NsGrid`, which is what marks the surface dirty on toggle; the label is `Common.Enabled`,
   once. **The component speaks adjective (`Enabled`), the model speaks predicate
   (`IsEnabled`).** Flags that are genuine data (`AllowsNegativeBalance`) work the same way — not
   a special case, the only case (cases).
@@ -446,8 +446,9 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   widths, no third: **content-width** (the default) for *bounded, known* content — a date, a
   document number, a CUIT, an amount, a short select — several flowing onto one line and
   wrapping when the container narrows; **`Grow`** for open-ended text — a name, a description, a
-  search — filling the rest of the line. `NsFormGridItem` has three modes: content-width,
-  `Grow`, and `Full` (owns its line, wins over `Grow`). Nothing pads a lonely field. **Content
+  search — filling the rest of the line. `NsItem` has three modes: content-width,
+  `Grow`, and `Full` (owns its line, wins over `Grow`); a content-width item says a width of its
+  own with `Wide` (20rem) or `Narrow` (6rem), never a hand-typed class. Nothing pads a lonely field. **Content
   width is a CAP, half the line**, so two content-width fields share a row wherever the
   container can seat two (the 448px aside included), filling it with the grid's gap between
   them. Below the width where a pair stops reading (two fields at the growing basis — the phone)
@@ -872,7 +873,7 @@ CSS hack to make an `Ns*` component behave — the fix belongs in the component 
 
 - Pages arrange content with layout components, never raw `<div class="d-flex ...">` wrappers —
   flex-utility div soup only inside the Stack's own components or as a last-resort escape hatch.
-  `NsFormGrid`/`NsFormGridItem` is the grid for forms, `NsStack` the 1D flow; parameters in
+  `NsGrid`/`NsItem` is the grid for forms, `NsStack` the 1D flow; parameters in
   [ui/styling.md](ui/styling.md).
 - **No vendor typography in pages** — `NsText` renders text with the `NsSize` scale. Spacing
   utilities are fine anywhere; a custom utility MudBlazor lacks lives in `ns-mud.css`, never
@@ -927,7 +928,7 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   kit contributing a rare action never widens a row ([ui/actions.md](ui/actions.md)).
 - **State paints its text; condition washes the row.** Two channels, apart by default: the
   status column is quiet text whose colour carries the state's tone — **no chip**, which
-  decorates every state equally loudly — while the row wash (`.ns-row-danger`) is reserved for
+  decorates every state equally loudly — while the row wash (`.ns-row-error`) is reserved for
   CONDITIONS the row's own data settles (overdue, ready). They may deliberately OVERLAP where a
   condition earns a second reading close up — the OT grid's word carries the same
   vencido/por-vencer/Listo tones as its wash (`WorkOrdersPage`, and the person's own card, which
@@ -944,14 +945,14 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   something ([ui/actions.md](ui/actions.md)).
 - **A cell holds one word, a figure or a chip.** Anything longer — a note, a result, a warning, a
   log — is a disclosure: a whisper (`NsTooltip`, `NsChip Tooltip`) for a short detail, and
-  `NsHint` for a paragraph, which opens on a tap as well as a hover. Of the whispers only
+  `NsHelp` for a paragraph, which opens on a tap as well as a hover. Of the whispers only
   `NsChip Tooltip` opens on a tap. The whisper keeps its own rule — the long form of what the
-  cell already says, never the only copy — so a fact with no word in the cell rides `NsHint`,
-  whose glyph is that word.
+  cell already says, never the only copy — so a fact with no word in the cell rides `NsHelp`,
+  whose glyph is that word (its `Icon`, toned by its `Severity`).
 - **A status cell is one state**: quiet text (`NsStatusText`, still no chip), and that state's
   detail on its whisper (`NsTooltip`), never a second line. The detail is the long form of the
   word — why it failed, what it waits for — so the whisper stays the second copy; a fact the
-  row shows nowhere else, such as what a task reported, is a disclosure of its own (`NsHint`).
+  row shows nowhere else, such as what a task reported, is a disclosure of its own (`NsHelp`).
 - **A product cell shows the product's own logo beside its name**, the mark a reader already
   scans for; the name stays, since an image is never the only signal.
 - **A running act is disabled and its icon turns**, for as long as its work goes on and not

@@ -72,8 +72,13 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   reach it after the render that removed the video — a field disposed mid-read is stopped the
   same way.
   The button takes the end slot a `Suffix` would print in; `Copy` with a value keeps it.
-- **`NsHelp` takes one parameter, `Key`** — a **global** localization key, because the
-  component cannot see the page whose prefix would scope it.
+- **`NsHelp` says its paragraph with `Key` or `Text`.** `Key` is a **global** localization key,
+  because the component cannot see the page whose prefix would scope it; `Text` is already
+  resolved — a per-row fact that changes with the data — and doubles as the button's name; a
+  `Text` wins over a `Key` given beside it, and an empty one falls back to the `Key` and the
+  house's `Common.Help` name, so the button never goes unnamed. An optional `Icon` replaces the
+  `?`, `Severity` tones the glyph (Error red, Warning yellow, Info its ordinary colour), since the
+  paragraph does not render until it is asked for, and `Class` reaches the wrapper.
 
 ### Dates
 
@@ -583,7 +588,7 @@ words land under it and the label then travels off them.
 - **A search box reads `Common.Search` by default (*Buscar* / *Search*).** `NsSearchField.Placeholder`
   replaces it; `NsPageHeader`, `NsNavMenu` and `NsTree`, which draw one, forward
   `SearchPlaceholder`. The text comes from a key, never a literal.
-- **A stepper's figure is `NsNumericField.Compact`.** Between a caller's own − and + buttons the
+- **A stepper's figure is `NsNumericField.Stepper`.** Between a caller's own − and + buttons the
   box is sized for a few digits, centered, and draws no spin buttons of its own — two ways to
   step one value side by side is one too many. Typing still writes it.
 - **A box that ends on a key can draw it: `NsTextField.KeyHint`.** The key cap sits at the
@@ -1022,7 +1027,7 @@ matching nothing is taught by naming an article AND one of its units, which is t
 
 ### The door, for a set that is empty
 
-`NsMissing<TItem>` — the one place creation leaves the dropdown, because a dropdown with no rows
+`NsNoOptions<TItem>` — the one place creation leaves the dropdown, because a dropdown with no rows
 is a place nobody opens (core doc's rule and its exception; cases). Contract:
 
 - **Rendered by the picker, not by the screen.** A picker that preloads a short list knows both

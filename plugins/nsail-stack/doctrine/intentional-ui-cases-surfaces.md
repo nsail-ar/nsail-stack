@@ -61,7 +61,7 @@ same open. Marking the special case is more intuitive than putting history every
   feeding the form underneath.
 - **The special case is marked where it is written, never at a call site.** Fourteen lookup
   wrappers pass `CreateRoute`/`CreateTarget` to one shared `NsAutocomplete`, and the empty
-  picker's door is one shared `NsMissing`, so `NoHistory` costs two internal changes instead of
+  picker's door is one shared `NsNoOptions`, so `NoHistory` costs two internal changes instead of
   a parameter every lookup must remember.
 - **Four transitions, not one switch.** Moving inside an open surface keeps replacing, or every
   intra-aside click would grow the back-stack; that is not a caller's choice, so it is not a flag.
@@ -140,8 +140,8 @@ never knew the one surface with no say in its own.
 The default is a CAP instead — `min(14rem, (100% - 16px) / 2)`, half the container's line less
 the gap — so a pair exactly fills the row where twice 14rem would not fit, and where the line
 already seats two at 14rem `min()` hands 14rem back and nothing on a wide surface moves. **Only
-the default is capped**: `--ns-field-width` (`ns-field-narrow`, `ns-field-money`,
-`ns-field-wide`) is a field answering its own content rather than the line and means that width
+the default is capped**: `--ns-field-width` (`NsItem Narrow`, `ns-field-money`,
+`NsItem Wide`) is a field answering its own content rather than the line and means that width
 at every container size, which is what a label too long for half a line asks for instead of a
 shorter word — and, at `ns-field-money`'s 10rem, what a block of money figures read together
 (Cerrar Caja's four) asks for so the line seats all of them instead of leaving the last one a

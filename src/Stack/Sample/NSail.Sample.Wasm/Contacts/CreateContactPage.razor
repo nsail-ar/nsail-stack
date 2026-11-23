@@ -12,32 +12,32 @@
             <NsTitleBar Title="@GetTitle()" />
         </Header>
         <Content>
-            <NsFormGrid>
-                <NsFormGridItem Grow>
+            <NsGrid>
+                <NsItem Grow>
                     <NsTextField @bind-Value="_model.Name" AutoFocus />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsSelect @bind-Value="_model.Kind" Items="@(GetItems<ContactKind>(all: false))" />
-                </NsFormGridItem>
-                <NsFormGridItem Grow>
+                </NsItem>
+                <NsItem Grow>
                     <NsEmailField @bind-Value="_model.Email" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsPhoneField @bind-Value="_model.Phone" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsDateField TValue="DateOnly?" @bind-Value="_model.BirthDate" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsNumericField TValue="int" @bind-Value="_model.Rating" />
-                </NsFormGridItem>
-                <NsFormGridItem>
+                </NsItem>
+                <NsItem>
                     <NsCheckBox TValue="bool" @bind-Value="_model.IsFavorite" />
-                </NsFormGridItem>
-                <NsFormGridItem Full>
+                </NsItem>
+                <NsItem Full>
                     <NsTextArea @bind-Value="_model.Notes" />
-                </NsFormGridItem>
-            </NsFormGrid>
+                </NsItem>
+            </NsGrid>
         </Content>
         <Footer>
             <NsSubmit />

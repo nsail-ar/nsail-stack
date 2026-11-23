@@ -22,8 +22,8 @@
          KeepPanelsAlive="true"
          Header="@GetHeader()"
          HeaderPosition="@(Actions is null ? TabHeaderPosition.None : TabHeaderPosition.After)"
-         ActivePanelIndex="ActivePanelIndex"
-         ActivePanelIndexChanged="OnActivePanelIndexChanged">
+         ActivePanelIndex="ActiveIndex"
+         ActivePanelIndexChanged="OnActiveIndexChanged">
     @* Each NsTab registers itself here as it renders, in the order the panels are laid out,
        so the strip can name a position — the query value is a tab's Name, and a Name only
        means anything against the list it belongs to. *@
@@ -44,15 +44,15 @@
     [Parameter]
     public RenderFragment? Actions { get; set; }
 
-    /// <summary>Which panel shows, by position — @@bind-ActivePanelIndex. A page reads this
+    /// <summary>Which panel shows, by position — @@bind-ActiveIndex. A page reads this
     /// to condition chrome that belongs to it and not to the tabs (a footer whose act commits
     /// only some of the panels), never the other way around: NsTabs names no meaning for an
     /// index, the page does.</summary>
     [Parameter]
-    public int ActivePanelIndex { get; set; }
+    public int ActiveIndex { get; set; }
 
     [Parameter]
-    public EventCallback<int> ActivePanelIndexChanged { get; set; }
+    public EventCallback<int> ActiveIndexChanged { get; set; }
 
     /// <summary>Fills its flex parent, so the strip stays put and only the panel scrolls.
     /// False leaves the height to the content, for tabs sitting among other sections. Unset —
@@ -92,7 +92,7 @@
     // The last query value the strip answered: the query moves it only when it CHANGES, never
     // merely because it was read. A switch writes the address through NavigationManager, which
     // in the browser reports the new address a JS round trip later — and a page bound to
-    // ActivePanelIndex re-renders on the switch itself, inside that window, where a level read
+    // ActiveIndex re-renders on the switch itself, inside that window, where a level read
     // finds the address being left and puts the strip back on it.
     string? _seen;
 
@@ -131,13 +131,13 @@
         _tabs.Remove(tab);
     }
 
-    async Task OnActivePanelIndexChanged(int index)
+    async Task OnActiveIndexChanged(int index)
     {
-        ActivePanelIndex = index;
+        ActiveIndex = index;
 
         WriteQuery(index);
 
-        await ActivePanelIndexChanged.InvokeAsync(index);
+        await ActiveIndexChanged.InvokeAsync(index);
     }
 
     protected override void OnParametersSet()
@@ -170,14 +170,14 @@
 
         _seen = value;
 
-        if (index == ActivePanelIndex)
+        if (index == ActiveIndex)
         {
             return;
         }
 
-        ActivePanelIndex = index;
+        ActiveIndex = index;
 
-        _ = ActivePanelIndexChanged.InvokeAsync(index);
+        _ = ActiveIndexChanged.InvokeAsync(index);
 
         StateHasChanged();
     }

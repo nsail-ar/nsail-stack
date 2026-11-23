@@ -17,7 +17,7 @@ One suffix, one meaning. A form listed here is owned by its family across the wh
 | past participle | published event (something happened) — the home says who it is for: a UI event lives in the kit's Shared, a domain event another module handles lives in the Sdk, both without `[Http]` (messaging.md) | `PartySaved`, `AppointmentCompleted` |
 | `ISaved` | a `*Saved` event carrying the id of the row it saved (`NSail.Messaging`) — lets a control subscribe to "my concept was created" without a per-entity accessor | `PartySaved : ISaved` |
 | `Ns*` | Blazor component — Stack, or a domain-free infrastructure kit (Assets, Settings): an image is not a domain concept, a Party is, so `NsImage` may live in a kit and `PartyLookup` stays unprefixed | `NsButton`, `NsActionToolbar`, `NsImage` |
-| `*Item` | contributed entry — POCO, no behavior | `NavMenuItem`, `SettingsItem`, `ActionItem` |
+| `*Item` | contributed entry — POCO, no behavior. `NsItem` is not one: it is the `Ns*` cell of `NsGrid`, and the prefix is what tells them apart | `NavMenuItem`, `SettingsItem`, `ActionItem` |
 | `*Entry` | flat declaration — a row naming its own parent and its order — that resolves into a `*Item` tree; the shape a stored arrangement could later be read into | `NavMenuEntry` |
 | `I*Contributor` | a module contributes entries to a point | `INavMenuContributor`, `IActionContributor<TOutlet>` |
 | `Actions` | action contributor class, one per contributing feature folder — named by the contribution alone, never the target ([below](#contributor-classes-are-named-by-the-contribution-alone)) | `Prescriptions.Actions` |

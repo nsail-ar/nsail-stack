@@ -31,7 +31,7 @@
                     <NsTd For="() => row.Container">@row.Container</NsTd>
                     <NsTd For="() => row.UsesDefault">@(row.UsesDefault ? "✓" : "")</NsTd>
                     <NsTd>
-                        <NsActionToolbar Constant="@(GetLink<StorageStorePage>(NsIcons.Edit, new { name = row.Name }, Aside))" />
+                        <NsActionToolbar Door="@(GetLink<StorageStorePage>(NsIcons.Edit, new { name = row.Name }, Aside))" />
                     </NsTd>
                 </RowTemplate>
             </NsTable>

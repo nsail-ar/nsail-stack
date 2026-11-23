@@ -24,8 +24,8 @@
             case "help":
                 <NsHelp Key="Common.Help" />
                 break;
-            case "hint":
-                <NsHint Icon="@NsIcons.Warning" Text="Solo quedan 2" />
+            case "toned-help":
+                <NsHelp Icon="@NsIcons.Warning" Text="Solo quedan 2" Severity="NsSeverity.Warning" />
                 break;
             case "expander":
                 <NsExpander>
@@ -72,7 +72,7 @@
 
 @code {
 
-    /// <summary>dropdown, help, hint, expander, menu, menu-lookup, lookup, or anything else for a
+    /// <summary>dropdown, help, toned-help, expander, menu, menu-lookup, lookup, or anything else for a
     /// bare field.</summary>
     [Parameter]
     public string Inner { get; set; } = string.Empty;

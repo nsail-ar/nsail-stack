@@ -16,10 +16,10 @@
     [Parameter]
     public double Max { get; set; } = 100;
 
-    /// <summary>What the reading means, in the words the action components use: Danger is the
-    /// one that says the allowance is spent.</summary>
+    /// <summary>The reading's tone: Error for an allowance already spent, Warning for one
+    /// nearly spent. None draws the primary accent.</summary>
     [Parameter]
-    public NsAs As { get; set; } = NsAs.Main;
+    public NsSeverity? Severity { get; set; }
 
     [Parameter]
     public string? Class { get; set; }
@@ -31,10 +31,12 @@
 
     Color GetColor()
     {
-        return As switch
+        return Severity switch
         {
-            NsAs.Danger => Color.Warning,
-            NsAs.Default => Color.Info,
+            NsSeverity.Error => Color.Error,
+            NsSeverity.Warning => Color.Warning,
+            NsSeverity.Success => Color.Success,
+            NsSeverity.Info => Color.Info,
             _ => Color.Primary
         };
     }

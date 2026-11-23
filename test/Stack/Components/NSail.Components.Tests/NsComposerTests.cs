@@ -17,9 +17,9 @@ namespace NSail.Components.Tests;
 /// state of the face it presses — because the keystroke itself cannot be proved at this layer:
 /// AngleSharp performs no implicit form submission and runs no listener of ns.js
 /// (NsEnterPolicyMarkTests' own split). The two gestures are walked in a browser.</summary>
-public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
+public sealed class NsComposerTests : BunitContext, IAsyncLifetime
 {
-    public NsSendMessageTests()
+    public NsComposerTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
@@ -46,7 +46,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public void TheBoxStandsInsideTheComposerTheEnterPolicyLooksFor()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         var textarea = cut.Find("textarea");
 
@@ -60,7 +60,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public void TheFaceTheKeyPressesIsTheFormsOwnSubmit()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         var send = cut.Find(".ns-send button[type=\"submit\"]");
 
@@ -74,7 +74,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public void ABlankBoxGreysTheFaceOut()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         Assert.True(cut.Find(".ns-send button[type=\"submit\"]").HasAttribute("disabled"));
     }
@@ -85,7 +85,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public async Task SpacesAloneLeaveTheFaceGreyedOut()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         await cut.InvokeAsync(() => cut.Find("textarea").Input("   "));
 
@@ -95,7 +95,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public async Task WordsTypedEnableTheFace()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         await cut.InvokeAsync(() => cut.Find("textarea").Input("hola"));
 
@@ -107,7 +107,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public async Task ThePressSendsWhatTheBoxHolds()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         await cut.InvokeAsync(() => cut.Find("textarea").Input("hola"));
         await cut.Find(".ns-send button[type=\"submit\"]").ClickAsync(new());
@@ -121,7 +121,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     public async Task WhileTheSendIsInFlightTheFaceIsGreyedOut()
     {
         var holding = new TaskCompletionSource();
-        var cut = Render<SendMessageHost>(p => p.Add(x => x.Holding, holding));
+        var cut = Render<ComposerHost>(p => p.Add(x => x.Holding, holding));
 
         await cut.InvokeAsync(() => cut.Find("textarea").Input("hola"));
         var press = cut.Find(".ns-send button[type=\"submit\"]").ClickAsync(new());
@@ -138,7 +138,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public void WhatTheScreenPutsBesideTheFaceStandsBeforeIt()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         var row = cut.Find(".ns-send button.beside").Closest("div")!;
         var controls = row.QuerySelectorAll("button");
@@ -154,7 +154,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public async Task AFreshModelEmptiesTheBox()
     {
-        var cut = Render<SendMessageHost>();
+        var cut = Render<ComposerHost>();
 
         await cut.InvokeAsync(() => cut.Find("textarea").Input("hola"));
         await cut.Find(".ns-send button[type=\"submit\"]").ClickAsync(new());
@@ -170,7 +170,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public void TheBoxDrawsTheWordsItWasHanded()
     {
-        var cut = Render<NsSendMessage>(ps => ps.Add(p => p.Text, "hola"));
+        var cut = Render<NsComposer>(ps => ps.Add(p => p.Text, "hola"));
 
         Assert.Equal("hola", cut.Find("textarea").TextContent);
         Assert.False(cut.Find("button[type=\"submit\"]").HasAttribute("disabled"));
@@ -183,7 +183,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     [Fact]
     public async Task ADisabledComposerGreysTheFaceAndNotOnlyTheBox()
     {
-        var cut = Render<SendMessageHost>(p => p.Add(x => x.Disabled, true));
+        var cut = Render<ComposerHost>(p => p.Add(x => x.Disabled, true));
 
         await cut.InvokeAsync(() => cut.Find("textarea").Input("hola"));
 

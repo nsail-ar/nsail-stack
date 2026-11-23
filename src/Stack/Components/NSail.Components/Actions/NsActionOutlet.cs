@@ -50,10 +50,10 @@ public abstract class NsActionOutlet<TOutlet, TModel> : NsPartial, IActionOutlet
     [Parameter]
     public IReadOnlyList<ActionItem> Leading { get; set; } = [];
 
-    /// <summary>The row's constant — its ficha, or its edit where there is none. Always
+    /// <summary>The row's door — its ficha, or its edit where there is none. Always
     /// visible, always last, never folded into the overflow.</summary>
     [Parameter]
-    public ActionItem? Constant { get; set; }
+    public ActionItem? Door { get; set; }
 
     /// <summary>The cell's cap, handed to the presenter: how many verbs show as icons before
     /// the rest fold into the kebab. The host's, not the outlet's — a contribution never
@@ -72,7 +72,7 @@ public abstract class NsActionOutlet<TOutlet, TModel> : NsPartial, IActionOutlet
     /// <summary>Whether the contributors are still answering — what the presenter draws its
     /// loading mark from, so a contribution that has to ask something slow holds the slot it
     /// is going to fill instead of appearing in it unannounced. The host's own verbs
-    /// (Leading, Constant) are untouched by it: they are there from the first frame.</summary>
+    /// (Leading, Door) are untouched by it: they are there from the first frame.</summary>
     protected bool Resolving { get; private set; }
 
     protected override async Task OnParametersSetAsync()

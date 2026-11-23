@@ -115,7 +115,7 @@ public sealed class AddRowFloorTests
 
         Assert.Contains(
             """
-            .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+            .ns-grid:has(> * > .ns-row-submit) > .ns-grid-item:not(:has(> .ns-row-submit)) {
                 flex: 1 1 var(--ns-add-row-field);
                 max-width: var(--ns-field-width, 14rem);
             }
@@ -149,7 +149,7 @@ public sealed class AddRowFloorTests
                     --ns-field-width: initial;
                 }
 
-                .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+                .ns-grid:has(> * > .ns-row-submit) > .ns-grid-item:not(:has(> .ns-row-submit)) {
                     flex: 0 1 auto;
                     max-width: 100%;
                 }
@@ -178,7 +178,7 @@ public sealed class AddRowFloorTests
                         --ns-field-width: initial;
                     }
 
-                    .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+                    .ns-grid:has(> * > .ns-row-submit) > .ns-grid-item:not(:has(> .ns-row-submit)) {
                         flex: 0 1 auto;
                         max-width: 100%;
                     }

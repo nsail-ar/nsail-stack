@@ -157,7 +157,7 @@ public sealed class NsTabsQueryTests : BunitContext
     }
 
     /// <summary>In the browser a switch's write lands a JS round trip after the switch, and a page
-    /// bound to ActivePanelIndex re-renders inside that window — Nueva Venta's Artículos tab
+    /// bound to ActiveIndex re-renders inside that window — Nueva Venta's Artículos tab
     /// wrote ?tab=counter and snapped back to Trabajos. The address being left is not an order to
     /// return to it.</summary>
     [Fact]

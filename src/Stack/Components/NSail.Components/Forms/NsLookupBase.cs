@@ -110,7 +110,7 @@ public abstract class NsLookupBase<TItem, TValue, TSaved> : NsPickerBase
     /// is what keeps the entry out of the dropdown for a session that could not open it
     /// anyway, and null on a lookup nobody may write to: a field nobody may write to asks
     /// nothing (ui/fields.md), and a row created into a field that cannot take it is the
-    /// clearest case of it. That covers the door the empty picker draws too, since NsMissing
+    /// clearest case of it. That covers the door the empty picker draws too, since NsNoOptions
     /// needs this same route.</summary>
     protected string? CreateRoute
     {

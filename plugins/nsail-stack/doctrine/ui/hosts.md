@@ -15,7 +15,7 @@ names; a rule marked *(cases)* has its story there.
 
 **The status column paints its text with `NsStatusText`** — the opt-in `--ns-status-color`
 channel, never a class the cell writes ([styling.md](styling.md)); the row wash is the separate
-`.ns-row-danger` class (the core doc's *state versus condition*).
+`.ns-row-error` class (the core doc's *state versus condition*).
 
 **Two rows are told apart by the LINE between them and by the hover tone — never by an
 alternating tint.** No table in the house sets `Striped` and `BrandTheme` carries no banding
