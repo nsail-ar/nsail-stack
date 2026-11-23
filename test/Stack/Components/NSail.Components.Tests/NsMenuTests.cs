@@ -14,6 +14,10 @@ using NSail.Metadata;
 
 namespace NSail.Components.Tests;
 
+[Route("/menu/guarded")]
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = "admin")]
+public sealed class GuardedMenuTestPage : ComponentBase;
+
 /// <summary>The anchored menu the Stack had no word for (nsail#438): a trigger that stays in
 /// place and a list that opens against it. What it holds is items (NsMenuItem) and blocks
 /// (NsMenuBlock) — and a block is not an item: no click, no tab stop of its own (a field it holds
@@ -27,6 +31,7 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
         Services.AddSingleton<IStringSource>(new FixedStrings(new Dictionary<string, string>
         {
             ["Actions.Profile"] = "My Profile",
+            ["Actions.Report"] = "Monthly report",
         }));
         Services.AddSingleton<StringCatalog>();
         Services.AddSingleton<LanguageProvider>();
@@ -51,9 +56,12 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
         await DisposeAsync();
     }
 
-    async Task<IRenderedComponent<MenuHost>> Open(EventCallback onSwitch = default)
+    async Task<IRenderedComponent<MenuHost>> Open(EventCallback onSwitch = default, bool? reportSelected = null, ActionItem? extra = null)
     {
-        var cut = Render<MenuHost>(parameters => parameters.Add(host => host.OnSwitch, onSwitch));
+        var cut = Render<MenuHost>(parameters => parameters
+            .Add(host => host.OnSwitch, onSwitch)
+            .Add(host => host.ReportSelected, reportSelected)
+            .Add(host => host.Extra, extra));
 
         await cut.Find(".mud-menu button").ClickAsync(new MouseEventArgs());
 
@@ -119,6 +127,11 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
 
         Assert.Equal("menuitem", verb.GetAttribute("role"));
         Assert.Null(verb.GetAttribute("aria-checked"));
+
+        var address = Row(cut, "Monthly report");
+
+        Assert.Equal("menuitem", address.GetAttribute("role"));
+        Assert.Null(address.GetAttribute("aria-checked"));
     }
 
     /// <summary>The check that marks the row in force is an aria-hidden glyph, so the state is
@@ -511,5 +524,91 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
         var navigation = (BunitNavigationManager)Services.GetRequiredService<NavigationManager>();
 
         Assert.EndsWith("/probe/admin", navigation.Uri, StringComparison.Ordinal);
+    }
+
+    /// <summary>A destination the route table does not hold is a real anchor, so the browser
+    /// opens the tab on the gesture itself — a click, a middle-click, Enter — where a window
+    /// opened from a handler after a round trip is what a popup blocker drops. The page behind
+    /// stays where it was.</summary>
+    [Fact]
+    public async Task ARowWithAnAddressIsAnAnchorThatOpensANewTab()
+    {
+        var cut = await Open();
+
+        var row = Row(cut, "Monthly report");
+
+        Assert.Equal("A", row.TagName);
+        Assert.Equal("/files/report.pdf", row.GetAttribute("href"));
+        Assert.Equal("_blank", row.GetAttribute("target"));
+        Assert.Contains("noopener", row.GetAttribute("rel") ?? string.Empty, StringComparison.Ordinal);
+
+        await row.ClickAsync(new MouseEventArgs());
+
+        var navigation = (BunitNavigationManager)Services.GetRequiredService<NavigationManager>();
+
+        Assert.Equal("http://localhost/", navigation.Uri);
+        Assert.Empty(navigation.History);
+    }
+
+    [Fact]
+    public async Task ChoosingAnAddressRowClosesTheMenu()
+    {
+        var cut = await Open();
+
+        await Row(cut, "Monthly report").ClickAsync(new MouseEventArgs());
+
+        Assert.DoesNotContain("Monthly report", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open"));
+    }
+
+    /// <summary>The address changes what the row does and nothing about its face: the label
+    /// derives as Actions.{Name}, the glyph is drawn, a Disabled row is greyed and hands the
+    /// browser no address, and a row among a choice still announces itself.</summary>
+    [Fact]
+    public async Task AnAddressRowKeepsItsLabelIconAndDisabled()
+    {
+        var cut = await Open(reportSelected: true);
+
+        var row = Row(cut, "Monthly report");
+
+        Assert.NotNull(row.QuerySelector(".mud-menu-item-icon"));
+        Assert.Equal("menuitemradio", row.GetAttribute("role"));
+        Assert.Equal("true", row.GetAttribute("aria-checked"));
+        Assert.NotNull(row.QuerySelector(".ns-menu-item-check"));
+        Assert.Equal("_blank", row.GetAttribute("target"));
+
+        var unavailable = Row(cut, "Unavailable");
+
+        Assert.Equal("true", unavailable.GetAttribute("aria-disabled"));
+        Assert.Null(unavailable.GetAttribute("href"));
+    }
+
+    /// <summary>An address that arrives written is drawn only where WebAddress admits it, so a
+    /// "javascript:" row is not offered at all.</summary>
+    [Fact]
+    public async Task AnAddressNoDoorMayOpenIsNotOffered()
+    {
+        var cut = await Open();
+
+        Assert.DoesNotContain("Refused", cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>A page row is still asked of the page's own authorization, through the same gate
+    /// a nav entry and an NsPageLink ask; an address row has no page to ask.</summary>
+    [Fact]
+    public async Task APageRowTheGateRefusesIsWithheld()
+    {
+        Services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>();
+        Services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(Microsoft.Extensions.Logging.Logger<>));
+        Services.AddScoped<PageGate>();
+
+        var auth = AddAuthorization();
+        auth.SetAuthorized("clerk");
+        auth.SetRoles("clerk");
+
+        var cut = await Open(extra: new ActionItem { Name = "Guarded", PageType = typeof(GuardedMenuTestPage), Target = Surfaces.Main });
+
+        Assert.DoesNotContain("Guarded", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Monthly report", cut.Markup, StringComparison.Ordinal);
     }
 }

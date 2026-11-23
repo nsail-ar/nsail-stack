@@ -6,12 +6,13 @@ using NSail.Icons;
 
 using NSail.Localization;
 using NSail.Metadata;
+using NSail.Text;
 
 namespace NSail.Components;
 
-/// <summary>Contributed action: a link (PageType), a command (OnClick) or a menu (Menu) —
-/// exactly one of the three. The URL comes from the route table at render, never written.
-/// Name drives the localized label ("Actions.{Name}").</summary>
+/// <summary>Contributed action: a link (PageType, or Url for an address the route table does not
+/// hold), a command (OnClick) or a menu (Menu) — exactly one of them. A page's URL comes from the
+/// route table at render, never written. Name drives the localized label ("Actions.{Name}").</summary>
 public sealed class ActionItem
 {
     public required string Name { get; init; }
@@ -35,6 +36,18 @@ public sealed class ActionItem
     /// one of the reserved targets (Surfaces.Auto, Surfaces.Main), or the browser
     /// (Surfaces.Blank).</summary>
     public Surface? Target { get; init; }
+
+    /// <summary>A destination the route table does not hold — a document this host serves outside
+    /// the router, another site — which the act opens in a new browser tab, always: there is no
+    /// surface for the router to hand it to, so Target is not read. Drawn as a real anchor only
+    /// where WebAddress.IsNavigable admits it (a root-relative path, http, https, mailto) and
+    /// withheld otherwise; never asked of the PageGate, which has no page to ask. NsMenuItem
+    /// and NsActionToolbar honour it; NsAction, which draws commands, does not.</summary>
+    public string? Url { get; init; }
+
+    // One answer for every face that draws the item, so the toolbar's row and its kebab cannot
+    // disagree on the same address.
+    internal bool RefusesUrl => PageType is null && Url is not null && !WebAddress.IsNavigable(Url, withinApp: true);
 
     public Func<Task>? OnClick { get; init; }
 

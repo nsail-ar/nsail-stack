@@ -330,11 +330,20 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
 
 - `ActionItem` (`NSail.Components/Actions/`): `Name`, `Icon`, `Weight`, `Group`, `Heading`,
   `HeadingIcon`, `Disabled`, `Running`, `Severity`, `Writes`, and exactly
-  one of `PageType` (+ optional `Parameters`/`Target`), `OnClick` or `Menu`. The URL derives from
-  the route table at render. **Links render as real anchors, commands as buttons** — the golden
-  rule at the model level. **`Menu` is the third kind of act: offering a CHOICE** rather than a
-  destination or a deed — a `RenderFragment` the host renders in an `NsMenu` anchored on this
-  item's own face ([menus.md](menus.md)).
+  one of `PageType` (+ optional `Parameters`/`Target`), `Url`, `OnClick` or `Menu`. A page's URL
+  derives from the route table at render. **Links render as real anchors, commands as buttons**
+  — the golden rule at the model level. **`Url` is the one written address**, for a destination
+  the route table does not hold (a document the host serves outside the router, another site):
+  it opens in a new browser tab whatever `Target` says, since no surface of the app can hold it,
+  only where `WebAddress.IsNavigable` admits it, and it is never asked of the page gate. The
+  toolbar draws it as an anchor on the row and as an anchor row in its kebab, and an
+  `NsMenuItem` as an anchor row ([menus.md](menus.md)); one `WebAddress.IsNavigable` refuses is
+  withheld from both faces, before the toolbar's cap, so the row and the kebab never answer the
+  same item differently; a presenter that draws only commands
+  (`NsAction`) does not honour it. Like any destination it writes nothing, and its item says so
+  (`Writes = false`) or a form that refuses writes withholds it. **`Menu` is the third kind of
+  act: offering a CHOICE** rather than a destination or a deed — a `RenderFragment` the host
+  renders in an `NsMenu` anchored on this item's own face ([menus.md](menus.md)).
 - **`Writes` is whether this act changes what the form around it holds** (default `true`): an
   act drawn under an `NsForm` is a way IN unless it says otherwise, and a form that refuses
   writes — `ReadOnly`, `Disabled`, or frozen for the length of a submit — withholds it. The act
@@ -488,7 +497,8 @@ visible — are the core doc's. How the cell composes:
     knows nothing about the host's families lands on the far side of the rule by declaring
     nothing.
 - **The row's door defaults to `NsIcons.ChevronRight`, decided by the toolbar, not the page.**
-  A `Door` made by `GetLink<TPage>()` with no glyph draws the chevron, disabled or not, and
+  A `Door` made by `GetLink<TPage>()`, or one carrying a `Url`, with no glyph draws the chevron,
+  disabled or not, and
   an `NsCard` `Door` wears the same one, so no page names it and one line changes every grid. A
   glyph passed is drawn as passed: the lápiz of a row with no ficha stays. The magnifier is
   `NsAs.Filter`'s glyph; one glyph never means both "run the filter" and "open the row". A

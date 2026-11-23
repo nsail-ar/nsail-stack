@@ -193,6 +193,7 @@ public sealed class NsLinkDomProbeTests : BunitContext
 
         Assert.Equal("/api/accounting/vouchers/1/pdf", anchor.GetAttribute("href"));
         Assert.Equal("_blank", anchor.GetAttribute("target"));
+        Assert.Equal("noopener", anchor.GetAttribute("rel"));
     }
 
 #endif

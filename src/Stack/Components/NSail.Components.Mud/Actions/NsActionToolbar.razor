@@ -42,6 +42,20 @@
                         Href="@GetRoute(item)"
                         Target="@item.Target" />
             }
+            else if (item.PageType is null && item.Url is not null && !item.Disabled && !item.Running)
+            {
+                @* An address opens in a new browser tab whatever Target says: no surface of this
+                   app can hold it (ActionItem.Url). One no door may open never gets here: it
+                   fell out with the gate below, on the row and in the kebab alike. *@
+                <NsLink As="@NsAs.Inline"
+                        Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)"
+                        Icon="@item.Icon"
+                        Content="@item.Content"
+                        Size="@(Size ?? NsSize.Md)"
+                        Label="@GetName(item)"
+                        Href="@item.Url"
+                        Target="@Surfaces.Blank" />
+            }
             else
             {
                 @* The same size as the link branch above: one toolbar mixing a command and a
@@ -218,8 +232,16 @@
         // the cap: an item kept in the list and withheld by its own chrome would still be
         // counted, so the visible slice would spend slots on nothing and the remainder would
         // open a kebab with nothing in it.
-        _items = leading.OrderBy(item => item.Weight).Concat(Actions).Where(Offers).ToList();
-        _door = Door is not null && Offers(Door) && await Allows(Door) ? WithDoorGlyph(Door) : null;
+        _items = leading.OrderBy(item => item.Weight).Concat(Actions).Where(Draws).ToList();
+        _door = Door is not null && Draws(Door) && await Allows(Door) ? WithDoorGlyph(Door) : null;
+    }
+
+    // An address WebAddress refuses is withheld here, before the cap, for the same reason a
+    // write is: the kebab's row (NsMenuItem) withholds it, and the row must not draw what the
+    // kebab hides.
+    bool Draws(ActionItem item)
+    {
+        return Offers(item) && !item.RefusesUrl;
     }
 
     async Task<List<ActionItem>> Allowed(IReadOnlyList<ActionItem> items)
@@ -256,13 +278,13 @@
         return item.GetLabel(Strings, Metadata);
     }
 
-    // The row's door is the one link the house draws the same everywhere: a page-link door
-    // handed no glyph wears the chevron, so no page names it; a glyph passed is drawn as passed
+    // The row's door is the one link the house draws the same everywhere: a link door — a page
+    // or an address — handed no glyph wears the chevron, so no page names it; a glyph passed is drawn as passed
     // (a pencil, on a row whose door edits rather than opens). A Content (an avatar) is the
     // door's own face.
     static ActionItem WithDoorGlyph(ActionItem item)
     {
-        if (item.PageType is null || item.Icon is not null || item.Content is not null)
+        if ((item.PageType is null && item.Url is null) || item.Icon is not null || item.Content is not null)
         {
             return item;
         }
@@ -274,6 +296,7 @@
             PageType = item.PageType,
             Parameters = item.Parameters,
             Target = item.Target,
+            Url = item.Url,
             OnClick = item.OnClick,
             Menu = item.Menu,
             Weight = item.Weight,
