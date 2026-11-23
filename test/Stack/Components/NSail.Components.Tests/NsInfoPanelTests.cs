@@ -111,6 +111,28 @@ public sealed class NsInfoPanelTests : BunitContext
     }
 
     [Fact]
+    public void The_label_is_said_once_by_the_mark_and_the_section_takes_only_the_title()
+    {
+        var untitled = Render<NsInfoPanel>(p => p.Add(c => c.Label, "Datos"));
+        var titled = Render<NsInfoPanel>(p => p
+            .Add(c => c.Label, "Datos")
+            .Add(c => c.Title, "Estado"));
+
+        Assert.False(untitled.Find("section").HasAttribute("aria-label"));
+        Assert.Contains("Datos", untitled.Find(".ns-info-panel-mark").InnerHtml);
+        Assert.Equal("Estado", titled.Find("section").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void A_list_row_that_is_not_a_fact_takes_a_facts_air_and_its_rule()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains("padding-block: 0.375rem;", Rule(css, ".ns-info-panel-list .ns-info-panel-body > * {"));
+        Assert.Contains("border-top: 1px solid var(--mud-palette-lines-default);", Rule(css, ".ns-info-panel-list .ns-info-panel-body > * + * {"));
+    }
+
+    [Fact]
     public void A_class_composes_over_the_panels_own()
     {
         var cut = Render<NsInfoPanel>(p => p
@@ -174,13 +196,13 @@ public sealed class NsInfoPanelTests : BunitContext
     }
 
     [Fact]
-    public void Facts_wrap_and_a_long_value_breaks_inside_its_box_so_a_phone_never_scrolls_sideways()
+    public void Facts_wrap_and_a_long_label_or_value_breaks_inside_its_box_so_a_phone_never_scrolls_sideways()
     {
         var css = HouseStylesheet.Read();
 
         Assert.Contains("flex-wrap: wrap;", Rule(css, ".ns-info-panel-facts .ns-info-panel-body {"));
         Assert.Contains("flex-wrap: wrap;", Rule(css, ".ns-info-panel-list .ns-fact {"));
-        Assert.Contains("overflow-wrap: anywhere;", Rule(css, ".ns-fact-value {"));
+        Assert.Contains("overflow-wrap: anywhere;", Rule(css, ".ns-fact {"));
         Assert.Contains("min-width: 0;", Rule(css, ".ns-info-panel-body {"));
     }
 

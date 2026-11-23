@@ -4,8 +4,10 @@
 @namespace NSail.Components
 
 @* The mark is the panel's one fixed point: always top right, so whatever the panel holds it is
-   found in the same place, and its glyph is the tone's, so the tint is never colour alone. *@
-<section class="@GetClasses()" aria-label="@(Title ?? Label)">
+   found in the same place, and its glyph is the tone's, so the tint is never colour alone. It
+   carries the Label as its name, so the section takes only the Title and a reader never hears
+   the Label twice. *@
+<section class="@GetClasses()" aria-label="@Title">
     @if (Title is not null)
     {
         <NsText As="NsTextAs.Title" Class="ns-info-panel-title">@Title</NsText>
