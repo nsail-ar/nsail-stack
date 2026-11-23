@@ -268,6 +268,34 @@ public sealed class BrandThemeContrastTests
         }
     }
 
+    // A toned NsInfoPanel takes the row's recipe on its own rung: the raw severity at
+    // BrandTone.RowWash over SurfaceRaised (ns-mud.css). Its facts keep the page's ink and its
+    // labels the muted rank, and a status word may stand among them, so all of them owe the body
+    // floor there.
+    [Theory]
+    [MemberData(nameof(Schemes))]
+    public void EveryInkAPanelSetsClearsTheBodyFloorOnItsToneWash(string scheme, BrandTheme theme)
+    {
+        var severities = new[] { theme.Error, theme.Warning, theme.Success };
+        var words = new List<string>
+        {
+            theme.TextPrimary,
+            theme.TextSecondary,
+            BrandTone.Mix(theme.TextPrimary, theme.TextSecondary, BrandTone.NeutralLean),
+        };
+        words.AddRange(severities.Select(severity => BrandTone.Mix(theme.TextPrimary, severity, BrandTone.ToneLean)));
+
+        foreach (var severity in severities)
+        {
+            var ground = BrandTone.Mix(theme.SurfaceRaised, severity, BrandTone.RowWash);
+
+            foreach (var word in words)
+            {
+                Clears(word, ground, BodyFloor, scheme);
+            }
+        }
+    }
+
     // The lean is the LARGEST that clears, which is what keeps the hue: a fraction tuned for the
     // floor alone would drift toward the plain ink one story at a time until the four tones were
     // four greys. The ceiling is the next step up failing on the worst ground above, so moving

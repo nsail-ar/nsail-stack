@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
+using NSail.Tones;
 
 namespace NSail.Components.Tests;
 
@@ -95,6 +97,104 @@ public sealed class NsInfoPanelTests : BunitContext
             .Add(c => c.Actions, (RenderFragment)(b => b.AddMarkupContent(0, "<button>Reanudar</button>"))));
 
         Assert.Equal("Reanudar", cut.Find(".ns-info-panel-actions button").TextContent);
+    }
+
+    [Fact]
+    public void Info_is_the_neutral_and_not_a_second_reading_of_it()
+    {
+        var cut = Render<NsInfoPanel>(p => p
+            .Add(c => c.Label, "Datos")
+            .Add(c => c.Severity, NsSeverity.Info));
+
+        Assert.DoesNotContain("ns-status-", cut.Find("section.ns-info-panel").ClassName);
+        Assert.Contains(NsIcons.Info.Markup, cut.Markup);
+    }
+
+    [Fact]
+    public void A_class_composes_over_the_panels_own()
+    {
+        var cut = Render<NsInfoPanel>(p => p
+            .Add(c => c.Label, "Datos")
+            .Add(c => c.Class, "mb-4"));
+
+        var panel = cut.Find("section");
+        Assert.Contains("ns-info-panel", panel.ClassList);
+        Assert.Contains("mb-4", panel.ClassList);
+    }
+
+    // bUnit paints nothing, so the ruled promises that live in CSS are read off the stylesheet
+    // the app ships.
+    [Fact]
+    public void The_mark_spans_the_title_and_the_body_so_it_is_top_right_with_or_without_a_title()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains(
+            """
+                grid-template-columns: minmax(0, 1fr) auto;
+                grid-template-areas: "title mark" "body mark" "actions actions";
+            """,
+            css);
+        Assert.Contains(
+            """
+            .ns-info-panel-mark {
+                grid-area: mark;
+                align-self: start;
+            """,
+            css);
+    }
+
+    [Fact]
+    public void The_surface_is_the_raised_rung_with_the_hairline_and_never_the_accent()
+    {
+        var css = HouseStylesheet.Read();
+        var panel = Rule(css, ".ns-info-panel {");
+
+        Assert.Contains("border: 1px solid var(--mud-palette-lines-default);", panel);
+        Assert.Contains("background-color: var(--mud-palette-background-gray);", panel);
+        Assert.DoesNotContain("primary", panel);
+    }
+
+    [Theory]
+    [InlineData("error")]
+    [InlineData("warning")]
+    [InlineData("success")]
+    public void A_tone_washes_the_raised_rung_with_the_raw_severity_at_the_row_wash(string severity)
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains(
+            $$"""
+            .ns-info-panel.ns-status-{{severity}} {
+                background-color: color-mix(in srgb, var(--mud-palette-{{severity}}) {{Percent(BrandTone.RowWash)}}%, var(--mud-palette-background-gray));
+            }
+            """,
+            css);
+        Assert.Contains("border-color: var(--ns-status-color);", Rule(css, """.ns-info-panel[class*="ns-status-"] {"""));
+    }
+
+    [Fact]
+    public void Facts_wrap_and_a_long_value_breaks_inside_its_box_so_a_phone_never_scrolls_sideways()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains("flex-wrap: wrap;", Rule(css, ".ns-info-panel-facts .ns-info-panel-body {"));
+        Assert.Contains("flex-wrap: wrap;", Rule(css, ".ns-info-panel-list .ns-fact {"));
+        Assert.Contains("overflow-wrap: anywhere;", Rule(css, ".ns-fact-value {"));
+        Assert.Contains("min-width: 0;", Rule(css, ".ns-info-panel-body {"));
+    }
+
+    static string Rule(string css, string selector)
+    {
+        var start = css.IndexOf("\n" + selector, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"no rule {selector}");
+
+        return css[start..css.IndexOf('}', start)];
+    }
+
+    static string Percent(double weight)
+    {
+        return Math.Round(weight * 100, 4).ToString(CultureInfo.InvariantCulture);
     }
 
     static RenderFragment Facts(params (string Label, string Value)[] facts)
