@@ -6,6 +6,7 @@ using NSail.Icons;
 
 using NSail.Localization;
 using NSail.Metadata;
+using NSail.Text;
 
 namespace NSail.Components;
 
@@ -43,6 +44,10 @@ public sealed class ActionItem
     /// withheld otherwise; never asked of the PageGate, which has no page to ask. NsMenuItem
     /// and NsActionToolbar honour it; NsAction, which draws commands, does not.</summary>
     public string? Url { get; init; }
+
+    // One answer for every face that draws the item, so the toolbar's row and its kebab cannot
+    // disagree on the same address.
+    internal bool RefusesUrl => PageType is null && Url is not null && !WebAddress.IsNavigable(Url, withinApp: true);
 
     public Func<Task>? OnClick { get; init; }
 

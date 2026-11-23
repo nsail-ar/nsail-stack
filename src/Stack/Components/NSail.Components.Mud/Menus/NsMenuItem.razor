@@ -6,7 +6,6 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using NSail.Localization
 @using NSail.Metadata
-@using NSail.Text
 
 @inherits NsActBase
 
@@ -97,7 +96,7 @@
 
     // An address that arrives written is drawn only where WebAddress admits it: a "javascript:"
     // row is withheld rather than offered as a row that does nothing.
-    bool Refused => Action.PageType is null && Action.Url is not null && !WebAddress.IsNavigable(Action.Url, withinApp: true);
+    bool Refused => Action.RefusesUrl;
 
     // The row is a real anchor so the browser opens the tab on the gesture itself: a window
     // opened from a handler, after a round trip, is what a popup blocker drops. Dropped while

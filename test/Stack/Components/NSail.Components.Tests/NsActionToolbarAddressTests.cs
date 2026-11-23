@@ -54,6 +54,41 @@ public sealed class NsActionToolbarAddressTests : BunitContext, IAsyncLifetime
         var anchor = cut.Find("a[href='/files/Receipt.pdf']");
 
         Assert.Equal("_blank", anchor.GetAttribute("target"));
+        Assert.Contains("noopener", anchor.GetAttribute("rel") ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    // The same item answers the same on the row and in the kebab: an address WebAddress refuses
+    // is drawn in neither, including one NsLink alone would repair or leave inert.
+    [Theory]
+    [InlineData("files/report.pdf")]
+    [InlineData("tel:+5491100000000")]
+    [InlineData("#report")]
+    [InlineData("javascript:alert(1)")]
+    public void AnAddressNoDoorMayOpenIsWithheldOnTheRowAndInTheKebab(string address)
+    {
+        var refused = new ActionItem { Name = "Refused", Icon = NsIcons.Print, Url = address, Writes = false };
+
+        var row = Render<NsActionToolbar>(parameters => parameters.Add(toolbar => toolbar.Actions, [refused]));
+
+        Assert.Empty(row.FindAll("a, button"));
+
+        var cut = Render<ToolbarHost>(parameters => parameters.Add(host => host.Actions, [Paper("Receipt"), Paper("Invoice"), Paper("Ticket"), refused]));
+
+        Assert.Empty(cut.FindAll(".mud-menu"));
+        Assert.Equal(3, cut.FindAll("a[target='_blank']").Count);
+    }
+
+    [Fact]
+    public void AnAddressDoorWearsTheChevron()
+    {
+        var door = new ActionItem { Name = "Paper", Url = "/files/Paper.pdf", Writes = false };
+
+        var cut = Render<NsActionToolbar>(parameters => parameters.Add(toolbar => toolbar.Door, door));
+
+        var anchor = cut.Find("a[href='/files/Paper.pdf']");
+
+        Assert.Equal("_blank", anchor.GetAttribute("target"));
+        Assert.NotEmpty(anchor.QuerySelectorAll("svg"));
     }
 
     [Fact]

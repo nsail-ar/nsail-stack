@@ -76,7 +76,7 @@
        above), and the bubble that names the chord is drawn nowhere near the anchor — ns.js puts
        it in the top layer, where nothing it says can join a name computed from this element's
        own content (a name carrying the chord is what that rules out). *@
-    <a href="@ActiveHref" target="@BrowserTarget" class="@GetAnchorClasses()" data-ns-whisper="@LabelWithChord" data-ns-probe="@Probe" data-ns-keys="@ClaimedKeys" aria-keyshortcuts="@AnnouncedKeys">
+    <a href="@ActiveHref" target="@BrowserTarget" rel="@BrowserRel" class="@GetAnchorClasses()" data-ns-whisper="@LabelWithChord" data-ns-probe="@Probe" data-ns-keys="@ClaimedKeys" aria-keyshortcuts="@AnnouncedKeys">
         @if (Icon is not null)
         {
             <NsIcon Icon="@Icon" Size="@Size" />
@@ -364,6 +364,10 @@ else
     string? ActiveHref => Disabled || _inert ? null : _href;
 
     string? BrowserTarget => Target?.IsBrowser == true ? Target.Value.Name : null;
+
+    // What the vendor's own button faces write for a new tab (their Rel), so the bare anchor keeps
+    // the opened tab from reaching back through window.opener too.
+    string? BrowserRel => BrowserTarget is null ? null : "noopener";
 
     string Anchored(string href)
     {
