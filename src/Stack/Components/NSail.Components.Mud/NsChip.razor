@@ -13,12 +13,12 @@
    controls that whisper; the bubble's link is the chip's own Href. *@
 @if (OnClose is null)
 {
-    <MudChip T="string" Class="ns-chip-ellipsis" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
+    <MudChip T="string" Class="@GetClass()" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
              Size="@GetSize()" Href="@SafeHref" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()"><span class="ns-chip-label">@Text</span></MudChip>
 }
 else
 {
-    <MudChip T="string" Class="ns-chip-ellipsis" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
+    <MudChip T="string" Class="@GetClass()" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
              Size="@GetSize()" Href="@SafeHref" OnClose="Close" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()"><span class="ns-chip-label">@Text</span></MudChip>
 }
 
@@ -54,6 +54,12 @@ else
     [Parameter]
     public bool Solid { get; set; }
 
+    /// <summary>Spans the chip across the box it sits in, its label centered, instead of
+    /// hugging its text. In the brand row it also lifts the half-row cap, so the chip runs the
+    /// row's full width.</summary>
+    [Parameter]
+    public bool Stretch { get; set; }
+
     /// <summary>Makes the whole chip a link. The caller derives it from the route table, the
     /// way NsPageLink does; a chip never takes a literal address.</summary>
     [Parameter]
@@ -85,6 +91,14 @@ else
     string? GetRole()
     {
         return string.IsNullOrEmpty(SafeHref) && GetName() is not null ? "group" : null;
+    }
+
+    string GetClass()
+    {
+        return new NsClassBuilder()
+            .Add("ns-chip-ellipsis")
+            .Add("ns-chip-stretch", Stretch)
+            .ToString();
     }
 
     Color GetColor()

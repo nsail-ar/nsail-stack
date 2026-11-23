@@ -13,7 +13,7 @@ namespace NSail.Components.Tests;
 /// <summary>A chip in the drawer's brand row keeps its natural width up to half the brand row
 /// itself, not half of whatever box a product's Brand wraps around it, its painted edge — not the
 /// vendor's margin — sits on the header's right line, and the name beside it takes the rest and
-/// wraps.</summary>
+/// wraps; a stretched chip spans the row on a line of its own.</summary>
 public sealed class NsNavBrandChipTests : BunitContext
 {
     public NsNavBrandChipTests()
@@ -49,18 +49,18 @@ public sealed class NsNavBrandChipTests : BunitContext
         Assert.DoesNotMatch(@"box-sizing", brand);
     }
 
-    /// <summary>Every NsChip wears the ellipsis, so only the brand row's rule may move a chip's
-    /// size or margin.</summary>
+    /// <summary>Every NsChip wears the ellipsis, so only the brand row's rule, or the stretched
+    /// chip's own, may move a chip's size or margin.</summary>
     [Fact]
     public void OnlyTheBrandRowMovesAChipsWidthOrMargin()
     {
-        var rules = Regex.Matches(Uncommented(HouseStylesheet.Read()), @"(?<selectors>[^{}]*\.ns-chip-ellipsis\.mud-chip[^{}]*)\{(?<body>[^}]*)\}");
+        var rules = Regex.Matches(Uncommented(HouseStylesheet.Read()), @"(?<selectors>[^{}]*\.ns-chip-(?:ellipsis|stretch)\.mud-chip[^{}]*)\{(?<body>[^}]*)\}");
 
         foreach (Match rule in rules)
         {
             if (Regex.IsMatch(rule.Groups["body"].Value, @"max-width|margin"))
             {
-                Assert.Contains(".ns-nav-brand ", rule.Groups["selectors"].Value);
+                Assert.Matches(@"\.ns-nav-brand |\.ns-chip-stretch", rule.Groups["selectors"].Value);
             }
         }
     }
@@ -79,6 +79,32 @@ public sealed class NsNavBrandChipTests : BunitContext
         Assert.Empty(label.QuerySelectorAll("svg"));
         Assert.NotEmpty(cut.Find(".mud-chip").QuerySelectorAll("svg"));
         Assert.Equal("Prueba", label.TextContent);
+    }
+
+    [Fact]
+    public void AStretchedChipWearsTheSpanClassAndAPlainOneDoesNot()
+    {
+        var stretched = Render<NsChip>(p => p.Add(x => x.Text, "Prueba").Add(x => x.Stretch, true));
+        var plain = Render<NsChip>(p => p.Add(x => x.Text, "Prueba"));
+
+        Assert.Contains("ns-chip-stretch", stretched.Find(".mud-chip").ClassList);
+        Assert.DoesNotContain("ns-chip-stretch", plain.Find(".mud-chip").ClassList);
+    }
+
+    [Fact]
+    public void AStretchedChipSpansTheBrandRowPastTheHalfRowCap()
+    {
+        var css = Uncommented(HouseStylesheet.Read());
+
+        Assert.Matches(@"\.ns-chip-stretch\.mud-chip\s*\{[^}]*width:\s*100%;[^}]*margin:\s*0;", css);
+        Assert.Matches(@"\.ns-nav-brand \.ns-chip-stretch\.mud-chip\s*\{[^}]*max-width:\s*100%;", css);
+        Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-stretch\)\s*\{[^}]*max-width:\s*none;", css);
+        Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-stretch\)\s*\{[^}]*flex-wrap:\s*wrap;", css);
+        Assert.Matches(@"\.ns-nav-brand:has\(\.ns-chip-stretch\) > :not\([^{]*\.ns-remote-image\),\s*\.ns-nav-brand :has\(\.ns-chip-stretch\) > :not\([^{]*\.ns-remote-image\)\s*\{[^}]*flex:\s*1 1 0;", css);
+        Assert.True(
+            css.IndexOf(".ns-nav-brand :has(.ns-chip-stretch) {\n    max-width: none;", StringComparison.Ordinal)
+            > css.IndexOf(".ns-nav-brand * ~ :has(.ns-chip-ellipsis)", StringComparison.Ordinal),
+            "the stretch rules tie the half-row cap in specificity and must follow it");
     }
 
     [Fact]

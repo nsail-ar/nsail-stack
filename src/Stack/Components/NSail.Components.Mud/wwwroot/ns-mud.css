@@ -1466,6 +1466,38 @@
     max-width: 50cqi;
 }
 
+/* A stretched chip (NsChip Stretch) spans its box and centers its label. Its vendor margin
+   goes, or the 100% would end 4px past the box. In the brand row it lifts the half-row cap on
+   itself and on the boxes around it, and the row wraps: the chip's box takes a line of its own,
+   so a long name wraps above it and never squeezes it. The name's box has a zero flex basis
+   there: wrapping reads each item's hypothetical size, and at its max-content a long name would
+   leave the logo's line instead of breaking its text beside it. These rules come after the
+   half-row cap above: the selectors tie in specificity and the later one wins. */
+.ns-chip-stretch.mud-chip {
+    width: 100%;
+    margin: 0;
+    justify-content: center;
+}
+
+.ns-nav-brand .ns-chip-stretch.mud-chip {
+    max-width: 100%;
+}
+
+.ns-nav-brand:has(.ns-chip-stretch),
+.ns-nav-brand :has(.ns-chip-stretch) {
+    flex-wrap: wrap;
+}
+
+.ns-nav-brand :has(.ns-chip-stretch) {
+    max-width: none;
+    flex-basis: 100%;
+}
+
+.ns-nav-brand:has(.ns-chip-stretch) > :not(:has(.ns-chip-stretch), .ns-chip-stretch, img, svg, .ns-remote-image),
+.ns-nav-brand :has(.ns-chip-stretch) > :not(:has(.ns-chip-stretch), .ns-chip-stretch, img, svg, .ns-remote-image) {
+    flex: 1 1 0;
+}
+
 /* The rail: the brand's OWN chrome, in both scales. With no app bar
    above it the rail is the only chrome on screen — the piece the eye reads the install's
    colour off, and its Header (the brand block) and Footer (the session chip) are the two
