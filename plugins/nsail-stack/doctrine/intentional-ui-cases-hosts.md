@@ -199,6 +199,15 @@ query that changes it; the folded row keeps the utility, its alignment never cha
 can pin is the one thing the cascade turns on — which classes the open row carries
 (`TheOpenRowWearsNoVendorAlignmentUtility`).
 
+The open row's FIELDS are top-aligned (`.ns-list-editor-fields`, `align-start`), never centred
+against each other: a refusal or chips grow one field downward, and a centred line would push its
+neighbours' tops down by half of it. A field's `Helper` does not grow it here: the row has no cell
+per field, so the hint is an item of the wrap beside the field, its top flush as well — under the
+field only in `.ns-grid`, where each field has its `.ns-grid-item`. A boolean control there takes its labelled
+neighbours' geometry, as in `.ns-grid`; its selector reads the labelled class off the field's
+root, the fields box's direct child (`TheOpenRowsBooleanControlsTakeTheLabelledFieldsGeometry`).
+The folded row's content keeps centring (`TheOpenRowsFieldsAreTopAligned`).
+
 ## The way in nine row editors could not have withheld
 
 Nine kit row editors were blind to the form's writability cascade — each gating its inline editor

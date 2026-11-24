@@ -433,6 +433,57 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
         Assert.Empty(cut.FindAll("li.ns-list-editor-open.align-center"));
     }
 
+    /// <summary>A refusal, a Helper or chips grow one field of the open row downward; the fields
+    /// beside it keep their tops only if the box holding them aligns to the start and not the
+    /// centre. The folded row's content box keeps centring.</summary>
+    [Fact]
+    public async Task TheOpenRowsFieldsAreTopAligned()
+    {
+        var cut = Render<ListEditorHost>();
+
+        Assert.Empty(cut.FindAll(".ns-list-editor-fields"));
+        Assert.Single(cut.FindAll("li.ns-list-editor-item > div.flex-1.align-center"));
+
+        await Click(cut, "Editar");
+
+        var fields = cut.Find("li.ns-list-editor-open > .ns-list-editor-fields");
+
+        Assert.Contains("align-start", fields.ClassList);
+        Assert.DoesNotContain("align-center", fields.ClassList);
+    }
+
+    /// <summary>Once the open row aligns its fields to the top, a boolean control beside a labelled
+    /// field would sit on that field's label gutter; the stylesheet gives it the field's gutter
+    /// and box instead. Its selector keys on the labelled class riding the field's root as a
+    /// DIRECT child of the fields box, and on the controls themselves being direct children —
+    /// both pinned here against the rendered row, then the rule's own selectors are run.</summary>
+    [Fact]
+    public async Task TheOpenRowsBooleanControlsTakeTheLabelledFieldsGeometry()
+    {
+        var cut = Render<ListEditorCheckHost>();
+
+        await cut.InvokeAsync(() => cut.FindAll("button[aria-label='Editar']")[0].Click());
+
+        var fields = cut.Find(".ns-list-editor-fields");
+
+        Assert.Contains(fields.Children, child =>
+            child.ClassList.Contains("mud-input-control") &&
+            child.ClassList.Contains("mud-input-outlined-with-label"));
+        Assert.Contains(fields.Children, child => child.ClassList.Contains("ns-form-check"));
+        Assert.Contains(fields.Children, child => child.ClassList.Contains("ns-record-state"));
+
+        var seated = HouseStylesheet.Read().Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith(".ns-list-editor-fields:has(", StringComparison.Ordinal))
+            .Select(line => line.TrimEnd('{', ',', ' '))
+            .SelectMany(selector => cut.FindAll(selector))
+            .ToList();
+
+        Assert.Equal(2, seated.Count);
+        Assert.Contains(seated, control => control.ClassList.Contains("ns-form-check"));
+        Assert.Contains(seated, control => control.ClassList.Contains("ns-record-state"));
+    }
+
     static Task Press(IRenderedComponent<ListEditorFormHost> cut, string name)
     {
         return cut.InvokeAsync(() => cut.FindAll($"button[aria-label='{name}']")[0].Click());

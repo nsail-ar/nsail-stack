@@ -65,7 +65,9 @@ else
                        nothing is wired by the screen either way. *@
                     <CascadingValue TValue="EditContext" Value="RowContext" IsFixed="false">
                         <CascadingValue Value="(IFieldTracker)Placement" IsFixed="true">
-                            <div class="d-flex flex-wrap align-center gap-2 flex-1 min-w-0">
+                            @* Top-aligned: a refusal grows its field downward, and the fields
+                               beside it keep their tops (ns-mud.css, .ns-list-editor-fields). *@
+                            <div class="ns-list-editor-fields d-flex flex-wrap align-start gap-2 flex-1 min-w-0">
                                 @ItemEditor?.Invoke(item)
                             </div>
                             <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Class="ns-list-editor-acts">

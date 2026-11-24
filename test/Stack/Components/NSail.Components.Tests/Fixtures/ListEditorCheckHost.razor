@@ -1,0 +1,38 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Testing.Models
+
+@* An open row holding a labelled field beside the two boolean controls, which take the
+   labelled field's geometry once the row aligns its fields to the top (ns-mud.css,
+   .ns-list-editor-fields). *@
+<MudPopoverProvider />
+
+<NsListEditor TItem="TestModel" Items="_items" Title="Pagos" NewItem="NewItem">
+    <ItemTemplate Context="item">
+        <span>@item.Name</span>
+    </ItemTemplate>
+    <ItemEditor Context="item">
+        <NsTextField @bind-Value="item.Name" Label="Nombre" />
+        <NsCheckBox TValue="bool" @bind-Value="_flag" Label="Activo" />
+        <NsRecordState @bind-Value="_active" />
+    </ItemEditor>
+</NsListEditor>
+
+@code {
+
+    readonly List<TestModel> _items = [new TestModel { Name = "Ana" }];
+
+    bool _flag;
+
+    bool _active = true;
+
+    static TestModel NewItem()
+    {
+        return new TestModel();
+    }
+}

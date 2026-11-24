@@ -113,6 +113,19 @@ marked *(cases)* has its story there.
     than the input — does not pull the check low. The mark is on the component, not on the grid,
     and the selector reaches a DIRECT child only, so a check nested in a stack
     beside an `NsHelp` owns its line already and is left alone.
+    An open `NsListEditor` row's fields box is top-aligned too and gives a boolean control
+    among labelled fields the same geometry, reached the same way: the labelled class off the
+    field's root, the box's direct child.
+    **The `?` beside a labelled field in a top-aligned row** is the same partner: whatever renders
+    the `.ns-help` root (`NsHelp` and the components built on it) after a field with a label — or
+    after a wrapper holding one, or past what the house draws in the field's under-field zone as
+    its siblings (the hint or the refusal's described twin, a password's strength bar, an empty
+    picker's door) — in a horizontal row aligned to the start takes the field's 8px gutter and a
+    40px box its glyph is centred in, so it sits on the input whether a refusal is drawn under the field or not. The
+    labelled class it keys on rides the field's root, the row's direct child. Keyed on the
+    vendor's `align-start` and on the labelled field, so a centred row, a column, a `?` beside a
+    boolean control and a row's second `?` keep their place. A product
+    that top-aligns a row of fields writes `Align="NsAlign.Start"` and nothing else.
   - A field cell whose content draws nothing (`StoreSelect HideLone`) collapses.
 - **`Gap` and `Margin` read off one `NsSize` scale** — room *between* children and room *around*
   the block, asked for the same way, so a page that wants a logo to breathe writes `Margin="Lg"`
