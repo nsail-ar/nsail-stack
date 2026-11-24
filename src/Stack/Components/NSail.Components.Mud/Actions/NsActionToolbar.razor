@@ -67,10 +67,11 @@
 
     @* A verb that reports a STATE wears that state's tone, in the status channel's own
        vocabulary and never a palette of the toolbar's (NsStatusText, NsStatusDot). It is a
-       WRAPPER and not a class on the control: both chromes below paint themselves with the
+       WRAPPER and not a class on the control: both flat chromes below paint themselves with the
        vendor's inherit colour, which resolves to whatever the box around them computed, so a
        class fighting the vendor's own selector for specificity is a fight nothing has to
-       have. *@
+       have. A filled face under Buttons sets its own ink; ns-mud.css restates the tone on the
+       neutral fill's glyph. *@
     RenderFragment<ActionItem> icon = item =>
         @<text>
             @{

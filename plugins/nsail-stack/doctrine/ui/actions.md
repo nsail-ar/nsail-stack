@@ -440,11 +440,15 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   outweigh the controls that act.**
 - **A host whose own acts are buttons asks for `Buttons`** — a dialog's footer, a row of
   `NsButton`s: every page act and command is then the same filled button, worded at every
-  width, at its item's `As`, a link still an anchor and a command still a button, spaced like
-  `NsButton`s in a horizontal `NsStack` at `Gap="Sm"`. Without it a contributed act beside
-  filled buttons reads as a second, smaller style. `Breakpoint="NsBreakpoint.Always"` alone
-  words the flat rung and stays as it is; the gate, the cap, the kebab, `Writes`, `Running` and
-  `Severity` answer the same under either.
+  width unless the host also sets a `Breakpoint` (which wins), at its item's `As`, a link still
+  an anchor and a command still a button, spaced like `NsButton`s in a horizontal `NsStack` at
+  `Gap="Sm"`. Without it a contributed act beside filled buttons reads as a second, smaller
+  style. `Breakpoint="NsBreakpoint.Always"` alone words the flat rung and stays as it is; the
+  gate, the cap, the kebab, `Writes` and `Running` answer the same under either. **`Severity`
+  stays on the glyph**: on the neutral fill `ns-mud.css` restates the tone on the face's icon,
+  never its word, which in light Warning would read under the body floor on the fill. A `Main`,
+  `Danger` or `Important` fill keeps its own ink, since the fill is its rank and the ink is that
+  fill's pair, and a face with no icon has no glyph to carry the tone.
 - **The toolbar does not resolve or contribute; it DOES gate what the host handed it** —
   authorization, and the form's word about writing — and **both gates run before it counts**: an
   item dropped after the cap would spend a visible slot on nothing and leave a kebab opening on

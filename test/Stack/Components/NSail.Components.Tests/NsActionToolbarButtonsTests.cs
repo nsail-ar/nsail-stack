@@ -116,6 +116,27 @@ public sealed class NsActionToolbarButtonsTests : BunitContext, IAsyncLifetime
         Assert.Contains("mud-button-filled-primary", cut.Find(".ns-action-toolbar a").ClassList);
     }
 
+    // The tone's wrapper stands around the filled face as it does around an icon button; the
+    // stylesheet restates it on the neutral fill's glyph (NsStatusToneTests), so the face must be
+    // that fill and carry that glyph for the state to show.
+    [Fact]
+    public void AToneSurvivesTheFilledFace()
+    {
+        var cut = RenderToolbar(true, new ActionItem
+        {
+            Name = "Collect",
+            Icon = NsIcons.Edit,
+            OnClick = () => Task.CompletedTask,
+            Severity = NsSeverity.Warning,
+        });
+
+        var button = cut.Find(".ns-action-toolbar .ns-status-text.ns-status-warning button");
+
+        Assert.Contains("mud-button-filled-default", button.ClassList);
+        Assert.DoesNotContain("ns-important", button.ClassList);
+        Assert.NotNull(button.QuerySelector(".mud-button-icon-start svg"));
+    }
+
     [Fact]
     public void WithoutButtonsTheRowKeepsItsGapAndItsFlatActs()
     {

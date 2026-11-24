@@ -110,7 +110,7 @@ public sealed class ActionItem
     /// <summary>The act's intention, drawn only by a presenter that draws its acts as buttons
     /// (NsActionToolbar.Buttons); an icon row ignores it. Default is the ordinary button; Main
     /// is named only by the act that is its surface's one accent.</summary>
-    public NsAs As { get; init; } = NsAs.Default;
+    public NsAs As { get; init; }
 
     /// <summary>The action's label: "Actions.{Name}" when the action names its own, otherwise
     /// the destination page's own title — the same derivation NsPageLink makes, so a page's
