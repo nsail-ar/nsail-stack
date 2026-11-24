@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
 @using NSail.Components
+@using NSail.Components.Tests
 @using NSail.Testing.Models
 
 @* A ? beside a field, in each row shape the help seat (ns-mud.css) must reach or leave alone.
@@ -33,6 +34,18 @@
         <div class="wrapper">
             <NsTextField @bind-Value="_name" Label="Nombre" />
         </div>
+        <NsHelp Text="Ayuda" Class="seated" />
+    </NsStack>
+
+    <NsStack Horizontal Align="NsAlign.Start" Class="strength-row">
+        <NsPasswordField @bind-Value="_secret" Label="Clave" Strength Helper="Al menos ocho letras" />
+        <NsHelp Text="Ayuda" Class="seated" />
+    </NsStack>
+
+    <NsStack Horizontal Align="NsAlign.Start" Class="door-row">
+        <NsSelect TItem="MissingProbe" TValue="string" @bind-Value="_name" Label="Depósito"
+                  Items="[]" ItemValue="o => o.ToString()" ItemText="o => o.ToString()" />
+        <NsNoOptions TItem="MissingProbe" CreateRoute="products/stores/new" />
         <NsHelp Text="Ayuda" Class="seated" />
     </NsStack>
 
@@ -65,6 +78,8 @@
     EditContext _context = null!;
 
     string? _name;
+
+    string? _secret = "abc";
 
     bool _flag;
 

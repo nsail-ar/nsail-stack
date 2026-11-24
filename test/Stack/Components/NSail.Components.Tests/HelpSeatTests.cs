@@ -3,7 +3,8 @@
 
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
-using MudBlazor.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
 using NSail.Metadata;
@@ -13,7 +14,7 @@ namespace NSail.Components.Tests;
 /// <summary>A ? beside a labelled field in a top-aligned row sits on the field's INPUT, not on
 /// its label gutter (ui/styling.md, the help seat). bUnit lays out no box model, so what is pinned
 /// is the stylesheet's own rule — the field's geometry it declares — and its selectors run against
-/// rendered rows: they reach the ? in a top-aligned row — past the field's hint or refusal, and
+/// rendered rows: they reach the ? in a top-aligned row — past the field's under-field nodes, and
 /// through a wrapper — and miss it in a centred row, a column, beside a boolean control and as a
 /// row's second ?. The centre on the input is measured in a browser by the products'
 /// walks.</summary>
@@ -21,12 +22,23 @@ public sealed class HelpSeatTests : BunitContext, IAsyncLifetime
 {
     public HelpSeatTests()
     {
-        Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        Services.AddComponentServices();
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
-        Services.AddSingleton(new StringCatalog([]));
+        Services.AddSingleton(new StringCatalog(
+        [
+            new FixedStrings(new Dictionary<string, string>
+            {
+                ["Common.NoOptions"] = "Todavía no hay {0} para elegir.",
+                ["Common.CreateNew"] = "Crear {0}...",
+                ["Components.MissingProbe"] = "Depósito",
+            }),
+        ]));
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();
         Services.AddSingleton<StringManager>();
+        Services.AddSingleton(new RouteTable(typeof(HelpSeatTests).Assembly, []));
+        Services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+        Services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
@@ -66,15 +78,19 @@ public sealed class HelpSeatTests : BunitContext, IAsyncLifetime
             child.ClassList.Contains("mud-input-outlined-with-label"));
     }
 
-    // The field's under-field node is a sibling in the row, between the field and the ?: the hint
-    // while clean, the refusal's described twin while refused. The seat reaches past either.
+    // What the house draws in a field's under-field zone is a sibling in the row, between the
+    // field and the ?: the hint while clean, the refusal's described twin while refused, a typed
+    // password's strength bar ahead of its hint, an empty picker's door. The seat reaches past
+    // each.
     [Fact]
-    public void TheFieldsHintOrRefusalStandsBetweenItAndTheHelp()
+    public void TheFieldsUnderFieldNodesStandBetweenItAndTheHelp()
     {
         var cut = Render<HelpSeatHost>();
 
-        Assert.Contains("ns-field-helper", Before(cut, ".hinted-row"));
-        Assert.Contains("ns-field-described", Before(cut, ".refused-row"));
+        Assert.Equal(["ns-field-helper"], Between(cut, ".hinted-row"));
+        Assert.Equal(["ns-field-described"], Between(cut, ".refused-row"));
+        Assert.Equal(["ns-password-strength", "ns-field-helper"], Between(cut, ".strength-row"));
+        Assert.Equal(["ns-field-missing"], Between(cut, ".door-row"));
     }
 
     [Fact]
@@ -84,7 +100,7 @@ public sealed class HelpSeatTests : BunitContext, IAsyncLifetime
 
         var seated = Seated(cut);
 
-        Assert.Equal(5, cut.FindAll(".ns-help.seated").Count);
+        Assert.Equal(7, cut.FindAll(".ns-help.seated").Count);
         Assert.All(cut.FindAll(".ns-help.seated"), help => Assert.Contains(help, seated));
     }
 
@@ -95,16 +111,20 @@ public sealed class HelpSeatTests : BunitContext, IAsyncLifetime
 
         var seated = Seated(cut);
 
-        Assert.Equal(9, cut.FindAll(".ns-help").Count);
+        Assert.Equal(11, cut.FindAll(".ns-help").Count);
         Assert.All(seated, help => Assert.Contains("seated", help.ClassList));
     }
 
-    // The classes of the node standing right before the row's ?.
-    static string[] Before(IRenderedComponent<HelpSeatHost> cut, string row)
+    // The house's under-field class of each node between the row's first child and its ?.
+    static string[] Between(IRenderedComponent<HelpSeatHost> cut, string row)
     {
-        var before = cut.Find($"{row} > .ns-help").PreviousElementSibling;
+        string[] zone = ["ns-field-helper", "ns-field-described", "ns-password-strength", "ns-field-missing"];
 
-        return before is null ? [] : [.. before.ClassList];
+        return cut.Find(row).Children
+            .Skip(1)
+            .TakeWhile(child => !child.ClassList.Contains("ns-help"))
+            .Select(child => zone.Single(child.ClassList.Contains))
+            .ToArray();
     }
 
     // Every .ns-help the rule's selectors match in the rendered page.
