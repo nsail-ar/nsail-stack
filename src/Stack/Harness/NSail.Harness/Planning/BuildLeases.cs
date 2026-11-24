@@ -4,8 +4,8 @@
 namespace NSail.Harness.Planning;
 
 // The turns for local builds, a machine's second scarce resource after the AI's requests. A lane
-// holds an agent slot for its whole voyage but a build turn only while a `dotnet build|test`
-// runs, so the CPU is rationed where it is spent. When a turn frees, it goes to the WAITER OF
+// holds an agent slot for its whole voyage but a build turn only while a `dotnet` compiles (a
+// run's or a watch's build, not its app), so the CPU is rationed where it is spent. When a turn frees, it goes to the WAITER OF
 // HIGHEST PRIORITY (the lowest rank, the planner's order), never to the one that asked first.
 // A release's suite holds its turn alone against the gates: both draw on the machine's one
 // Postgres, and a gate's clock starts at its turn. No gate is granted while a suite holds or awaits

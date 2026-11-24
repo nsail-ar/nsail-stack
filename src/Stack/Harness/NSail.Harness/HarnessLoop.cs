@@ -710,7 +710,7 @@ public sealed class HarnessLoop(
             var conditions = _workers.SelectMany(w => w.Options.When.Use.Select(u => o.Conditions[u]).Append(w.Options.When));
             var down = await Down(conditions.SelectMany(c => c.Reachable).Distinct(), stop);
             if (down.Count > 0) log.LogWarning("{Down} not answering: the workers that need it wait", string.Join(", ", down));
-            var plan = WorkerPlanner.Make(snapshot, _workers, PlannerOptionsOf(o, limits.Agents), w => WhenHolds(w, o, down), AndonOpen(started));
+            var (plan, saturated) = Saturated(WorkerPlanner.Make(snapshot, _workers, PlannerOptionsOf(o, limits.Agents), w => WhenHolds(w, o, down), AndonOpen(started)), jobs.Pressure.Read(), o.Pressure);
             _stalled = snapshot.Issues.Count(i => i.Has(Labels.Stalled));
             Unsettle(snapshot.Issues);
             Planned(plan.Items, started);
@@ -719,7 +719,7 @@ public sealed class HarnessLoop(
             var stood = NoteStill(plan, started);
             // Past the agent's quota wall only the agents stop: gates, builds and releases go on.
             if (AgentsOffUntil is not null) limits = limits with { Agents = 0 };
-            var take = Paused is null ? Capacity.Pick(runnable, InUse(), limits, WorkerMax(), RunningByWorker()) : [];
+            var take = Paused is null && !saturated ? Capacity.Pick(runnable, InUse(), limits, WorkerMax(), RunningByWorker()) : [];
             var startedNow = new List<string>();
             if (o.Mode == HarnessMode.Live)
             {
@@ -753,6 +753,14 @@ public sealed class HarnessLoop(
             }
             return Failed(log, metrics, e, call, started) with { Board = seen };
         }
+    }
+
+    // A machine the kernel reports saturated starts no new job of any kind, and the plan says why;
+    // the jobs running go on.
+    internal static (Plan Plan, bool Held) Saturated(Plan plan, PressureReading? reading, PressureOptions o)
+    {
+        if (o.Saturated(reading) is not { } why) return (plan, false);
+        return (plan with { Notes = [.. plan.Notes, $"machine saturated ({why}) — no new job starts"] }, true);
     }
 
     // The Starting chores of the items that fit this pass: an item not started (paused, over capacity,

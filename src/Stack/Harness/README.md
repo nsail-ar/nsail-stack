@@ -41,7 +41,9 @@ the files it leaves.
     seed projects (a non-Markdown change outside them builds it all), the `Everything` files that build it all (by default solutions, `global.json`, props, targets, `nuget.config`, `.editorconfig`, `Directory.Build.rsp`, `*.globalconfig`), the `Tests` and their `TestFilter`): the
     gate builds and tests what a change affects through the solution's ProjectReference graph (a PR
     red only where main's own gate is red waits for main to move: no round owes it; a gate that broke on infrastructure — git, the provider, the disk — writes
-    no verdict and no status, only an unmarked comment, and the head is gated again after the backoff; a malformed project or a
+    no verdict and no status, only an unmarked comment, and the head is gated again after the backoff,
+    and so does the first gate at a head that runs out its clock while the machine is saturated (its
+    comment carries `harness:gate:saturated:<sha>`, which is no verdict, so the second is red); a malformed project or a
     missing solution in the PR is its red), and a
     Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
@@ -286,6 +288,18 @@ the files it leaves.
   already hold, and a lane's turn is never held back for either.
   A build turn whose holder died returns to the line once older than the longest step the machine's
   enabled workers run (a main gate counts twice its minutes) plus ten.
+  A lane waits for a build turn at every `dotnet` that compiles (`build`, `test`, `publish`,
+  `restore`, `pack`, `msbuild`, `ef`, `run`, `watch`): the `dotnet` shim first on its PATH asks for
+  it, so `Builds` alone bounds the builds on a machine. A `run` or a `watch` builds under the turn and
+  gives it back before its app starts; a `dotnet` that compiles nothing goes straight through, and
+  one started under a held turn (an E2E fixture publishing its host) rides it. `BuildNodes` (default
+  4) is how wide each build runs.
+  While the kernel reports the machine saturated (`/proc/pressure` over the last minute: memory
+  `full` at or over `Pressure:MemoryFull`, default 10, or CPU `some` at or over `Pressure:CpuSome`,
+  default 80) no new job of any kind starts, the jobs running go on, and the plan's notes give the
+  reading (`machine saturated (memory full avg60 23.4 ≥ 10) — no new job starts`). A machine with no
+  `/proc/pressure` (Windows, a kernel without PSI) holds nothing. `/status` carries the reading
+  (`Readings.Pressure`).
 - **The release andon** (`Planning/ReleaseAndon.cs`). A product's failed cut leaves its one open red
   story (`Regression red on main ({product})`, Texts `SuiteRedTitle`); while that story is out of
   Released, QA and Closed, the release takes the whole harness. The plan holds only: that story's
