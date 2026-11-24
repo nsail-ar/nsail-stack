@@ -181,7 +181,10 @@ called (a product's Wasm composition root). It lists one row per declared store 
 (`ListStorageStores`), the default first, each with the target it resolves to now and whether
 that is the default's; a row opens that name's own form (`StorageStorePage`), where clearing
 Proveedor clears the name's row slot and nothing else — the name then resolves to its own
-`StorageOptions` when the host gave it one, and to the default only when it did not. A product
+`StorageOptions` when the host gave it one, and to the default only when it did not. A row
+reads its store in the words its kit supplies (`Storage.Stores.{name}`) or, with none, as
+declared, and its provider in the screen's words for its type (`Storage.Providers.{type}`,
+`DisplayName` for a type without them); what is saved and sent stays the name and the type. A product
 parks the screen out of sight by leaving that one call out of both composition roots, which
 takes the route, the strings and the settings leaf with it, and keeps `AddStorageWebApi` for
 everything that still writes objects.
