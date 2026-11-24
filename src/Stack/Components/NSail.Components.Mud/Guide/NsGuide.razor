@@ -3,6 +3,7 @@
 
 @namespace NSail.Components
 
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.JSInterop
 @using NSail.Localization
@@ -16,8 +17,13 @@
 @inject StringManager Strings
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject PageGate Gate
 
-@if (_chapters.Count > 0)
+@if (_refused)
+{
+    <p role="alert">@Strings.Translate("Common.NotAuthorized")</p>
+}
+else if (_chapters.Count > 0)
 {
     <div class="ns-guide">
 
@@ -78,12 +84,16 @@
 @code {
 
     IReadOnlyList<GuideItem> _chapters = [];
+    bool _refused;
     GuideItem? _open;
     GuideItem? _requested;
     GuideItem? _read;
     GuideChapter? _body;
     string? _shown;
     RenderFragment? _published;
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationState { get; set; }
 
     /// <summary>The chapter's own file name, off the address (/guide/{chapter}). Unknown or
     /// absent opens the first chapter, so both /guide and a stale link land somewhere.</summary>
@@ -116,7 +126,13 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        _chapters = await GuideItem.Collect(Contributors);
+        var user = await PageGate.UserOf(AuthenticationState);
+
+        _chapters = await GuideItem.Collect(Contributors, Gate, user);
+
+        // A session that may read nothing of a guide that has chapters is refused, as at any
+        // forbidden page: hiding the door is not a guard.
+        _refused = _chapters.Count == 0 && Contributors.Any();
         _open = GuideItem.Open(_chapters, Chapter);
 
         Publish();

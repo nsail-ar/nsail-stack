@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Globalization;
+using System.Security.Claims;
 
 namespace NSail.Components;
 
@@ -25,6 +26,11 @@ public sealed class GuideItem
     /// <summary>Sort key across all contributors, same bands as NavMenuItem.Weight; ties keep
     /// contribution order.</summary>
     public int Weight { get; init; }
+
+    /// <summary>The message a session must be able to send to read this chapter, the same
+    /// kind of grant NavMenuItem.Permission asks for a door — never a role. Null is a chapter
+    /// every session reads; Collect(contributors, gate, user) keeps only what the session may.</summary>
+    public Type? Permission { get; init; }
 
     /// <summary>Assembly whose static web assets carry the file — the contributing module's
     /// own, stamped by Collect, never written by a contributor: the class that contributes a
@@ -64,6 +70,29 @@ public sealed class GuideItem
 
         // OrderBy is stable, so equal weights keep the contribution order above.
         return items.OrderBy(item => item.Weight).ToList();
+    }
+
+    /// <summary>The chapters one session may read: Collect, minus those whose Permission the
+    /// session lacks. A session holding none gets an empty guide.</summary>
+    public static async Task<IReadOnlyList<GuideItem>> Collect(
+        IEnumerable<IGuideContributor> contributors,
+        PageGate gate,
+        ClaimsPrincipal user)
+    {
+        ArgumentNullException.ThrowIfNull(gate);
+        ArgumentNullException.ThrowIfNull(user);
+
+        var readable = new List<GuideItem>();
+
+        foreach (var chapter in await Collect(contributors))
+        {
+            if (chapter.Permission is null || await gate.Permits(chapter.Permission, user))
+            {
+                readable.Add(chapter);
+            }
+        }
+
+        return readable;
     }
 
     /// <summary>The chapter an address names, the first one when it names none, and null when

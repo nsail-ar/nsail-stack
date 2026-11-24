@@ -4,6 +4,7 @@
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
 using MudBlazor.Services;
 using NSail.Components;
@@ -35,6 +36,10 @@ public sealed class NsGuideTests : BunitContext, IAsyncLifetime
         Services.AddSingleton<MetadataProvider>();
         Services.AddSingleton<StringManager>();
         Services.AddSingleton(new RouteTable(typeof(ProbeGuidePage).Assembly, []));
+        Services.AddAuthorizationCore();
+        Services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>();
+        Services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(Microsoft.Extensions.Logging.Logger<>));
+        Services.AddScoped<PageGate>();
         Services.AddScoped<RootSurface>();
         Services.AddScoped<SurfaceHistory>();
         Services.AddScoped(provider => new GuideRoute(
@@ -337,5 +342,24 @@ public sealed class NsGuideTests : BunitContext, IAsyncLifetime
         Shelf(new Dictionary<string, string>());
 
         Assert.Empty(Open().FindAll(".ns-guide"));
+    }
+
+    sealed class StaffGrant;
+
+    [Fact]
+    public void ASessionHoldingNoChapterGrantIsRefusedNotShownAnEmptyBook()
+    {
+        Services.RemoveAll<Microsoft.AspNetCore.Authorization.IAuthorizationService>();
+        Services.RemoveAll<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider>();
+        Services.AddAuthorizationCore();
+        Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, MessagePolicyProvider>();
+        Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler>(new GrantedMessages());
+        Shelf(new Dictionary<string, string>(),
+            new GuideItem { Name = "Sales", File = "sales", Permission = typeof(StaffGrant) });
+
+        var page = Open();
+
+        Assert.Empty(page.FindAll(".ns-guide"));
+        Assert.NotNull(page.Find("p[role=alert]"));
     }
 }

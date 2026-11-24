@@ -40,7 +40,12 @@ a guide is content a module already knows, not state anybody saves.
   the next read retries. **The read happens after the first render, never
   in `OnInitialized`**: a server prerender that fetched it would be the host asking itself for
   its own static file.
-- **Registration is the whole composition, and nothing filters afterwards.** An app that never
+- **A chapter may declare the grant it is for** (`GuideItem.Permission`, a message type, the
+  kind `NavMenuItem.Permission` takes — never a role). `Collect(contributors, gate, user)`
+  keeps only the chapters the session may read, and `NsGuide` refuses a session left with none
+  (`Common.NotAuthorized`) rather than drawing an empty book: a hidden door is not a guard. A
+  chapter without one is read by every session.
+- **Registration is composition, and the only filter is the chapter's own grant.** An app that never
   composed a kit never runs that kit's `AddGuide`, so the kit's chapters cannot reach that
   app's guide — Therapy keeps books and sells nothing, so it reads Accounting's chapter and
   no counter chapter exists for it to hide.
