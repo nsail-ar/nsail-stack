@@ -75,8 +75,8 @@ public sealed class NsDialogSizeTests : BunitContext, IAsyncLifetime
     }
 
     /// <summary>Xxl is the top step and has no box of its own: the viewport less the 16px margin
-    /// every other step is capped at, on both axes, so at 1366×768 it is 1334×736 and at
-    /// 1920×1080 it is 1888×1048 — nearly full screen, still a dialog over the page.</summary>
+    /// every other step is capped at, on both axes — nearly full screen, still a dialog over the
+    /// page.</summary>
     [Fact]
     public async Task Xxl_isTheViewportLessTheMargin_onBothAxes()
     {

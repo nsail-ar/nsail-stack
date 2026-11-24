@@ -185,9 +185,10 @@ content could still grow past, the one surface taking its shape from content. Re
 dialog scrolling its content — **the dialog never scrolls its content; scrolling is `NsPanel`'s
 job, not the frame's.** Width and height are the same kind of property, written through custom
 properties (`--ns-dialog-width`/`--ns-dialog-height`) so the phone override wins on ordinary
-cascade order instead of fighting an inline style. The height ladder (240/300/360/440/520/600)
-is fixed px chosen to read as a fraction of the screen per step — its aspect drifting across the
-steps is accepted, not an oversight.
+cascade order instead of fighting an inline style. The height ladder (240/300/360/440/520) is
+fixed px chosen to read as a fraction of the screen per step — its aspect drifting across the
+steps is accepted, not an oversight. `Xxl` has no px of its own: it is the viewport less the
+margin («The size seam», [ui/surfaces.md](ui/surfaces.md)).
 
 ## The two z-index halves
 

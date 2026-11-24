@@ -90,7 +90,7 @@
 
         if (size == NsSize.Xxl)
         {
-            return $"--ns-dialog-width: {ViewportWidth}; --ns-dialog-height: {ViewportHeight};";
+            return $"--ns-dialog-width: {ViewportLessMarginWidth}; --ns-dialog-height: {ViewportLessMarginHeight};";
         }
 
         var (width, height) = size switch
@@ -103,13 +103,13 @@
             _ => (640, 360)
         };
 
-        return $"--ns-dialog-width: min({width}px, {ViewportWidth}); " +
-               $"--ns-dialog-height: min({height}px, {ViewportHeight});";
+        return $"--ns-dialog-width: min({width}px, {ViewportLessMarginWidth}); " +
+               $"--ns-dialog-height: min({height}px, {ViewportLessMarginHeight});";
     }
 
-    const string ViewportWidth = "calc(100vw - 32px)";
+    const string ViewportLessMarginWidth = "calc(100vw - 32px)";
 
-    const string ViewportHeight = "calc(100vh - 32px)";
+    const string ViewportLessMarginHeight = "calc(100vh - 32px)";
 
     // ns-container: the modal is a fixed box over the page, so nothing above it is the
     // ns-container NsPanel and NsCard declare — the layout's own chrome is not one and the
