@@ -329,7 +329,7 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
 ### `ActionItem`
 
 - `ActionItem` (`NSail.Components/Actions/`): `Name`, `Icon`, `Weight`, `Group`, `Heading`,
-  `HeadingIcon`, `Disabled`, `Running`, `Severity`, `Writes`, and exactly
+  `HeadingIcon`, `Disabled`, `Running`, `Severity`, `Writes`, `As`, and exactly
   one of `PageType` (+ optional `Parameters`/`Target`), `Url`, `OnClick` or `Menu`. A page's URL
   derives from the route table at render. **Links render as real anchors, commands as buttons**
   — the golden rule at the model level. **`Url` is the one written address**, for a destination
@@ -360,6 +360,10 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   something and never because what it reports is bad news. It is what lets one contributed verb
   say which of several states a row is in where the cell has no room for a word. Unset is the
   ordinary ink, which is every act that reports no state.
+- **`As` is the act's intention, drawn only where the toolbar draws buttons** (`Buttons`,
+  below): `Default` unless named, and an icon row or a merely worded one ignores it, since a
+  glyph has no fill to carry it. **`Main` stays one per surface** (One button) and the toolbar
+  does not police it: a contributor names it only where its act is the surface's.
 - **`Running` is the act's work still going, by the page's own state** — a task still on the box
   long after the click returned. Beside `Disabled` because it is state the page sets on the
   item, and every presenter that draws it as an act honours it: `NsAction` draws the face of a
@@ -434,6 +438,13 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   links beside it and a card header's squares agree without any of them naming a number. A
   grid's action column compacts the *padding*, never the glyph: **a passive label must not
   outweigh the controls that act.**
+- **A host whose own acts are buttons asks for `Buttons`** — a dialog's footer, a row of
+  `NsButton`s: every page act and command is then the same filled button, worded at every
+  width, at its item's `As`, a link still an anchor and a command still a button, spaced like
+  `NsButton`s in a horizontal `NsStack` at `Gap="Sm"`. Without it a contributed act beside
+  filled buttons reads as a second, smaller style. `Breakpoint="NsBreakpoint.Always"` alone
+  words the flat rung and stays as it is; the gate, the cap, the kebab, `Writes`, `Running` and
+  `Severity` answer the same under either.
 - **The toolbar does not resolve or contribute; it DOES gate what the host handed it** —
   authorization, and the form's word about writing — and **both gates run before it counts**: an
   item dropped after the cap would spend a visible slot on nothing and leave a kebab opening on
