@@ -17,6 +17,7 @@
 @inject RouteTable Routes
 @inject NavigationManager Navigation
 @inject PageGate Gate
+@inject IServiceProvider Services
 @inject IEnumerable<IGuideContributor> GuideContributors
 @inject Mediator Mediator
 
@@ -758,13 +759,12 @@
             return true;
         }
 
-        // Shortcuts belong to the screens a session runs the house from: where the app has a
-        // guide, a session that may read none of it is not drawn the key sheet either.
-        if (item.Name == HelpMenu.Shortcuts
-            && item.Command is not null
+        // Shortcuts and the guide's own door belong to the screens a session runs the house
+        // from: where the app has a guide, a session that may read none of it is drawn neither.
+        if (((item.Name == HelpMenu.Shortcuts && item.Command is not null)
+                || (item.PageType is not null && item.PageType == (Services.GetService(typeof(GuideRoute)) as GuideRoute)?.PageType))
             && GuideContributors.Any()
-            && (await GuideItem.Collect(GuideContributors, Gate, user)).Count == 0
-            && (await GuideItem.Collect(GuideContributors)).Count > 0)
+            && await GuideItem.IsClosedTo(GuideContributors, Gate, user))
         {
             _hidden.Add(item);
 

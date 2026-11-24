@@ -45,8 +45,9 @@ a guide is content a module already knows, not state anybody saves.
   keeps only the chapters the session may read, and `NsGuide` refuses a session left with none
   (`Common.NotAuthorized`) rather than drawing an empty book: a hidden door is not a guard. A
   chapter without one is read by every session. Where the app has a guide and the session
-  may read none of it, the drawer also drops Atajos de Teclado, so the Help group is not
-  drawn: shortcuts belong to the screens a session runs the house from.
+  may read none of it, the drawer drops the guide's own row (the one whose page is the
+  registered `GuideRoute`) and Atajos de Teclado, so the Help group is not drawn: shortcuts
+  belong to the screens a session runs the house from.
 - **Registration is composition, and the only filter is the chapter's own grant.** An app that never
   composed a kit never runs that kit's `AddGuide`, so the kit's chapters cannot reach that
   app's guide — Therapy keeps books and sells nothing, so it reads Accounting's chapter and
@@ -189,7 +190,8 @@ two-line whisper in a popover — never a chapter, never a link.
 - **An app that registered no guide page draws no door at all**: a link to a room nobody built
   is worse than no link. **Nor does a session that may not open the page it registered** — the
   link asks the same `PageGate` the drawer asks, on the guide page's own type, so a door a click
-  would only turn into a refusal is never drawn either.
+  would only turn into a refusal is never drawn either — nor one to a guide the session may
+  read none of, or to a chapter it may not read, where the guide would open somewhere else.
 
 **`NsPageHeader Guide` is how a screen adds it**, and the header places it itself — last in the
 title row, past whatever utilities the page announced — so every screen's way into the guide is

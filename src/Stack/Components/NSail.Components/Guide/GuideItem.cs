@@ -95,6 +95,17 @@ public sealed class GuideItem
         return readable;
     }
 
+    /// <summary>Whether the guide has chapters and the session may read none of them: the
+    /// guide is refused it, and no door to it is drawn.</summary>
+    public static async Task<bool> IsClosedTo(
+        IEnumerable<IGuideContributor> contributors,
+        PageGate gate,
+        ClaimsPrincipal user)
+    {
+        return (await Collect(contributors, gate, user)).Count == 0
+            && (await Collect(contributors)).Count > 0;
+    }
+
     /// <summary>The chapter an address names, the first one when it names none, and null when
     /// there is no guide at all — so /guide and /guide/{unknown} both land somewhere.</summary>
     public static GuideItem? Open(IReadOnlyList<GuideItem> chapters, string? file)

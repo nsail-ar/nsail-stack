@@ -452,7 +452,7 @@ other end, the surface this session was on would be gone and no route brings it 
 closes over its own services, run where the person stands — a sheet, a dialog — and the drawer
 draws it as one more row of the map, so the search finds it by the name on screen, `Permission`
 gates it and `Visible` hides it exactly as any leaf's. It names no page, so like a `Url` leaf it
-is never the active route, never asked of the `PageGate`, and carries no count; a destination
+is never the active route, never asked of the `PageGate` itself, and carries no count; a destination
 wins where an entry names both.
 
 - **It is a BUTTON wearing the vendor's row** (`.ns-nav-command`), not `MudNavLink`: given no
@@ -470,7 +470,9 @@ wins where an entry names both.
   `AddComponentServices` ahead of every kit's and app's contributor): *Help* last on the map,
   opening with *Atajos de Teclado* — the "?" sheet, a `Command` carrying `NsKeys.Help`. An app
   hangs its own help under it by naming `HelpMenu.Group` as a `Parent` (a guide, a way to
-  support) and arranges or hides the group as it would any kit's.
+  support) and arranges or hides the group as it would any kit's. Where the app has a guide and
+  the session may read none of it, the drawer itself drops *Atajos de Teclado* and the row whose
+  page is the guide's, so the group is not drawn ([guide.md](guide.md)).
 - **`NavMenu.Help` and `NavMenu.Shortcuts` repeat `Common.Help` and `Common.Shortcuts` on
   purpose**: an entry's label is `NavMenu.{Name}`, the sheet's title and the help button's label
   are the `Common.` keys, and folding either pair into the other breaks one of the two sites.
