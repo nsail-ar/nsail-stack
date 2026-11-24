@@ -276,7 +276,9 @@ else if (HasDocument)
             await JS.InvokeVoidAsync("nsapp.focusFirst", _formId);
         }
 
-        if (_refusalPending)
+        // Held while a save runs: its fields are frozen and take no cursor (HandleSubmit renders
+        // again once they thaw).
+        if (_refusalPending && !IsRunning)
         {
             _refusalPending = false;
 
@@ -473,6 +475,11 @@ else if (HasDocument)
         {
             surface?.SetFinishing(false);
             echoed = surface?.EndSave(window) ?? [];
+        }
+
+        if (_refusalPending)
+        {
+            StateHasChanged();
         }
 
         // A handler that gave up on the submit refused it as surely as the server would have,

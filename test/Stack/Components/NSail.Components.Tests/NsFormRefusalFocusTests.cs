@@ -82,6 +82,38 @@ public sealed class NsFormRefusalFocusTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public async Task AServerRefusalAfterARealWait_MovesTheCursorOnceTheFieldsTakeIt()
+    {
+        var running = new TaskCompletionSource();
+        var frozen = new List<bool>();
+        IRenderedComponent<FormProblemHost>? cut = null;
+
+        // Read at the moment of the call: a field frozen by the save in flight takes no cursor.
+        JSInterop.SetupVoid(Signal, _ =>
+        {
+            frozen.Add(cut!.FindAll("input").Any(input => input.HasAttribute("disabled")));
+
+            return true;
+        }).SetVoidResult();
+
+        cut = Render<FormProblemHost>(p => p
+            .Add(x => x.Model, new FormProblemModel())
+            .Add(x => x.Problem, Invalid(nameof(FormProblemModel.Alias)))
+            .Add(x => x.Hold, running.Task));
+
+        // Discarded on purpose: the submit only completes once `running` is released below.
+        _ = cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("input"), input => input.HasAttribute("disabled")));
+
+        running.SetResult();
+
+        cut.WaitForAssertion(() => AssertMovedTo(cut, Calls));
+
+        Assert.Equal([false], frozen);
+    }
+
+    [Fact]
     public async Task ARefusalDrawnOnlyAtTheFoot_MovesNothing()
     {
         var cut = Render<FormProblemHost>(p => p
