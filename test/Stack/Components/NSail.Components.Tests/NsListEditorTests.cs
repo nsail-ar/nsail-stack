@@ -452,6 +452,38 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain("align-center", fields.ClassList);
     }
 
+    /// <summary>Once the open row aligns its fields to the top, a boolean control beside a labelled
+    /// field would sit on that field's label gutter; the stylesheet gives it the field's gutter
+    /// and box instead. Its selector keys on the labelled class riding the field's root as a
+    /// DIRECT child of the fields box, and on the controls themselves being direct children —
+    /// both pinned here against the rendered row, then the rule's own selectors are run.</summary>
+    [Fact]
+    public async Task TheOpenRowsBooleanControlsTakeTheLabelledFieldsGeometry()
+    {
+        var cut = Render<ListEditorCheckHost>();
+
+        await cut.InvokeAsync(() => cut.FindAll("button[aria-label='Editar']")[0].Click());
+
+        var fields = cut.Find(".ns-list-editor-fields");
+
+        Assert.Contains(fields.Children, child =>
+            child.ClassList.Contains("mud-input-control") &&
+            child.ClassList.Contains("mud-input-outlined-with-label"));
+        Assert.Contains(fields.Children, child => child.ClassList.Contains("ns-form-check"));
+        Assert.Contains(fields.Children, child => child.ClassList.Contains("ns-record-state"));
+
+        var seated = HouseStylesheet.Read().Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith(".ns-list-editor-fields:has(", StringComparison.Ordinal))
+            .Select(line => line.TrimEnd('{', ',', ' '))
+            .SelectMany(selector => cut.FindAll(selector))
+            .ToList();
+
+        Assert.Equal(2, seated.Count);
+        Assert.Contains(seated, control => control.ClassList.Contains("ns-form-check"));
+        Assert.Contains(seated, control => control.ClassList.Contains("ns-record-state"));
+    }
+
     static Task Press(IRenderedComponent<ListEditorFormHost> cut, string name)
     {
         return cut.InvokeAsync(() => cut.FindAll($"button[aria-label='{name}']")[0].Click());
