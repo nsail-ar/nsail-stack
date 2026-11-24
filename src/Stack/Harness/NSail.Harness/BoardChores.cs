@@ -35,6 +35,8 @@ static class BoardChores
                 switch (c.Kind)
                 {
                     case ChoreKind.Unlock:
+                        // A label is read as it is now: one another machine already took off is nobody's to release.
+                        if (!(await board.Labels(c.Story, ct)).Contains(c.Value)) continue;
                         await board.RemoveLabel(c.Story, c.Value);
                         break;
                     case ChoreKind.MoveStage:

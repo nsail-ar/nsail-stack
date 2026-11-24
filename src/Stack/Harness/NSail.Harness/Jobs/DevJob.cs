@@ -491,6 +491,14 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             }
             if (!pushed)
             {
+                // A head another machine moved past the one this round was planned on and the one it
+                // checked out is the gate's to judge: the round did not stall.
+                var head = (await repo.Pr(open.Number, ct)).HeadSha;
+                if (head != since && head != Item.Sha)
+                {
+                    await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.HeadMoved, ("pr", open.Number), ("head", head[..Math.Min(8, head.Length)]))} {ctx.Texts.Signature}");
+                    return new Ending($"PR #{open.Number} moved under the round, nothing pushed — the gate judges its new head");
+                }
                 await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.NothingPushed, ("pr", open.Number))));
                 return new Ending($"PR #{open.Number} open, nothing pushed — dead", Failed: true);
             }
