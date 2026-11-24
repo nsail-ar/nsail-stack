@@ -28,7 +28,7 @@ public class ManualRunForkTests
         var options = new RepositoryOptions { Name = "o/r" };
         var gh = new GitHubClient(new HttpClient(new Pulls(headRepo)) { BaseAddress = new Uri("https://api.github.com/") });
         var repo = new GitHubRepository(gh, options, new StoryNames("app", ["story"]), "t");
-        return new HarnessHandler(null!, new HarnessOptions(), null!, null!, null!, null!, null!, new RepositorySet([(repo, options)]));
+        return new HarnessHandler(null!, new HarnessOptions(), null!, null!, null!, null!, null!, new RepositorySet([(repo, options)]), null!);
     }
 
     [Theory]
