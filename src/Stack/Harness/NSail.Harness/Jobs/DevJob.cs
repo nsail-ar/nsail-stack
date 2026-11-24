@@ -445,7 +445,10 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         if (Out("elsewhere.md") is { Length: > 0 } elsewhere)
         {
             if (await NothingToBuild(elsewhere) is { } landed) return landed;
-            await board.Comment(n, JobContext.Signed(elsewhere, Seat));
+            // On an open PR the next round is planned from the PR, not by the analyst, so an elsewhere that pushed
+            // nothing there is a voyage that moved nothing: marked, a second in a row is stalled.
+            var moved = pushed || (await repo.PrsOf(n, "open", ct)).Count == 0;
+            await board.Comment(n, moved ? JobContext.Signed(elsewhere, Seat) : $"{JobContext.Signed(elsewhere, Seat)}\n{Markers.Voyage}");
             return new Ending("needs a change in another repository first — to the analyst", "Reanalyze");
         }
 

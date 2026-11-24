@@ -371,6 +371,24 @@ public class DevJobRunTests : IDisposable
         Assert.Equal("Reanalyze", outcome.Event);
         Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
         Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("lives in nsail-stack"));
+        Assert.DoesNotContain(board.Cards[1].Comments, c => c.Body.Contains(Markers.Voyage, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TwoElsewheresInARowOnAnOpenPrThatPushedNothingStallTheStory()
+    {
+        await Seed();
+        Repo.Open.Add(new PrRef(7, "a story", Story, null, "acme/app"));
+        var board = Board();
+
+        var first = await Run(new Asking("elsewhere.md", "What is left belongs in the harness."), board, new Lines());
+        await Run(new Asking("elsewhere.md", "Still the harness's."), board, new Lines());
+        var third = await Run(new Asking("elsewhere.md", "never written"), board, new Lines());
+
+        Assert.Equal("Reanalyze", first.Event);
+        Assert.Contains(Labels.Stalled, board.Cards[1].Labels);
+        Assert.Equal("two dead voyages — stalled", third.Summary);
+        Assert.DoesNotContain(board.Cards[1].Comments, c => c.Body.Contains("never written"));
     }
 
     [Fact]
