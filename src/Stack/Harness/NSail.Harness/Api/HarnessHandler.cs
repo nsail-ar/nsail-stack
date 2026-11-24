@@ -12,7 +12,7 @@ namespace NSail.Harness.Api;
 
 // The harness's API: what it shows of itself and the switches a hand flips.
 [Injectable]
-public sealed class HarnessHandler(HarnessLoop loop, HarnessOptions options, JobHistory history, JobStats stats, BuildLeases leases, LoadSamples load, Agents.IAgent agent, Repositories.RepositorySet repos) :
+public sealed class HarnessHandler(HarnessLoop loop, HarnessOptions options, JobHistory history, JobStats stats, BuildLeases leases, LoadSamples load, Agents.IAgent agent, Repositories.RepositorySet repos, Lanes.IPressure pressure) :
     IHandler<GetStatus, HarnessStatus>,
     IHandler<ListJobs, JobsView>,
     IHandler<GetStats, HarnessStatsView>,
@@ -56,6 +56,7 @@ public sealed class HarnessHandler(HarnessLoop loop, HarnessOptions options, Job
             Cpu1 = Round(load.Cpu(now, TimeSpan.FromMinutes(1))),
             Cpu5 = Round(load.Cpu(now, TimeSpan.FromMinutes(5))),
             Memory5 = Round(load.Memory(now, TimeSpan.FromMinutes(5))),
+            Pressure = pressure.Read() is { } p ? new PressureView { MemoryFull = p.MemoryFull, CpuSome = p.CpuSome } : null,
             Quota = [.. agent.Usage.Select(w => new QuotaReading { Window = w.Name, Used = Math.Round(w.Utilization * 100, 1), Pace = Math.Round(w.PaceAt(now), 2), ResetsAt = w.ResetsAt })],
         };
     }

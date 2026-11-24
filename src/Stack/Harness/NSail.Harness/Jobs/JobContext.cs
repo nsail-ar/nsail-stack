@@ -49,6 +49,9 @@ public sealed class JobContext(
     // The log sources a Watch worker reads, by Name: the host's providers (AddOpenObserve, ...).
     public IReadOnlyList<Watching.ILogSource> LogSources { get; init; } = [];
 
+    // The machine's pressure as the kernel reports it, read where a decision needs it.
+    public IPressure Pressure { get; init; } = new ProcPressure();
+
     // How the default repository builds and tests, when it says (Repositories[].Build).
     public IBuilder? Builder { get; } = Builders.For(options.DefaultRepository.Build, options.BuildNodes);
 
