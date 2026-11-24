@@ -635,7 +635,8 @@ public class DevJobRunTests : IDisposable
     }
 
     // A seat that does what it is given in its checkout and ends with a PR's words, or dies after it.
-    sealed class Acting(Func<string, Task> act, Exception? dies = null) : IAgent
+    // Its ending is the file it names (none for a seat that dies with that exit code).
+    sealed class Acting(Func<string, Task> act, Exception? dies = null, string? file = "pr.md", int exit = 0) : IAgent
     {
         public string Driver => "test";
 
@@ -643,8 +644,8 @@ public class DevJobRunTests : IDisposable
         {
             await act(run.WorkDir);
             if (dies is not null) throw dies;
-            await File.WriteAllTextAsync(Path.Combine(run.WorkDir, ".voyage", "out", "pr.md"), "fix(stack): words\n\nThe words.", ct);
-            return new AgentResult(0, false, null, false, null);
+            if (file is not null) await File.WriteAllTextAsync(Path.Combine(run.WorkDir, ".voyage", "out", file), "fix(stack): words\n\nThe words.", ct);
+            return new AgentResult(exit, false, null, false, null);
         }
 
         public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
@@ -698,6 +699,47 @@ public class DevJobRunTests : IDisposable
             Assert.Contains("the gate judges the new head", c.Body);
         });
         Assert.Empty(Repo.Said);
+    }
+
+    [Theory]
+    [InlineData("handoff.md", 0, "handed off with nothing pushed")]
+    [InlineData(null, 1, "voyage ended (exit 1)")]
+    public async Task AHandOffOrADeathWithNothingPushedOnAPrMovedUnderItDoesNotCountTowardStalled(string? file, int exit, string summary)
+    {
+        await Seed();
+        await Shell.Git(Remote, "update-ref", $"refs/heads/{Story}", "refs/heads/main");
+        Repo.Open.Add(new PrRef(7, "a story", Story, null, "acme/app"));
+        var board = Board();
+
+        for (var i = 1; i <= 3; i++)
+        {
+            var outcome = await Run(new Acting(_ => AnotherMachinePushes(), file: file, exit: exit), board, new Lines(), item: Round(await RemoteHead(Story)));
+
+            Assert.False(outcome.Failed);
+            Assert.StartsWith(summary, outcome.Summary);
+            Assert.Contains("moved under the round", outcome.Summary);
+            Assert.Equal(i, board.Cards[1].Comments.Count);
+        }
+        Assert.DoesNotContain(Labels.Stalled, board.Cards[1].Labels);
+        Assert.All(board.Cards[1].Comments, c =>
+        {
+            Assert.DoesNotContain(Markers.Voyage, c.Body);
+            Assert.Contains("the gate judges the new head", c.Body);
+        });
+    }
+
+    [Fact]
+    public async Task AHandOffWithNothingPushedOnAHeadNobodyMovedStillCounts()
+    {
+        await Seed();
+        await Shell.Git(Remote, "update-ref", $"refs/heads/{Story}", "refs/heads/main");
+        Repo.Open.Add(new PrRef(7, "a story", Story, null, "acme/app"));
+        var board = Board();
+
+        var outcome = await Run(new Asking("handoff.md", "The rest is the README."), board, new Lines(), item: Round(await RemoteHead(Story)));
+
+        Assert.Equal("handed off, nothing pushed", outcome.Summary);
+        Assert.Contains(Markers.Voyage, board.Cards[1].Comments.Single().Body);
     }
 
     [Fact]

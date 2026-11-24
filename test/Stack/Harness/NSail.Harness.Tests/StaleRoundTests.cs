@@ -92,7 +92,7 @@ public sealed class StaleRoundTests : IDisposable
     }
 
     [Fact]
-    public async Task ARoundOnARedHeadThatHasNotMovedIsStillDispatched()
+    public async Task OnlyARoundWhosePrHeadMovedSinceItsPlanReadsAsMoved()
     {
         var round = Assert.Single(SampleWorkers.Plan(ReadBeforeTheFix(), new PlannerOptions(Gate: true)).Items);
 

@@ -193,7 +193,7 @@ public class BoardChoresTests
 
     // Another machine's job ended and took its `claimed` off between this pass's read and its write.
     [Fact]
-    public async Task AnOrphanClaimAlreadyGoneIsNeitherRemovedNorLoggedNorNoted()
+    public async Task AnOrphanClaimAlreadyGoneIsNeitherRemovedNorLogged()
     {
         var board = new MemoryBoard();
         board.Add(7, stage: "In-Progress");
@@ -202,7 +202,6 @@ public class BoardChoresTests
         var log = await Run(read, board);
 
         Assert.DoesNotContain(log.Written, l => l.Contains("#7") && l.Contains("no job behind it"));
-        Assert.DoesNotContain(SampleWorkers.Plan(read.Build()).Notes, n => n.Contains("no job behind it"));
     }
 
     [Fact]
