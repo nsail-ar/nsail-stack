@@ -190,4 +190,29 @@ public class BoardChoresTests
         Assert.Equal("Analyze", board.Cards[900].Stage);
         Assert.DoesNotContain(log.Written, l => l.Contains("dropped"));
     }
+
+    // Another machine's job ended and took its `claimed` off between this pass's read and its write.
+    [Fact]
+    public async Task AnOrphanClaimAlreadyGoneIsNeitherRemovedNorLogged()
+    {
+        var board = new MemoryBoard();
+        board.Add(7, stage: "In-Progress");
+        var read = new Fixture().Story(7, "In-Progress", "claimed").LockAge(7, "claimed", TimeSpan.FromMinutes(11));
+
+        var log = await Run(read, board);
+
+        Assert.DoesNotContain(log.Written, l => l.Contains("#7") && l.Contains("no job behind it"));
+    }
+
+    [Fact]
+    public async Task AnOrphanClaimStillOnComesOffOutLoud()
+    {
+        var board = new MemoryBoard();
+        board.Add(7, stage: "Ready", labels: "claimed");
+
+        var log = await Run(new Fixture().Story(7, "Ready", "claimed").LockAge(7, "claimed", TimeSpan.FromMinutes(11)), board);
+
+        Assert.DoesNotContain("claimed", board.Cards[7].Labels);
+        Assert.Contains(log.Written, l => l.StartsWith("chore: Unlock") && l.Contains("#7") && l.Contains("no job behind it"));
+    }
 }

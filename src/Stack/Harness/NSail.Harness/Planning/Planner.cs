@@ -79,8 +79,9 @@ public static class Planner
         return null;
     }
 
-    // A lock with no job behind it comes off, out loud, and the story is simply in the queue again; so
-    // does the screen's hold once a hand allows the protected paths.
+    // A lock with no job behind it comes off, out loud when its chore finds it still on (BoardChores),
+    // and the story is simply in the queue again; so does the screen's hold once a hand allows the
+    // protected paths.
     internal static List<Issue> ReleaseStaleLocks(BoardSnapshot board, PlannerOptions options, List<Chore> chores, List<string> notes)
     {
         var reviewByStory = board.Prs.Where(p => p.Repo == board.Repo).GroupBy(p => p.Story)
@@ -114,7 +115,6 @@ public static class Planner
             foreach (var label in drop)
             {
                 chores.Add(new Chore(ChoreKind.Unlock, i.Number, label, $"`{label}` with no job behind it"));
-                notes.Add($"#{i.Number} wore `{label}` with no job behind it — released, back in the queue");
             }
             var lifted = LiftScreen(i, chores, notes);
             drop.AddRange(lifted);
