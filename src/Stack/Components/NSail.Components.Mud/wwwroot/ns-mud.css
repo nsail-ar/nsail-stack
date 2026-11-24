@@ -3133,6 +3133,13 @@ div.mud-input-slot.mud-input-root::placeholder {
     display: none;
 }
 
+/* The host's answer for a dashboard whose allowed cards all answered with nothing. NsDashboard
+   draws it only once every read has answered; whether any card then drew an element is asked
+   here, of the same slot the collapse above asks, so the two can never disagree. */
+.ns-dashboard:has(> .ns-dashboard-item > .ns-dashboard-card > *) + .ns-dashboard-silent {
+    display: none;
+}
+
 /* NsTimeGrid: a time-of-day axis crossed by one column per day. The hour is the unit every
    block's offset and height are a calc() against, so the scale is set here and nowhere in
    C#; the gutter's hour rows and each column's stack the same number of them, which is what

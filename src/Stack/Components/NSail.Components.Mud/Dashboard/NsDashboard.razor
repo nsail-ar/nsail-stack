@@ -48,12 +48,21 @@ else if (_items.Count > 0)
                            that appeared after a session gained the page must reach the card
                            that was already standing. *@
                         <CascadingValue Value="@Door(item)">
-                            <DynamicComponent @key="item.CardType" Type="item.CardType!" Parameters="@GetParameters(item)" />
+                            <CascadingValue Value="_reads" IsFixed>
+                                <DynamicComponent @key="item.CardType" Type="item.CardType!" Parameters="@GetParameters(item)" />
+                            </CascadingValue>
                         </CascadingValue>
                     </div>
                 </div>
             }
         </div>
+        @* Drawn once every card's read has answered, and hidden by the stylesheet while any
+           card holds an element: which card stayed silent is decided inside its own render,
+           where C# never sees it. *@
+        @if (Silent is not null && _settled)
+        {
+            <div class="ns-dashboard-silent">@Silent</div>
+        }
     </NsStack>
 }
 
@@ -67,14 +76,59 @@ else if (_items.Count > 0)
 
     bool _resolved;
 
+    readonly DashboardReads _reads = new();
+
+    bool _settled;
+
     /// <summary>What this dashboard shows when the session may open none of the contributed
     /// cards — the app's own answer to "there is nothing here for you", derived from the
     /// permission model rather than from who the caller is.</summary>
     [Parameter]
     public RenderFragment? Empty { get; set; }
 
+    /// <summary>What this dashboard shows when the gate allowed cards and every one of them
+    /// answered with nothing — kept apart from Empty, which answers the permission model rather
+    /// than the data. Absent until every card's read has answered.</summary>
+    [Parameter]
+    public RenderFragment? Silent { get; set; }
+
     [CascadingParameter]
     public Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _reads.Settled += OnSettled;
+    }
+
+    // A card starts its read while the batch that mounted it renders, so by now every read the
+    // first render started is counted; one still pending settles through OnSettled instead.
+    protected override void OnAfterRender(bool firstRender)
+    {
+        TrySettle();
+    }
+
+    void OnSettled()
+    {
+        _ = InvokeAsync(Settle);
+    }
+
+    // The yield lets the card whose read just answered render its answer first: settled ahead
+    // of it, the silent content would stand for one frame beside a card about to draw.
+    async Task Settle()
+    {
+        await Task.Yield();
+
+        TrySettle();
+    }
+
+    void TrySettle()
+    {
+        if (Silent is not null && !_settled && _items.Count > 0 && !_reads.Pending)
+        {
+            _settled = true;
+            StateHasChanged();
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
