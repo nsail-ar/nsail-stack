@@ -114,6 +114,16 @@ public sealed partial class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory
         return StoryDossier.IsWatch(labels, body) ? $"== analyze {reference}{tail}\n{Untrusted.Fence(title)}" : $"== analyze {reference} {title}{tail}";
     }
 
+    // A ready's labels.txt is the story's whole routing: a routing label the story wears and it does not carry comes
+    // off, or RepositorySet.RoutedBy keeps sending every voyage to that repository. A labels.txt with nothing the
+    // board knows says nothing, and removes nothing.
+    internal static IReadOnlyList<string> StaleRouting(IReadOnlyCollection<string> written, IEnumerable<string> worn, IEnumerable<string> routing)
+    {
+        if (written.Count == 0) return [];
+        var routes = routing.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return worn.Where(l => routes.Contains(l) && !written.Contains(l, StringComparer.OrdinalIgnoreCase)).ToList();
+    }
+
     async Task<Ending> Act(int n, string title, string dir, string outDir, bool stalled, AgentResult result, ILogger log, CancellationToken ct)
     {
         var board = ctx.Board;
@@ -152,6 +162,7 @@ public sealed partial class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory
                     {
                     }
                 }
+                foreach (var stale in StaleRouting(allowed, await board.Labels(n, ct), Elsewhere.Select(r => r.Label!))) await board.RemoveLabel(n, stale);
                 await Post();
                 await WrittenBlockers.Link(board, n, $"{Read("body.md")}\n{comment}", ctx.Names.Key, ct, ctx.Repos);
                 await Hold(n, Read("protected.txt"), ct);

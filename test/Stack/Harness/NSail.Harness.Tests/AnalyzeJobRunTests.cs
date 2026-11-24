@@ -120,6 +120,31 @@ public class AnalyzeJobRunTests : IDisposable
     }
 
     [Fact]
+    public async Task AReadyThatNoLongerCarriesARoutingLabelTakesItOffAndLeavesTheOtherAreas()
+    {
+        var board = await Analyze(new Analyst(null, labels: "no-walk\n"), "area:framework", "area:shop");
+
+        Assert.DoesNotContain("area:framework", board.Cards[1].Labels);
+        Assert.Superset(new HashSet<string> { "area:shop", Labels.NoWalk }, board.Cards[1].Labels);
+    }
+
+    [Fact]
+    public async Task AReadyThatCarriesItsRoutingLabelKeepsIt()
+    {
+        var board = await Analyze(new Analyst(null, labels: "area:framework\narea:shop\n"), "area:framework", "area:shop");
+
+        Assert.Contains("area:framework", board.Cards[1].Labels);
+    }
+
+    [Fact]
+    public async Task AReadyWithNoLabelsTxtLeavesTheRoutingAsItIs()
+    {
+        var board = await Analyze(new Analyst(null), "area:framework", "area:shop");
+
+        Assert.Contains("area:framework", board.Cards[1].Labels);
+    }
+
+    [Fact]
     public async Task TheAnalystMarksAStoryNoWalkAndNeverAHandsLabel()
     {
         var board = await Analyze(new Analyst(null, labels: "no-walk\narea:shop\np1\nother\n"));
