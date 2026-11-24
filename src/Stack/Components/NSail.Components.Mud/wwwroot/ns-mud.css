@@ -4759,8 +4759,15 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* A nested NsMenu, a submenu's row: the vendor's own rule for one (.mud-menu-list > .mud-menu)
    reads it as a child of the list, and the span NsMenu wraps every menu in stands between them,
    so without this the vendor's inline-flex box stands and several submenus flow in a line,
-   widening the popover toward the window's edge instead of stacking one per row. */
-.ns-menu-list > .ns-menu-keys > .mud-menu {
+   widening the popover toward the window's edge instead of stacking one per row. A row under a
+   block or a wrapper is no direct child of the list either, so the rule reaches any depth, and
+   the list is a column so its direct children take a line each. */
+.ns-menu-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.ns-menu-list .ns-menu-keys > .mud-menu {
     width: 100%;
     display: inline;
 }
