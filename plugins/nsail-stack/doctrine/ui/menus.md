@@ -59,9 +59,10 @@ rows is drawn by position in `ns-mud.css`, so neither end needs a divider a call
   that says it opens one. Its row stands on a line of its own like any other: the vendor's rule
   for a nested menu reads it as a child of the list, and the span `NsMenu` wraps every menu in
   stands between them, so `ns-mud.css` restates that rule past the span — without it several
-  submenus flow in a line and widen the menu toward the window's edge. The list is a column and the restated rule reaches a nested menu at any depth
-  under it, so a row a block or a wrapper keeps from being a direct child of the list still stands on its own
-  line inside the menu's width.
+  submenus flow in a line and widen the menu toward the window's edge. The list is a column and
+  the restated rule reaches a nested menu at any depth under it, so a row a block or a wrapper
+  keeps from being a direct child of the list still stands on its own line inside the menu's
+  width.
 
 ### A form that refuses writes
 
