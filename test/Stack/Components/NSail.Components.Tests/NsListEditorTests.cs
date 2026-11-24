@@ -442,7 +442,7 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
         var cut = Render<ListEditorHost>();
 
         Assert.Empty(cut.FindAll(".ns-list-editor-fields"));
-        Assert.Single(cut.FindAll("li.ns-list-editor-item > div.align-center"));
+        Assert.Single(cut.FindAll("li.ns-list-editor-item > div.flex-1.align-center"));
 
         await Click(cut, "Editar");
 
