@@ -53,6 +53,18 @@ public sealed class NsSplashTests : BunitContext
     }
 
     [Fact]
+    public void TheMarkIsDrawnInABandOfTheSharedHeight()
+    {
+        var cut = Render<NsSplash>(p => p.Add(c => c.LogoUrl, "api/branding/logo"));
+        var script = cut.Find("script").TextContent;
+
+        Assert.Contains($"height:{NsSplash.MarkHeight}px", cut.Find("#ns-splash-logo").GetAttribute("style"), StringComparison.Ordinal);
+        Assert.Contains("height:100%", cut.Find("#ns-splash-logo img").GetAttribute("style"), StringComparison.Ordinal);
+        Assert.Contains("root.style.height = \"100%\";", script, StringComparison.Ordinal);
+        Assert.Contains("root.style.width = \"auto\";", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheFirstFrameIsABlockToo()
     {
         var cut = Render<NsSplash>(p => p.Add(c => c.LogoUrl, "api/branding/logo"));
