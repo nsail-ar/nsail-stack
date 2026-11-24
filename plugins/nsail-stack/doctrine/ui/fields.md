@@ -623,8 +623,9 @@ height, honest wrap, nothing laid out over anything — and the row it grows pay
   fix.
 - **The growth is downward and only downward.** The vendor lays `.mud-input-control` out as a
   flex column with the helper container as its last item, so the input's own top does not move;
-  `.ns-grid` is `align-items: flex-start`, so the fields sharing the line keep their tops flush
-  with it. Nothing above the row shifts — what shifts is what stands under it.
+  `.ns-grid` is `align-items: flex-start`, and so is an open `NsListEditor` row's fields box, so
+  the fields sharing the line keep their tops flush with it. Nothing above the row shifts — what
+  shifts is what stands under it.
 - **The grid reserves no foot.** A message in flow grows the grid that holds it, so nothing hangs
   past its bottom edge for a panel's scroller to clip or grow a scrollbar over.
 - **The house styles the message nowhere.** Everything a stylesheet could say about it is said by

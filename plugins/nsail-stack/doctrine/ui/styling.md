@@ -113,6 +113,13 @@ marked *(cases)* has its story there.
     than the input — does not pull the check low. The mark is on the component, not on the grid,
     and the selector reaches a DIRECT child only, so a check nested in a stack
     beside an `NsHelp` owns its line already and is left alone.
+    **The `?` beside a labelled field in a top-aligned row** is the same partner: whatever renders
+    the `.ns-help` root (`NsHelp` and the components built on it) after a field with a label — or
+    after a wrapper holding one — in a horizontal row aligned to the start takes the field's 8px
+    gutter and a 40px box its glyph is centred in, so it sits on the input whether a refusal is
+    drawn under the field or not. Keyed on the vendor's `align-start` and on the labelled field,
+    so a centred row, a column and a `?` beside a boolean control keep their place. A product
+    that top-aligns a row of fields writes `Align="NsAlign.Start"` and nothing else.
   - A field cell whose content draws nothing (`StoreSelect HideLone`) collapses.
 - **`Gap` and `Margin` read off one `NsSize` scale** — room *between* children and room *around*
   the block, asked for the same way, so a page that wants a logo to breathe writes `Margin="Lg"`
