@@ -13,6 +13,7 @@ public sealed class HarnessTexts
     public string TwoDeadVoyages { get; set; } = "Two dead voyages in a row — `stalled` instead of a third try: the analyst reads why. The transcripts are in the harness's log ({machine}).";
     public string QuotaWall { get; set; } = "The voyage died on the account's usage limit, not on the story: the account refused this job until {until} UTC.";
     public string NothingPushed { get; set; } = "The voyage ended with nothing new pushed on PR #{pr}: the round did not advance. A second in a row goes to `stalled`.";
+    public string HeadMoved { get; set; } = "PR #{pr} moved to `{head}` under this round, past the head it was planned on and built from: nothing was pushed, and the gate judges the new head.";
     public string DeadVoyage { get; set; } = "The voyage ended with no PR and no hand-off ({why}{pushed}): the story can be taken again. A second in a row with no progress goes to `stalled`.";
     public string PushRefused { get; set; } = "The push to `{branch}` was refused (the branch moved past the head the voyage started from, or the network failed): the builder's commits are on `{rescue}`. A hand reconciles them.";
     public string PushRefusedKept { get; set; } = "The push to `{branch}` was refused and the rescue push failed too: the builder's commits stay on the harness's local branch only. A hand reconciles them before the story's next voyage.";

@@ -939,7 +939,7 @@ public sealed class HarnessLoop(
         };
     }
 
-    async Task<string?> Start(WorkItem item, CancellationToken ct)
+    internal async Task<string?> Start(WorkItem item, CancellationToken ct)
     {
         var o = options.Value;
         // A QA drain is no story's: it holds the browser, not a story lock.
@@ -975,6 +975,14 @@ public sealed class HarnessLoop(
                     if (labels.Overlaps(Labels.Locks))
                     {
                         log.LogInformation("#{Story}: a lock label appeared since the read — skipped", n);
+                        await locks.Release(n, holder, ct);
+                        workspace.Give(slot);
+                        return null;
+                    }
+                    // A round's PR whose head moved since the read waits for the gate on the new head.
+                    if (await MovedSince(item, ct) is { } head)
+                    {
+                        log.LogInformation("#{Story}: PR #{Pr} moved to {Head} since the read at {Sha} — skipped, the gate judges the new head", n, item.Pr, head, item.Sha);
                         await locks.Release(n, holder, ct);
                         workspace.Give(slot);
                         return null;
@@ -1211,6 +1219,14 @@ public sealed class HarnessLoop(
         log.LogInformation("✓ {Item} [{Id}]: {Outcome}", running.Item, running.Id, outcome);
         StopIfDrained();
         Wake();
+    }
+
+    // The head a round's PR stands at now, when it is no longer the one the pass planned the round on.
+    internal async Task<string?> MovedSince(WorkItem item, CancellationToken ct = default)
+    {
+        if (item.Kind != WorkKind.Dev || item.Pr is not { } pr || item.Sha is not { } planned) return null;
+        var head = (await jobs.Repos.Of(item.PrRepo ?? jobs.Repo.Name).Pr(pr, ct)).HeadSha;
+        return head == planned ? null : head;
     }
 
     // A story this machine already spent its worker's DailyCap of agents on, in a day and since a hand

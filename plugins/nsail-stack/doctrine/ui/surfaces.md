@@ -163,7 +163,9 @@ instance, an invariant name the caller declares, both ends through the surface.
 translates it** — `NsContainer` to a max-width, `NsDrawer` to a pixel width, `NsDialog` to a
 **fixed width and height**, both read against the viewport and never against the content (hence
 `Size`, not `Width`). That is what makes the same page render at a consistent size as main
-content or inside a surface. Below MudBlazor's own `sm` breakpoint a dialog is full screen,
+content or inside a surface. A dialog's top step, `Xxl`, has no fixed box: it is the viewport less
+a 16px margin on every side, the room a dialog with a lot to show needs while it still reads as a
+dialog over the page. Below MudBlazor's own `sm` breakpoint a dialog is full screen,
 square-cornered — the same mobile degradation the aside already has below its docking breakpoint.
 `Surface?.SetFloating(true)` overlays with a backdrop even where the layout would dock (cases).
 

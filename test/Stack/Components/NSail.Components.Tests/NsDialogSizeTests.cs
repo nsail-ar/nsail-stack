@@ -55,7 +55,6 @@ public sealed class NsDialogSizeTests : BunitContext, IAsyncLifetime
     [InlineData(NsSize.Md, 640, 360)]
     [InlineData(NsSize.Lg, 800, 440)]
     [InlineData(NsSize.Xl, 960, 520)]
-    [InlineData(NsSize.Xxl, 1140, 600)]
     public async Task BothAxesComeFromSizeAgainstTheViewport_withNoMinOrMaxHeightSplit(NsSize size, int width, int height)
     {
         var host = RenderHost();
@@ -71,6 +70,26 @@ public sealed class NsDialogSizeTests : BunitContext, IAsyncLifetime
         // The bug this story kills: a min-height lets content past it grow the box, so
         // switching tabs moved the frame. Neither survives — height is a property named
         // exactly like width, not a floor content can push past.
+        Assert.DoesNotContain("min-height", style);
+        Assert.DoesNotContain("max-height", style);
+    }
+
+    /// <summary>Xxl is the top step and has no box of its own: the viewport less the 16px margin
+    /// every other step is capped at, on both axes — nearly full screen, still a dialog over the
+    /// page.</summary>
+    [Fact]
+    public async Task Xxl_isTheViewportLessTheMargin_onBothAxes()
+    {
+        var host = RenderHost();
+
+        await host.InvokeAsync(() => host.Instance.ModalSurface!.SetSize(NsSize.Xxl));
+        host.Render();
+
+        var style = host.Find(".ns-dialog").GetAttribute("style") ?? string.Empty;
+
+        Assert.Contains("--ns-dialog-width: calc(100vw - 32px);", style);
+        Assert.Contains("--ns-dialog-height: calc(100vh - 32px);", style);
+        Assert.DoesNotContain("min(", style);
         Assert.DoesNotContain("min-height", style);
         Assert.DoesNotContain("max-height", style);
     }

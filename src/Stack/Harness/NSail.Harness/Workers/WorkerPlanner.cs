@@ -275,7 +275,7 @@ public static class WorkerPlanner
                     "red" => $"round ({where}: CI red)",
                     "conflict" => $"round ({where}: CI conflict)",
                     _ => $"round ({where} read {pr.Word} at {pr.Sha[..Math.Min(8, pr.Sha.Length)]})",
-                }, PrRepo: pr.Repo, Worker: w.Name),
+                }, Sha: pr.Sha, PrRepo: pr.Repo, Worker: w.Name),
             };
         }
         if (w.Kind == WorkKind.Qa) return new WorkItem(WorkKind.Qa, i.Number, null, "qa", "released", Worker: w.Name);
