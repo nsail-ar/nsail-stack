@@ -41,6 +41,9 @@ public abstract class NsPartial : NsComponent
     [Inject]
     protected IServiceProvider Services { get; init; } = default!;
 
+    [CascadingParameter]
+    DashboardReads? Reads { get; set; }
+
     /// <summary>Whether the session could send this message at all — the message twin of the
     /// page gate, for a control whose permission is a message rather than a destination page
     /// (a row's delete, a card's own acts). Optimistic like every other client-side check:
@@ -368,7 +371,20 @@ public abstract class NsPartial : NsComponent
             return handed;
         }
 
-        var result = await Send(message, cancellationToken);
+        var reads = Reads;
+
+        reads?.Started();
+
+        TResult result;
+
+        try
+        {
+            result = await Send(message, cancellationToken);
+        }
+        finally
+        {
+            reads?.Answered();
+        }
 
         GetHandoffLedger()?.Remember(key, this, result);
 
