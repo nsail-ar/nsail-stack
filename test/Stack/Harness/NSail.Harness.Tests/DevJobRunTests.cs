@@ -73,10 +73,12 @@ public class DevJobRunTests : IDisposable
             throw new NotSupportedException();
         }
 
-        public virtual Task<PullRequest> Pr(int number, CancellationToken ct = default)
+        // The head as the remote holds the PR's branch.
+        public virtual async Task<PullRequest> Pr(int number, CancellationToken ct = default)
         {
             var pr = Open.Concat(Merged).Single(p => p.Number == number);
-            return Task.FromResult(new PullRequest(pr.Number, pr.Title, Open.Contains(pr), pr.Head, "", false));
+            var head = Directory.Exists(remote) ? await Shell.Run("git", ["rev-parse", "-q", "--verify", $"refs/heads/{pr.Head}"], remote) : null;
+            return new PullRequest(pr.Number, pr.Title, Open.Contains(pr), pr.Head, head is { ExitCode: 0 } ? head.Output.Trim() : "", false);
         }
 
         public virtual Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default)
@@ -297,7 +299,7 @@ public class DevJobRunTests : IDisposable
 
     FileRepository Repo => _repo ??= new FileRepository(Remote);
 
-    async Task<JobOutcome> Run(IAgent seat, MemoryBoard board, Lines logs, WorkerOptions? worker = null, string? runCodeAs = null)
+    async Task<JobOutcome> Run(IAgent seat, MemoryBoard board, Lines logs, WorkerOptions? worker = null, string? runCodeAs = null, WorkItem? item = null)
     {
         var options = new HarnessOptions
         {
@@ -312,7 +314,7 @@ public class DevJobRunTests : IDisposable
         var workspace = new Workspace(Path.Combine(_root, "ws"), Remote, null, 1, "Gru", "gru@example.com");
         var ctx = new JobContext(board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace> { [repo.Name] = workspace },
             seat, options, [], logs, new BuildLeases(1));
-        var job = new DevJob(new WorkItem(WorkKind.Dev, 1, null, "rest", "rest", Worker: "develop"), ctx, new JobHistory(Path.Combine(_root, "history")));
+        var job = new DevJob(item ?? new WorkItem(WorkKind.Dev, 1, null, "rest", "rest", Worker: "develop"), ctx, new JobHistory(Path.Combine(_root, "history")));
         return await job.Run(1, Path.Combine(_root, "job.log"), CancellationToken.None);
     }
 
@@ -654,6 +656,69 @@ public class DevJobRunTests : IDisposable
         {
             return (false, null);
         }
+    }
+
+    // A round of PR #7 on the story's branch, planned on this head.
+    static WorkItem Round(string? planned)
+    {
+        return new WorkItem(WorkKind.Dev, 1, 7, "round", "round (PR #7: gate red)", Sha: planned, PrRepo: "acme/app", Worker: "develop");
+    }
+
+    // Another machine's round pushes a commit on the story's branch.
+    async Task AnotherMachinePushes()
+    {
+        var seed = Path.Combine(_root, "seed");
+        await Shell.Git(seed, "fetch", "-q", "origin", Story);
+        await Shell.Git(seed, "checkout", "-q", "-B", "other", "FETCH_HEAD");
+        await Shell.Git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "the fix");
+        await Shell.Git(seed, "push", "-q", "origin", $"HEAD:refs/heads/{Story}");
+    }
+
+    [Fact]
+    public async Task ARoundWhosePrMovedUnderItSaysSoOnceAndDoesNotCountTowardStalled()
+    {
+        await Seed();
+        await Shell.Git(Remote, "update-ref", $"refs/heads/{Story}", "refs/heads/main");
+        Repo.Open.Add(new PrRef(7, "a story", Story, null, "acme/app"));
+        var board = Board();
+
+        for (var i = 1; i <= 3; i++)
+        {
+            var outcome = await Run(new Acting(_ => AnotherMachinePushes()), board, new Lines(), item: Round(await RemoteHead(Story)));
+
+            Assert.False(outcome.Failed);
+            Assert.Contains("moved under the round", outcome.Summary);
+            Assert.Equal(i, board.Cards[1].Comments.Count);
+        }
+        Assert.DoesNotContain(Labels.Stalled, board.Cards[1].Labels);
+        Assert.All(board.Cards[1].Comments, c =>
+        {
+            Assert.DoesNotContain(Markers.Voyage, c.Body);
+            Assert.DoesNotContain("did not advance", c.Body);
+            Assert.Contains("the gate judges the new head", c.Body);
+        });
+        Assert.Empty(Repo.Said);
+    }
+
+    [Fact]
+    public async Task ARoundWithNothingPushedOnAHeadNobodyMovedStillCountsAndTheSecondStalls()
+    {
+        await Seed();
+        await Shell.Git(Remote, "update-ref", $"refs/heads/{Story}", "refs/heads/main");
+        Repo.Open.Add(new PrRef(7, "a story", Story, null, "acme/app"));
+        var board = Board();
+        var head = await RemoteHead(Story);
+
+        var first = await Run(new Asking("pr.md", "Nothing to change."), board, new Lines(), item: Round(head));
+        await Run(new Asking("pr.md", "Still nothing."), board, new Lines(), item: Round(head));
+        var third = await Run(new Asking("pr.md", "never read"), board, new Lines(), item: Round(head));
+
+        Assert.True(first.Failed);
+        Assert.Equal("PR #7 open, nothing pushed — dead", first.Summary);
+        Assert.Contains(Markers.Voyage, board.Cards[1].Comments[0].Body);
+        Assert.Contains("did not advance", board.Cards[1].Comments[0].Body);
+        Assert.Equal("two dead voyages — stalled", third.Summary);
+        Assert.Contains(Labels.Stalled, board.Cards[1].Labels);
     }
 
     // The story's branch at main's head, then a commit on main that edits these paths.

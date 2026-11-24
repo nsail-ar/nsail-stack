@@ -939,7 +939,7 @@ public sealed class HarnessLoop(
         };
     }
 
-    async Task<string?> Start(WorkItem item, CancellationToken ct)
+    internal async Task<string?> Start(WorkItem item, CancellationToken ct)
     {
         var o = options.Value;
         // A QA drain is no story's: it holds the browser, not a story lock.

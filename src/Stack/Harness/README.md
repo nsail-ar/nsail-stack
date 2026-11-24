@@ -177,7 +177,11 @@ the files it leaves.
     move) for `OrphanGraceMinutes` (default 10, as long as a lock with no job behind it waits): a
     job's ending takes its label off before its PR opens. Right before its move is written, the open
     PRs are read again in every repository; one of the story drops the move and its comment, and the
-    pass logs the PR it found.
+    pass logs the PR it found. A lock label with no job behind it for ten minutes comes off and the pass
+    logs it, read again right before: one another machine already took off is neither removed nor logged.
+    A round of a PR starts only while the PR's head is still the one the pass planned it on, read once the
+    story's lock is taken: one that moved since waits for the gate on the new head, its lock released,
+    nothing said on the story, and the pass logs it.
     Every other keeper moves on the pass that sees its story. A story worker's `On.Starting` `MoveTo` goes with its job and
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
@@ -306,7 +310,7 @@ the files it leaves.
   `ruling` (event `Reanalyze`; with a PR open, the next round decides it), a reviewer's crack goes
   back to its builder as `Findings`, and an analysis that ends `ruling` is refused and counted as a
   death (`RedQuestion`, `RedRulingRefused`), as is one that ends `done` naming no fix the release can carry
-  (`DoneNamesNoFix`, `DoneFixNotThere`). A builder's `wall.md` (something outside the story must change first) ends the round as `Walled`, an event configurable under `On` like the others: the story goes to Backlog wearing `blocked`, and a blocker the wall names (`blocked by #N`) is linked so the rule that lifts `blocked` on its blockers lifts it; a wall that names none waits for a hand. A red story's wall goes the way of its question, with no hold. An `elsewhere.md` (the change has to land in another repository first) ends as `Reanalyze`: the story goes to the analyst with no hold, which splits it into that repository's half and blocks the rest, so no hand rules it. A `handoff.md` with work pushed ends as `HandedOff` and the next voyage takes it. One with nothing pushed moved nothing: if it names a blocker it ends as `Walled`, and otherwise it counts as a voyage, so a second in a row goes to the analyst instead of a third builder reading the same note.
+  (`DoneNamesNoFix`, `DoneFixNotThere`). A builder's `wall.md` (something outside the story must change first) ends the round as `Walled`, an event configurable under `On` like the others: the story goes to Backlog wearing `blocked`, and a blocker the wall names (`blocked by #N`) is linked so the rule that lifts `blocked` on its blockers lifts it; a wall that names none waits for a hand. A red story's wall goes the way of its question, with no hold. An `elsewhere.md` (the change has to land in another repository first) ends as `Reanalyze`: the story goes to the analyst with no hold, which splits it into that repository's half and blocks the rest, so no hand rules it. A `handoff.md` with work pushed ends as `HandedOff` and the next voyage takes it. One with nothing pushed moved nothing: if it names a blocker it ends as `Walled`, and otherwise it counts as a voyage, so a second in a row goes to the analyst instead of a third builder reading the same note. A `pr.md` with nothing pushed on an open PR counts as one too (`HarnessTexts.NothingPushed`), unless the PR's head on the code host is neither the one the round was planned on nor the one it checked out: another machine moved it, so the round says so with no voyage marker (`HarnessTexts.HeadMoved`) and the gate judges the new head.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the

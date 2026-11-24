@@ -31,6 +31,17 @@ public class GatePlannerTests
     }
 
     [Fact]
+    public void ARedRoundCarriesTheHeadTheGateNamed()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(1, "In-Progress").Pr(1, 10, gate: CiState.Red, sha: "3be6af53aaaa").Build(), WithGate);
+
+        var round = Assert.Single(plan.Items);
+        Assert.Equal(WorkKind.Dev, round.Kind);
+        Assert.Equal(10, round.Pr);
+        Assert.Equal("3be6af53aaaa", round.Sha);
+    }
+
+    [Fact]
     public void AGateRunningHoldsItsStory()
     {
         Assert.Empty(Lines(new Fixture().Story(1, "In-Progress").Pr(1, 10, gate: CiState.Pending)));
