@@ -56,6 +56,12 @@ public sealed class HarnessTexts
     public string GateUnreadable { get; set; } = "a project or the solution of this PR could not be read, so nothing was built or tested";
     public string GateWaits { get; set; } = "red only where `main` is red at `{main}`: not this PR's round. It is gated again once `main` moves.";
     public string GateTimedOut { get; set; } = "passed the {minutes} min";
+    public string GateOutOfTimeWord { get; set; } = "out of time";
+    public string GateOutOfTime { get; set; } = "the run {late} with nothing red: {green}. Not this PR's round: it is gated again after a short wait. A second run out of time at this head is red.";
+    public string GateOutOfTimeTwice { get; set; } = "out of time {count} times at this head (each {late}) with nothing red: {green}. Red by time alone, which no round can fix: it waits for a hand.";
+    public string GateTestsGreen { get; set; } = "the build and {count} test projects green ({names})";
+    public string GateBuildGreen { get; set; } = "the build green, no test project finished";
+    public string GateNothingGreen { get; set; } = "the build had not finished";
     public string GateConflict { get; set; } = "the head does not merge with `main`: there are conflicts. The next round brings `main` in and resolves them.";
     public string GateBroke { get; set; } = "the gate broke on infrastructure, not on this PR ({error}). The head is gated again after a short wait.";
 

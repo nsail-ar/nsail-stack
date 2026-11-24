@@ -39,9 +39,17 @@ the files it leaves.
     A board that names its columns or labels otherwise maps them (`Stages`, `Labels`); a repository
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
     seed projects (a non-Markdown change outside them builds it all), the `Everything` files that build it all (by default solutions, `global.json`, props, targets, `nuget.config`, `.editorconfig`, `Directory.Build.rsp`, `*.globalconfig`), the `Tests` and their `TestFilter`): the
-    gate builds and tests what a change affects through the solution's ProjectReference graph (a PR
+    gate builds and tests what a change affects through the solution's ProjectReference graph (the
+    `Solution` itself, when its change only adds projects — their entries, configurations, nesting and new solution
+    folders, `DotNetBuilder.AddedOnly` — seeds those projects instead of building it all, so a new kit builds itself and
+    what references it; a PR
     red only where main's own gate is red waits for main to move: no round owes it; a gate that broke on infrastructure — git, the provider, the disk — writes
-    no verdict and no status, only an unmarked comment, and the head is gated again after the backoff; a malformed project or a
+    no verdict and no status, only an unmarked comment, and the head is gated again after the backoff; a run that passed
+    its `Minutes` with nothing red is the machine's load, not the PR's red: its comment says so and names what was green
+    (the build, each test project that passed), it carries `harness:gate:late:<sha>` and a pending status, fires no event and
+    sends no round, and the head is gated again after the backoff; the second such run at one head is red, with the count, and
+    fires the Verify event `OutOfTime`, whose default adds `hand` — the one place a slow box calls a hand (a new head, or a
+    gate sent by hand, judges it again); a malformed project or a
     missing solution in the PR is its red), and a
     Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):

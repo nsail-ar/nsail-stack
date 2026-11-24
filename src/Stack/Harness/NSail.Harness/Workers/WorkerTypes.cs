@@ -125,9 +125,15 @@ public static class WorkerTypes
                 ["Approved"] = [Remove(Labels.Stalled)],
             }, Minutes: 60),
         // Verify a PR (Target pr) runs over stories; Verify main (Target main) on its own: see Kind.
+        // OutOfTime: a PR's head red by time alone, past GateJob.LateRuns runs out of time with nothing
+        // red; no builder can make the machine faster, so it waits for a hand.
         ["Verify"] = new("Verify", WorkKind.Gate, true, false,
             new FilterOptions { Status = PrStages, Pr = "open", Checks = "ungated", Labels = Holds },
-            WorkerType.BaseEvents, None, Minutes: 45),
+            [.. WorkerType.BaseEvents, Jobs.GateJob.OutOfTimeEvent],
+            new Dictionary<string, IReadOnlyList<ActionOptions>>
+            {
+                [Jobs.GateJob.OutOfTimeEvent] = [Add(Labels.Hand)],
+            }, Minutes: 45),
         // One story walked in a browser on the test tenant, the one its release went live on; its
         // events are the walker's verdicts, and {report} in a comment is what the walker wrote. Ok and
         // NotApplicable close it. Bug sends it back to Analyze with the report; BugAgain is a second

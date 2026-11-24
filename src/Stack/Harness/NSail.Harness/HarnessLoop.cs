@@ -1054,7 +1054,7 @@ public sealed class HarnessLoop(
                 if (QaJob.WaitsForTheCut(result)) _walked[walked] = DateTimeOffset.UtcNow;
                 else _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + QaJob.RecheckOf(result);
             }
-            if (result.Idle) _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + Backoff;
+            if (result.Idle || result.Again) _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + Backoff;
             if (result.QuotaUntil is { } until)
             {
                 DateTimeOffset wall;

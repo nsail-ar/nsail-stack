@@ -7,7 +7,8 @@ using NSail.Harness.Repositories;
 namespace NSail.Harness;
 
 // The harness's own protocol on a PR's thread, in HTML comments people do not see: the gate's verdict
-// at a head (`harness:gate:<green|red>:<sha>`, or `harness:gate:waits:<sha>:<main>`) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
+// at a head (`harness:gate:<green|red>:<sha>`, `harness:gate:waits:<sha>:<main>`, or a run out of time,
+// `harness:gate:late:<sha>`) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
 // A marker counts only as a whole HTML comment on its own line, written by the harness's own login or
 // by one of the fleet's (`authors`).
 public sealed class Markers(string review, IReadOnlyCollection<string>? authors = null)
@@ -149,13 +150,26 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
         return text;
     }
 
+    // A run at a head that passed its time with nothing red: no verdict, and the head is gated again.
+    public static string GateLate(string sha)
+    {
+        return $"<!-- harness:gate:late:{sha} -->";
+    }
+
+    // How many runs at a head passed their time with nothing red.
+    public static int LateAt(IEnumerable<string> bodies, string sha)
+    {
+        return bodies.Sum(b => Regex.Matches(b, @"^<!-- harness:gate:late:([0-9a-f]+) -->[ \t]*\r?$", RegexOptions.Multiline).Count(m => m.Groups[1].Value == sha));
+    }
+
     // The gate's verdict at a head, the last one written. A head waiting on main reads pending while main is still the head it waited on (none known: still).
+    // A run out of time is no verdict: after it the head reads ungated until a verdict follows.
     public static CiState? GateAt(IEnumerable<string> bodies, string sha, string? main = null)
     {
         CiState? word = null;
         foreach (var body in bodies)
         {
-            foreach (Match m in Regex.Matches(body, @"^<!-- harness:gate:(green|red|waits):([0-9a-f]+)(?::([0-9a-f]+))? -->[ \t]*\r?$", RegexOptions.Multiline))
+            foreach (Match m in Regex.Matches(body, @"^<!-- harness:gate:(green|red|waits|late):([0-9a-f]+)(?::([0-9a-f]+))? -->[ \t]*\r?$", RegexOptions.Multiline))
             {
                 if (m.Groups[2].Value != sha) continue;
                 word = m.Groups[1].Value switch

@@ -11,7 +11,8 @@ namespace NSail.Harness.Jobs;
 // merged with today's main, restored, built and tested (the affected set) by the project's gate
 // command, or the repository's builder when the worker names none, in a slot the last build left warm. The verdict is a PR comment carrying the gate's marker
 // (Markers) — the PR itself, readable by any harness — and, when the token may, a commit status too.
-// A red one names what failed, and the planner sends the story to a round.
+// A red one names what failed, and the planner sends the story to a round. A run out of time with
+// nothing red is no verdict (OutOfTime).
 public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
 {
     public WorkItem Item { get; } = item;
@@ -99,35 +100,86 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             env["TEST_OUTPUT"] = Path.Combine(env["GATE_WORK"], "test-output.txt");
             Directory.CreateDirectory(env["GATE_WORK"]);
             result = Step.Command is { } command
-                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct, keep: IsFailureLine, runsCode: true)
+                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct, keep: IsKeptLine, runsCode: true)
                 : await ctx.Builder!.Gate(dir, main, env, Timeout(Step), w, ct, ctx.Options.RunCodeAs);
         }
         finally
         {
             ctx.Leases.Release(lease.Id);
         }
+        return await Judge(prNumber, sha, main, result, dir, log, ct);
+    }
 
+    // The verdict a finished run earns at the head.
+    internal async Task<JobOutcome> Judge(int prNumber, string sha, string main, ShellResult result, string dir, ILogger log, CancellationToken ct)
+    {
         if (result.ExitCode == 0)
         {
             await Verdict(prNumber, sha, green: true, ctx.Texts.GateGreen, null, log);
             return new JobOutcome("green");
         }
+        var failures = FailureSet(result.Output, dir);
+        // A run cut by its clock with nothing red is the machine's time, not the PR's red: no round owes it.
+        if (result.TimedOut && failures.Count == 0) return await OutOfTime(prNumber, sha, result.Output, log, ct);
         // A red that is all main's own is not the PR's round: it waits for main to move.
-        if (!result.TimedOut && MainGateJob.RedAt(main) is { } mains && FailureSet(result.Output, dir) is { Count: > 0 } own && own.IsSubsetOf(mains))
+        if (MainGateJob.RedAt(main) is { } mains && failures.Count > 0 && failures.IsSubsetOf(mains))
         {
             await Waits(prNumber, sha, main, log);
             return new JobOutcome($"red only where main is red at {main[..8]} — gated again once main moves", Idle: true);
         }
-        var why = result.TimedOut ? HarnessTexts.Fill(ctx.Texts.GateTimedOut, ("minutes", Step.Minutes)) : ctx.Texts.GateRedTests;
+        var why = ctx.Texts.GateRedTests;
         await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", why)), Failures(result.Output), log);
         return new JobOutcome($"red — {why}", Failed: true);
     }
 
-    async Task Verdict(int pr, string sha, bool green, string text, string? detail, ILogger log)
+    // How many runs out of time at one head are still no verdict; the next is red, and a hand's.
+    internal const int LateRuns = 1;
+
+    // Out of time with nothing red: said on the PR with what was green, no failing status, no event,
+    // and gated again after the back-off. Past LateRuns at the same head it is red, with the count,
+    // and fires OutOfTime (the type's default calls a hand), so no builder is sent a round it cannot do.
+    async Task<JobOutcome> OutOfTime(int prNumber, string sha, string output, ILogger log, CancellationToken ct)
+    {
+        var late = HarnessTexts.Fill(ctx.Texts.GateTimedOut, ("minutes", Step.Minutes));
+        var green = GreenOf(output, ctx.Texts);
+        var count = Markers.LateAt(ctx.Markers.Bodies(await ctx.Repo.Thread(prNumber, ct), await ctx.Repo.Login(ct)), sha) + 1;
+        if (count > LateRuns)
+        {
+            var text = HarnessTexts.Fill(ctx.Texts.GateOutOfTimeTwice, ("late", late), ("count", count), ("green", green));
+            await Verdict(prNumber, sha, green: false, text, null, log, Markers.GateLate(sha));
+            return new JobOutcome($"red — out of time {count} times at this head ({late})", Event: OutOfTimeEvent, Failed: true);
+        }
+        var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", ctx.Texts.GateOutOfTimeWord), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateOutOfTime, ("late", late), ("green", green))))
+            + $"\n\n{ctx.Texts.Signature}\n{Markers.GateLate(sha)}";
+        await ctx.Repo.Comment(prNumber, body);
+        try
+        {
+            await ctx.Repo.SetStatus(sha, Markers.GateContext, "pending", $"out of time ({late}): gated again");
+        }
+        catch (ProviderException e)
+        {
+            log.LogDebug("no gate status on {Sha}: {Error}", sha[..8], e.Message);
+        }
+        return new JobOutcome($"out of time — {late}, nothing red; gated again after the back-off", Again: true, Failed: true);
+    }
+
+    // The Verify event a head red by time alone fires.
+    public const string OutOfTimeEvent = "OutOfTime";
+
+    // What a run cut by its clock had finished green: the build, and each test project that passed.
+    internal static string GreenOf(string output, HarnessTexts texts)
+    {
+        var lines = output.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        var suites = lines.Select(l => PassedSuite().Match(l)).Where(m => m.Success).Select(m => m.Groups[1].Value).Distinct().ToList();
+        if (suites.Count > 0) return HarnessTexts.Fill(texts.GateTestsGreen, ("count", suites.Count), ("names", string.Join(", ", suites)));
+        return lines.Any(l => BuildSucceeded().IsMatch(l)) ? texts.GateBuildGreen : texts.GateNothingGreen;
+    }
+
+    async Task Verdict(int pr, string sha, bool green, string text, string? detail, ILogger log, string? marker = null)
     {
         var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", green ? "green" : "red"), ("sha", sha[..8]), ("text", text))
             + (detail is null ? "" : $"\n\n```\n{detail}\n```")
-            + $"\n\n{ctx.Texts.Signature}\n{Markers.Gate(green, sha)}";
+            + $"\n\n{ctx.Texts.Signature}\n{(marker is null ? "" : marker + "\n")}{Markers.Gate(green, sha)}";
         await ctx.Repo.Comment(pr, body);
         try
         {
@@ -185,6 +237,12 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         return FailedTest().IsMatch(line) || BuildError().IsMatch(line);
     }
 
+    // What the gate reads off its output, kept through the cut: the failures, and what went green.
+    internal static bool IsKeptLine(string line)
+    {
+        return IsFailureLine(line) || PassedSuite().IsMatch(line) || BuildSucceeded().IsMatch(line);
+    }
+
     // What a builder needs to start: the failed test names, else the build errors, else the tail.
     internal static string Failures(string output)
     {
@@ -199,4 +257,6 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
     [GeneratedRegex(@"^\s*Failed \S")] private static partial Regex FailedTest();
     [GeneratedRegex(@": error [A-Z]+\d+:")] private static partial Regex BuildError();
     [GeneratedRegex(@"\s*\[[\d.,]+ m?s\]$")] private static partial Regex TestTime();
+    [GeneratedRegex(@"^\s*Passed!\s+-.*\s-\s+(\S+?)\.dll\b")] private static partial Regex PassedSuite();
+    [GeneratedRegex(@"^\s*Build succeeded\b")] private static partial Regex BuildSucceeded();
 }
