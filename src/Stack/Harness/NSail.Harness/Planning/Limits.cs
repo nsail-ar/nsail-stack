@@ -5,7 +5,8 @@ namespace NSail.Harness.Planning;
 
 // What one machine may run at once, per resource. A Dev lane holds an Agent slot for
 // its whole voyage and takes a Build slot only while it compiles (the build shim waits for
-// one), so builds are rationed where they actually happen.
+// one at every compiling dotnet, a run's or a watch's build included), so builds are rationed
+// where they actually happen.
 public sealed record Limits(int Agents, int Builds, int Browsers)
 {
     public int Of(Resource r)
