@@ -3,35 +3,77 @@
 
 @namespace NSail.Components.Tests.Fixtures
 
+@using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
 @using NSail.Components
+@using NSail.Testing.Models
 
-@* A ? beside a field, in each row shape the help seat (ns-mud.css) must reach or leave alone. *@
+@* A ? beside a field, in each row shape the help seat (ns-mud.css) must reach or leave alone.
+   Rows the seat reaches wear .seated; the ? a row's second ? or a boolean neighbour must keep
+   its place in wears no mark. *@
 <MudPopoverProvider />
 
-<NsStack Horizontal Align="NsAlign.Start" Class="top-row">
-    <NsTextField @bind-Value="_name" Label="Nombre" />
-    <NsHelp Text="Ayuda" />
-</NsStack>
+<EditForm EditContext="_context">
+    <NsStack Horizontal Align="NsAlign.Start" Class="top-row">
+        <NsTextField @bind-Value="_name" Label="Nombre" />
+        <NsHelp Text="Ayuda" Class="seated" />
+    </NsStack>
 
-<NsStack Horizontal Align="NsAlign.Center" Class="centred-row">
-    <NsTextField @bind-Value="_name" Label="Nombre" />
-    <NsHelp Text="Ayuda" />
-</NsStack>
+    <NsStack Horizontal Align="NsAlign.Start" Class="hinted-row">
+        <NsTextField @bind-Value="_name" Label="Nombre" Helper="Como figura en el documento" />
+        <NsHelp Text="Ayuda" Class="seated" />
+    </NsStack>
 
-<NsStack Align="NsAlign.Start" Class="column">
-    <NsTextField @bind-Value="_name" Label="Nombre" />
-    <NsHelp Text="Ayuda" />
-</NsStack>
+    <NsStack Horizontal Align="NsAlign.Start" Class="refused-row">
+        <NsTextField @bind-Value="_model.Name" Label="Nombre" />
+        <NsHelp Text="Ayuda" Class="seated" />
+    </NsStack>
 
-<NsStack Horizontal Align="NsAlign.Start" Class="check-row">
-    <NsCheckBox TValue="bool" @bind-Value="_flag" Label="Activo" />
-    <NsHelp Text="Ayuda" />
-</NsStack>
+    <NsStack Horizontal Align="NsAlign.Start" Class="wrapped-row">
+        <div class="wrapper">
+            <NsTextField @bind-Value="_name" Label="Nombre" />
+        </div>
+        <NsHelp Text="Ayuda" Class="seated" />
+    </NsStack>
+
+    <NsStack Horizontal Align="NsAlign.Start" Class="two-row">
+        <NsTextField @bind-Value="_name" Label="Nombre" />
+        <NsHelp Text="Ayuda" Class="seated" />
+        <NsHelp Text="Otra ayuda" />
+    </NsStack>
+
+    <NsStack Horizontal Align="NsAlign.Center" Class="centred-row">
+        <NsTextField @bind-Value="_name" Label="Nombre" />
+        <NsHelp Text="Ayuda" />
+    </NsStack>
+
+    <NsStack Align="NsAlign.Start" Class="column">
+        <NsTextField @bind-Value="_name" Label="Nombre" />
+        <NsHelp Text="Ayuda" />
+    </NsStack>
+
+    <NsStack Horizontal Align="NsAlign.Start" Class="check-row">
+        <NsCheckBox TValue="bool" @bind-Value="_flag" Label="Activo" />
+        <NsHelp Text="Ayuda" />
+    </NsStack>
+</EditForm>
 
 @code {
+
+    readonly TestModel _model = new();
+
+    EditContext _context = null!;
 
     string? _name;
 
     bool _flag;
+
+    protected override void OnInitialized()
+    {
+        _context = new EditContext(_model);
+
+        var store = new ValidationMessageStore(_context);
+
+        store.Add(_context.Field(nameof(TestModel.Name)), "Obligatorio");
+    }
 }

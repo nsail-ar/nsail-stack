@@ -1935,12 +1935,19 @@
    top-aligned row: the row's flex-start would leave it on the field's label gutter. It takes the
    field's own geometry instead -- the 8px gutter the vendor's outlined-with-label margin draws
    and a 40px box its glyph is centred in -- so it sits on the INPUT whether a refusal grows the
-   field below it or not. A field inside a wrapper of its own (a stored box, a dropdown's anchor)
-   is reached through the wrapper. Keyed on the vendor's align-start, so a centred row, a
-   stretched one and a column are left alone, and on the labelled field, so a ? beside a boolean
-   control (no gutter, no outline) keeps its place. */
-.align-start:not(.flex-column) > .mud-input-outlined-with-label + .ns-help,
-.align-start:not(.flex-column) > :has(> .mud-input-outlined-with-label) + .ns-help {
+   field below it or not. The field is the vendor's .mud-input-control, which wears
+   .mud-input-outlined-with-label on its root, or a wrapper holding that root directly (a stored
+   box, a dropdown's anchor). Between the field and the ? may stand the field's own under-field
+   node (NsFieldHelper: the hint, or the refusal's described twin); a second ? in the row is not
+   reached. Keyed on the vendor's align-start, so a centred row, a stretched one and a column
+   are left alone, and on the labelled field, so a ? beside a boolean control (no gutter, no
+   outline) keeps its place. */
+.align-start:not(.flex-column):not(.flex-column-reverse) > .mud-input-outlined-with-label + .ns-help,
+.align-start:not(.flex-column):not(.flex-column-reverse) > .mud-input-outlined-with-label + .ns-field-helper + .ns-help,
+.align-start:not(.flex-column):not(.flex-column-reverse) > .mud-input-outlined-with-label + .ns-field-described + .ns-help,
+.align-start:not(.flex-column):not(.flex-column-reverse) > :has(> .mud-input-outlined-with-label) + .ns-help,
+.align-start:not(.flex-column):not(.flex-column-reverse) > :has(> .mud-input-outlined-with-label) + .ns-field-helper + .ns-help,
+.align-start:not(.flex-column):not(.flex-column-reverse) > :has(> .mud-input-outlined-with-label) + .ns-field-described + .ns-help {
     margin-top: 0.5rem;
     height: 2.5rem;
 }
