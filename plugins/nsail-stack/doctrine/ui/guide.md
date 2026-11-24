@@ -44,7 +44,9 @@ a guide is content a module already knows, not state anybody saves.
   kind `NavMenuItem.Permission` takes — never a role). `Collect(contributors, gate, user)`
   keeps only the chapters the session may read, and `NsGuide` refuses a session left with none
   (`Common.NotAuthorized`) rather than drawing an empty book: a hidden door is not a guard. A
-  chapter without one is read by every session.
+  chapter without one is read by every session. Where the app has a guide and the session
+  may read none of it, the drawer also drops Atajos de Teclado, so the Help group is not
+  drawn: shortcuts belong to the screens a session runs the house from.
 - **Registration is composition, and the only filter is the chapter's own grant.** An app that never
   composed a kit never runs that kit's `AddGuide`, so the kit's chapters cannot reach that
   app's guide — Therapy keeps books and sells nothing, so it reads Accounting's chapter and

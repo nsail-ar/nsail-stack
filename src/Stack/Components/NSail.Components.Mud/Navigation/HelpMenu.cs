@@ -13,6 +13,7 @@ namespace NSail.Components;
 public sealed class HelpMenu(DialogManager dialogs, IJSRuntime js, StringManager strings) : INavMenuContributor
 {
     public const string Group = "Help";
+    public const string Shortcuts = "Shortcuts";
 
     // After every system group (navigation.md, weight bands): help is what a person reaches
     // for when the rest of the map did not answer.
@@ -31,7 +32,7 @@ public sealed class HelpMenu(DialogManager dialogs, IJSRuntime js, StringManager
                 [
                     new NavMenuItem
                     {
-                        Name = "Shortcuts",
+                        Name = Shortcuts,
                         Icon = NsIcons.Keyboard,
                         Command = ShowKeys,
                         Chord = NsKeys.Help

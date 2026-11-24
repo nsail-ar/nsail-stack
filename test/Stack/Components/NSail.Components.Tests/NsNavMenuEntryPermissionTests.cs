@@ -54,8 +54,13 @@ public sealed class NsNavMenuEntryPermissionTests : BunitContext, IAsyncLifetime
         await DisposeAsync();
     }
 
-    IRenderedComponent<NsNavMenu> RenderMenu()
+    IRenderedComponent<NsNavMenu> RenderMenu(params IGuideContributor[] guides)
     {
+        foreach (var guide in guides)
+        {
+            Services.AddSingleton(guide);
+        }
+
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
@@ -153,5 +158,42 @@ public sealed class NsNavMenuEntryPermissionTests : BunitContext, IAsyncLifetime
         var items = menu.GetItems(null).GetAwaiter().GetResult();
 
         Assert.NotNull(NavMenuItem.Find(items, typeof(PermittedMeasuresProbePage)));
+    }
+
+    static FixedNavContributor Help()
+    {
+        return new FixedNavContributor(new NavMenuItem
+        {
+            Name = HelpMenu.Group,
+            Items = [new NavMenuItem { Name = HelpMenu.Shortcuts, Command = () => Task.CompletedTask }]
+        });
+    }
+
+    sealed class GuideFor(Type permission) : IGuideContributor
+    {
+        public Task<IReadOnlyList<GuideItem>> GetItems()
+        {
+            return Task.FromResult<IReadOnlyList<GuideItem>>(
+                [new GuideItem { Name = "Manual", File = "manual", Permission = permission }]);
+        }
+    }
+
+    [Fact]
+    public void TheHelpGroupIsNotDrawnWhenTheSessionMayReadNoChapter()
+    {
+        Services.AddSingleton<INavMenuContributor>(Help());
+
+        var menu = RenderMenu(new GuideFor(typeof(CounterRead)));
+
+        Assert.DoesNotContain("Shortcuts", menu.Markup);
+        Assert.DoesNotContain(HelpMenu.Group, menu.Markup);
+    }
+
+    [Fact]
+    public void TheHelpGroupStaysWhenTheSessionMayReadAChapter()
+    {
+        Services.AddSingleton<INavMenuContributor>(Help());
+
+        Assert.Contains(HelpMenu.Group, RenderMenu(new GuideFor(typeof(OwnRead))).Markup);
     }
 }

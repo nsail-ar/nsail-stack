@@ -341,7 +341,10 @@ public sealed class NsGuideTests : BunitContext, IAsyncLifetime
     {
         Shelf(new Dictionary<string, string>());
 
-        Assert.Empty(Open().FindAll(".ns-guide"));
+        var page = Open();
+
+        Assert.Empty(page.FindAll(".ns-guide"));
+        Assert.Empty(page.FindAll("p[role=alert]"));
     }
 
     sealed class StaffGrant;

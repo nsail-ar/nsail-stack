@@ -15,6 +15,7 @@ public sealed class Guide : IGuideContributor
             {
                 Name = "Storage",
                 File = "storage",
+                Permission = typeof(SaveStorageSettings),
                 Weight = 87
             }
         ]);

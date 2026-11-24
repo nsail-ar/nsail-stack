@@ -132,7 +132,7 @@ else if (_chapters.Count > 0)
 
         // A session that may read nothing of a guide that has chapters is refused, as at any
         // forbidden page: hiding the door is not a guard.
-        _refused = _chapters.Count == 0 && Contributors.Any();
+        _refused = _chapters.Count == 0 && (await GuideItem.Collect(Contributors)).Count > 0;
         _open = GuideItem.Open(_chapters, Chapter);
 
         Publish();
