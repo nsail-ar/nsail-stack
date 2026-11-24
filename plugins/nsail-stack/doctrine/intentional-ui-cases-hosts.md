@@ -202,8 +202,9 @@ can pin is the one thing the cascade turns on — which classes the open row car
 The open row's FIELDS are top-aligned (`.ns-list-editor-fields`, `align-start`), never centred
 against each other: a refusal, a Helper or chips grow one field downward, and a centred line would
 push its neighbours' tops down by half of it. A boolean control there takes its labelled
-neighbours' geometry, as in `.ns-grid`. The folded row's content keeps centring
-(`TheOpenRowsFieldsAreTopAligned`).
+neighbours' geometry, as in `.ns-grid`; its selector reads the labelled class off the field's
+root, the fields box's direct child (`TheOpenRowsBooleanControlsTakeTheLabelledFieldsGeometry`).
+The folded row's content keeps centring (`TheOpenRowsFieldsAreTopAligned`).
 
 ## The way in nine row editors could not have withheld
 
