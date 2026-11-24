@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSail.Components;
+using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
 
@@ -88,5 +94,51 @@ public sealed class GuideItemTests
         Assert.Equal("Accounting", GuideItem.Open(chapters, "accounting")?.Name);
         Assert.Equal("Accounting", GuideItem.Open(chapters, "ACCOUNTING")?.Name);
         Assert.Null(GuideItem.Open([], "sales"));
+    }
+
+    sealed class StaffGrant;
+
+    static PageGate Gate(params Type[] granted)
+    {
+        var services = new ServiceCollection();
+
+        services.AddAuthorizationCore();
+        services.AddSingleton<IAuthorizationPolicyProvider, MessagePolicyProvider>();
+        services.AddSingleton<IAuthorizationHandler>(new GrantedMessages(granted));
+        services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+        services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
+
+        var provider = services.BuildServiceProvider();
+
+        return new PageGate(
+            provider.GetRequiredService<IAuthorizationService>(),
+            provider.GetRequiredService<IAuthorizationPolicyProvider>());
+    }
+
+    static IEnumerable<IGuideContributor> Contributors()
+    {
+        return [new TestContributor(
+            new GuideItem { Name = "Staff", File = "staff", Permission = typeof(StaffGrant) },
+            Chapter("Open"))];
+    }
+
+    [Fact]
+    public async Task DropsChaptersWhoseGrantTheSessionLacks()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity("test"));
+
+        var chapters = await GuideItem.Collect(Contributors(), Gate(), user);
+
+        Assert.Equal(["Open"], chapters.Select(chapter => chapter.Name));
+    }
+
+    [Fact]
+    public async Task KeepsChaptersWhoseGrantTheSessionHolds()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity("test"));
+
+        var chapters = await GuideItem.Collect(Contributors(), Gate(typeof(StaffGrant)), user);
+
+        Assert.Equal(["Staff", "Open"], chapters.Select(chapter => chapter.Name));
     }
 }

@@ -54,8 +54,13 @@ public sealed class NsNavMenuEntryPermissionTests : BunitContext, IAsyncLifetime
         await DisposeAsync();
     }
 
-    IRenderedComponent<NsNavMenu> RenderMenu()
+    IRenderedComponent<NsNavMenu> RenderMenu(params IGuideContributor[] guides)
     {
+        foreach (var guide in guides)
+        {
+            Services.AddSingleton(guide);
+        }
+
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
@@ -153,5 +158,80 @@ public sealed class NsNavMenuEntryPermissionTests : BunitContext, IAsyncLifetime
         var items = menu.GetItems(null).GetAwaiter().GetResult();
 
         Assert.NotNull(NavMenuItem.Find(items, typeof(PermittedMeasuresProbePage)));
+    }
+
+    static FixedNavContributor Help()
+    {
+        return new FixedNavContributor(new NavMenuItem
+        {
+            Name = HelpMenu.Group,
+            Items =
+            [
+                new NavMenuItem { Name = HelpMenu.Shortcuts, Command = () => Task.CompletedTask },
+                new NavMenuItem { Name = "Documentation", PageType = typeof(ProbeGuidePage) }
+            ]
+        });
+    }
+
+    void WithGuidePage()
+    {
+        Services.AddScoped<RootSurface>();
+        Services.AddScoped<SurfaceHistory>();
+        Services.AddScoped(provider => new GuideRoute(
+            typeof(ProbeGuidePage),
+            provider.GetRequiredService<RouteTable>()));
+    }
+
+    sealed class GuideFor(Type permission, string file = "manual") : IGuideContributor
+    {
+        public Task<IReadOnlyList<GuideItem>> GetItems()
+        {
+            return Task.FromResult<IReadOnlyList<GuideItem>>(
+                [new GuideItem { Name = file, File = file, Permission = permission }]);
+        }
+    }
+
+    [Fact]
+    public void TheHelpGroupIsNotDrawnWhenTheSessionMayReadNoChapter()
+    {
+        Services.AddSingleton<INavMenuContributor>(Help());
+        WithGuidePage();
+
+        var menu = RenderMenu(new GuideFor(typeof(CounterRead)));
+
+        Assert.DoesNotContain("Shortcuts", menu.Markup);
+        Assert.DoesNotContain("Documentation", menu.Markup);
+        Assert.DoesNotContain(HelpMenu.Group, menu.Markup);
+    }
+
+    [Fact]
+    public void TheHelpGroupStaysWhenTheSessionMayReadAChapter()
+    {
+        Services.AddSingleton<INavMenuContributor>(Help());
+        WithGuidePage();
+
+        var menu = RenderMenu(new GuideFor(typeof(OwnRead)));
+
+        Assert.Contains(HelpMenu.Group, menu.Markup);
+        Assert.Contains("Documentation", menu.Markup);
+    }
+
+    [Fact]
+    public void TheGuideLinkIsNotDrawnWhenTheSessionMayReadNoChapter()
+    {
+        WithGuidePage();
+        RenderMenu(new GuideFor(typeof(CounterRead)));
+
+        Assert.Empty(Render<NsGuideLink>(parameters => parameters.Add(link => link.Topic, "manual")).FindAll("a"));
+    }
+
+    [Fact]
+    public void TheGuideLinkIsNotDrawnToAChapterTheSessionMayNotRead()
+    {
+        WithGuidePage();
+        RenderMenu(new GuideFor(typeof(OwnRead)), new GuideFor(typeof(CounterRead), "counter"));
+
+        Assert.Empty(Render<NsGuideLink>(parameters => parameters.Add(link => link.Topic, "counter")).FindAll("a"));
+        Assert.NotEmpty(Render<NsGuideLink>(parameters => parameters.Add(link => link.Topic, "manual")).FindAll("a"));
     }
 }

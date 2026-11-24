@@ -10,11 +10,12 @@
 @inject IServiceProvider Services
 @inject StringManager Strings
 @inject PageGate Gate
+@inject IEnumerable<IGuideContributor> Contributors
 
 @* Nothing where the app registered no guide page (AddGuidePage), and nothing where the
    session may not open it: a door to a room that was never built, or one the session is
    refused at, is a dead link, and a screen that asked for one is not a screen to break. *@
-@if (_route is { } route)
+@if (_route is { } route && _readable)
 {
     <NsLink Href="@route.GetUrl(_chapter)"
             Fragment="@_section"
@@ -29,6 +30,7 @@
 @code {
 
     GuideRoute? _route;
+    bool _readable = true;
     string? _chapter;
     string? _section;
 
@@ -63,8 +65,26 @@
         }
     }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         (_chapter, _section) = GuideRoute.Split(Topic);
+        _readable = true;
+
+        if (_route is null)
+        {
+            return;
+        }
+
+        // The guide refuses a session that reads none of it, and opens elsewhere when the
+        // chapter named is one the session may not read: a door to either is not drawn.
+        var user = await PageGate.UserOf(AuthenticationState);
+        var all = await GuideItem.Collect(Contributors);
+        var readable = await GuideItem.Collect(Contributors, Gate, user);
+
+        _readable = all.Count == 0
+            || (readable.Count > 0
+                && (_chapter is null
+                    || readable.Any(item => string.Equals(item.File, _chapter, StringComparison.OrdinalIgnoreCase))
+                    || !all.Any(item => string.Equals(item.File, _chapter, StringComparison.OrdinalIgnoreCase))));
     }
 }

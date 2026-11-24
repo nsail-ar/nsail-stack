@@ -17,6 +17,8 @@
 @inject RouteTable Routes
 @inject NavigationManager Navigation
 @inject PageGate Gate
+@inject IServiceProvider Services
+@inject IEnumerable<IGuideContributor> GuideContributors
 @inject Mediator Mediator
 
 @* The drawer is a surface like any other, so it wears the house's panel anatomy rather than
@@ -751,6 +753,18 @@
         // (permissions.md). Denied, the branch under it is not asked about, the same way a
         // hidden entry's is not.
         if (item.Permission is { } permission && !await Gate.Permits(permission, user))
+        {
+            _hidden.Add(item);
+
+            return true;
+        }
+
+        // Shortcuts and the guide's own door belong to the screens a session runs the house
+        // from: where the app has a guide, a session that may read none of it is drawn neither.
+        if (((item.Name == HelpMenu.Shortcuts && item.Command is not null)
+                || (item.PageType is not null && item.PageType == (Services.GetService(typeof(GuideRoute)) as GuideRoute)?.PageType))
+            && GuideContributors.Any()
+            && await GuideItem.IsClosedTo(GuideContributors, Gate, user))
         {
             _hidden.Add(item);
 
