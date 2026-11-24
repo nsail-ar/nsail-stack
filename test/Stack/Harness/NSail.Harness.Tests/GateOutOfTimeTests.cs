@@ -8,8 +8,8 @@ using NSail.Harness.Workers;
 
 namespace NSail.Harness.Tests;
 
-// A gate that passed its time with nothing red is the machine's load, not the PR's red: no failing
-// status and no round the first time; red with its count, and a hand's, the second time at one head.
+// A gate whose clock ran out with nothing failed is red by time alone: it says what was green and
+// calls a hand instead of a round. A saturated machine earns the head one retry first (GateTimeoutTests).
 public class GateOutOfTimeTests
 {
     const string Sha = "abc1234def";
@@ -37,7 +37,7 @@ public class GateOutOfTimeTests
         }
     }
 
-    static (GateJob Job, Repo Repo) Arrange()
+    static (GateJob Job, Repo Repo) Arrange(PressureReading? reading = null)
     {
         var options = new HarnessOptions
         {
@@ -46,17 +46,20 @@ public class GateOutOfTimeTests
         };
         var repo = new Repo();
         var ctx = new JobContext(new MemoryBoard(), new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace>(),
-            new NoAgent(), options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
+            new NoAgent(), options, [], new DevJobRunTests.Lines(), new BuildLeases(1))
+        {
+            Pressure = new FixedPressure(reading),
+        };
         return (new GateJob(new WorkItem(WorkKind.Gate, 1, 10, "gate", "no gate at this head", Worker: "verify-pr"), ctx), repo);
     }
 
     static Task<JobOutcome> Judge(GateJob job, string output, bool timedOut = true)
     {
-        return job.Judge(10, Sha, Main, new ShellResult(124, output, TimedOut: timedOut), "/w/slots/slot-1", new DevJobRunTests.Lines(), CancellationToken.None);
+        return job.Judge(10, Sha, Main, "/w/slots/slot-1", new ShellResult(124, output, TimedOut: timedOut), new DevJobRunTests.Lines(), CancellationToken.None);
     }
 
     [Fact]
-    public async Task AFirstRunOutOfTimeSaysWhatWasGreenAndIsNoVerdict()
+    public async Task ARunOutOfTimeWithNothingFailedIsRedByTimeSaysWhatWasGreenAndCallsAHand()
     {
         var (job, repo) = Arrange();
 
@@ -64,51 +67,28 @@ public class GateOutOfTimeTests
 
         var (pr, body) = Assert.Single(repo.Said);
         Assert.Equal(10, pr);
-        Assert.Contains("out of time at `abc1234d`", body, StringComparison.Ordinal);
+        Assert.Contains("red at `abc1234d`", body, StringComparison.Ordinal);
         Assert.Contains("passed the 45 min with nothing red", body, StringComparison.Ordinal);
         Assert.Contains("the build and 2 test projects green (NSail.A.Tests, NSail.B.Tests)", body, StringComparison.Ordinal);
-        Assert.Contains(Markers.GateLate(Sha), body, StringComparison.Ordinal);
-        Assert.DoesNotContain(Markers.Gate(false, Sha), body, StringComparison.Ordinal);
-        Assert.Null(Markers.GateAt([body], Sha));
-        Assert.Equal([(Sha, "pending")], repo.Statuses);
-        Assert.True(outcome.Again);
-        Assert.Null(outcome.Event);
-        Assert.Empty(JobEvents.Fired(outcome));
-    }
-
-    [Fact]
-    public async Task ASecondRunOutOfTimeAtTheSameHeadIsRedWithItsCountAndCallsAHand()
-    {
-        var (job, repo) = Arrange();
-
-        await Judge(job, Cut);
-        var outcome = await Judge(job, Cut);
-
-        var body = repo.Said[^1].Body;
-        Assert.Contains("red at `abc1234d`", body, StringComparison.Ordinal);
-        Assert.Contains("out of time 2 times at this head", body, StringComparison.Ordinal);
-        Assert.Contains("NSail.A.Tests, NSail.B.Tests", body, StringComparison.Ordinal);
-        Assert.Equal(CiState.Red, Markers.GateAt(repo.Said.Select(s => s.Body), Sha));
-        Assert.Equal(2, Markers.LateAt(repo.Said.Select(s => s.Body), Sha));
-        Assert.Equal((Sha, "failure"), repo.Statuses[^1]);
-        Assert.False(outcome.Again);
+        Assert.Equal(CiState.Red, Markers.GateAt([body], Sha));
+        Assert.Equal([(Sha, "failure")], repo.Statuses);
         Assert.True(outcome.Failed);
+        Assert.Equal("red — passed the 45 min", outcome.Summary);
         Assert.Equal(GateJob.OutOfTimeEvent, outcome.Event);
         var actions = JobEvents.Actions(WorkerTypes.All["Verify"].Defaults, outcome);
         Assert.Contains(actions, a => a.Action.AddLabel == Labels.Hand);
     }
 
     [Fact]
-    public async Task ARunOutOfTimeAtAnotherHeadDoesNotCount()
+    public async Task ASaturatedMachineEarnsOneRetryAndTheSecondRunOutOfTimeCallsAHand()
     {
-        var (job, repo) = Arrange();
-        repo.Before.Add(new PrNote(DateTimeOffset.UtcNow, $"out of time\n{Markers.GateLate("fff0000111")}", "harness"));
-        repo.Before.Add(new PrNote(DateTimeOffset.UtcNow, $"forged\n{Markers.GateLate(Sha)}", "stranger"));
+        var (job, repo) = Arrange(new PressureReading(23.4, 12));
 
+        await Assert.ThrowsAsync<GateJob.MachineSaturated>(() => Judge(job, Cut));
         var outcome = await Judge(job, Cut);
 
-        Assert.True(outcome.Again);
-        Assert.Null(Markers.GateAt(repo.Said.Select(s => s.Body), Sha));
+        Assert.Equal(CiState.Red, Markers.GateAt(repo.Said.Select(s => s.Body), Sha));
+        Assert.Equal(GateJob.OutOfTimeEvent, outcome.Event);
     }
 
     [Fact]
@@ -121,7 +101,6 @@ public class GateOutOfTimeTests
         Assert.Equal(CiState.Red, Markers.GateAt(repo.Said.Select(s => s.Body), Sha));
         Assert.Contains("build or tests red", repo.Said[^1].Body, StringComparison.Ordinal);
         Assert.Null(outcome.Event);
-        Assert.False(outcome.Again);
         Assert.True(outcome.Failed);
     }
 
@@ -134,16 +113,6 @@ public class GateOutOfTimeTests
         Assert.Equal("the build had not finished", GateJob.GreenOf("  Determining projects to restore...\n", texts));
         Assert.True(GateJob.IsKeptLine("Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 3 s - NSail.A.Tests.dll (net10.0)"));
         Assert.True(GateJob.IsKeptLine("Build succeeded."));
-    }
-
-    [Fact]
-    public void AHeadOutOfTimeOnceIsGatedAgainAndNoRoundIsSent()
-    {
-        Assert.Null(Markers.GateAt([Markers.GateWaits(Sha, Main), Markers.GateLate(Sha)], Sha, Main));
-
-        var plan = SampleWorkers.Plan(new Fixture().Story(1, "In-Progress").Pr(1, 10, CiState.Pending, gate: null).Build(), new PlannerOptions(Gate: true));
-
-        Assert.Equal(["gate PR #10 (story #1)"], plan.Items.Select(i => i.ToString()));
     }
 
     [Fact]

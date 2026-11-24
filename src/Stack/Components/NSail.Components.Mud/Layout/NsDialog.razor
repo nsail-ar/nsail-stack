@@ -82,23 +82,34 @@
     // let content past it grow the box, so the paper takes a real height instead. Custom
     // properties rather than inline width/height, so .ns-dialog in ns-mud.css can still
     // override both below the phone breakpoint — the seam .ns-drawer's max-width already uses
-    // for Xl.
+    // for Xl. Xxl has no pixel step: it is the viewport less the same margin every step is
+    // capped at, so it still reads as a dialog over the page.
     string GetStyle()
     {
-        var (width, height) = (Surface?.Size ?? Size) switch
+        var size = Surface?.Size ?? Size;
+
+        if (size == NsSize.Xxl)
+        {
+            return $"--ns-dialog-width: {ViewportLessMarginWidth}; --ns-dialog-height: {ViewportLessMarginHeight};";
+        }
+
+        var (width, height) = size switch
         {
             NsSize.Xs => (400, 240),
             NsSize.Sm => (500, 300),
             NsSize.Md => (640, 360),
             NsSize.Lg => (800, 440),
             NsSize.Xl => (960, 520),
-            NsSize.Xxl => (1140, 600),
             _ => (640, 360)
         };
 
-        return $"--ns-dialog-width: min({width}px, calc(100vw - 32px)); " +
-               $"--ns-dialog-height: min({height}px, calc(100vh - 32px));";
+        return $"--ns-dialog-width: min({width}px, {ViewportLessMarginWidth}); " +
+               $"--ns-dialog-height: min({height}px, {ViewportLessMarginHeight});";
     }
+
+    const string ViewportLessMarginWidth = "calc(100vw - 32px)";
+
+    const string ViewportLessMarginHeight = "calc(100vh - 32px)";
 
     // ns-container: the modal is a fixed box over the page, so nothing above it is the
     // ns-container NsPanel and NsCard declare — the layout's own chrome is not one and the

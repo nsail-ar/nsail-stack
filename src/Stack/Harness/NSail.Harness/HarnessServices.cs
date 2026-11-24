@@ -78,6 +78,7 @@ public static class HarnessServices
                 sp.GetRequiredService<BuildLeases>())
             {
                 LogSources = sp.GetServices<Watching.ILogSource>().ToList(),
+                Pressure = sp.GetRequiredService<IPressure>(),
             };
         });
         services.AddSingleton(sp => new Watching.WatchState(sp.GetRequiredService<HarnessOptions>().WorkRoot, Log<Watching.WatchState>(sp)));
@@ -86,6 +87,7 @@ public static class HarnessServices
         // The load a worker may ask about over the longest window it may ask for.
         services.AddSingleton(sp => new LoadSamples(TimeSpan.FromMinutes(Math.Max(15, LoadWindows(sp.GetRequiredService<HarnessOptions>()).DefaultIfEmpty(0).Max()))));
         services.AddHostedService<MachineLoad>();
+        services.AddSingleton<IPressure>(_ => new ProcPressure());
         services.AddSingleton<HarnessLoop>();
         services.AddHostedService(sp => sp.GetRequiredService<HarnessLoop>());
         services.AddHttpClient(nameof(OpsReporter));

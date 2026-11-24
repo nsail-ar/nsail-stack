@@ -49,6 +49,10 @@ public sealed class HarnessOptions
     // builds run, this how wide each one runs.
     public int BuildNodes { get; set; } = 4;
 
+    // The kernel's pressure (/proc/pressure) at which the machine is saturated: no new job starts,
+    // and a gate that runs out its clock then is the machine's fault once per head.
+    public Lanes.PressureOptions Pressure { get; set; } = new();
+
     // With every lane idle and nothing to take, the board is read again this often;
     // with lanes busy, a finished lane is what wakes the next read, and this is the floor.
     public int IdlePollSeconds { get; set; } = 30;

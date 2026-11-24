@@ -11,8 +11,8 @@ namespace NSail.Harness.Jobs;
 // merged with today's main, restored, built and tested (the affected set) by the project's gate
 // command, or the repository's builder when the worker names none, in a slot the last build left warm. The verdict is a PR comment carrying the gate's marker
 // (Markers) — the PR itself, readable by any harness — and, when the token may, a commit status too.
-// A red one names what failed, and the planner sends the story to a round. A run out of time with
-// nothing red is no verdict (OutOfTime).
+// A red one names what failed, and the planner sends the story to a round; one red by time alone, with
+// nothing failed, calls a hand instead (OutOfTime).
 public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
 {
     public WorkItem Item { get; } = item;
@@ -44,7 +44,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             return new JobOutcome($"red — {unreadable}", Failed: true);
         }
         // A workspace the machine cannot prepare is said in the machine's log alone (HarnessLoop.Sail).
-        catch (Exception e) when (!ct.IsCancellationRequested && e is not (WorkspaceFault or SharedStepException))
+        catch (Exception e) when (!ct.IsCancellationRequested && e is not (WorkspaceFault or SharedStepException or MachineSaturated))
         {
             // Infrastructure is not the PR's red: the comment carries no gate marker and no status is set,
             // so the head stays ungated and the next pass gates it again.
@@ -107,20 +107,28 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         {
             ctx.Leases.Release(lease.Id);
         }
-        return await Judge(prNumber, sha, main, result, dir, log, ct);
+        return await Judge(prNumber, sha, main, dir, result, log, ct);
     }
 
-    // The verdict a finished run earns at the head.
-    internal async Task<JobOutcome> Judge(int prNumber, string sha, string main, ShellResult result, string dir, ILogger log, CancellationToken ct)
+    // What a run says of the head. A clock run out on a machine the kernel reports saturated is the
+    // machine's, once per head: said as infrastructure (no verdict, no status) and gated again after
+    // the backoff. Any other run out of time with nothing red is red by time alone (OutOfTime).
+    internal async Task<JobOutcome> Judge(int prNumber, string sha, string main, string dir, ShellResult result, ILogger log, CancellationToken ct)
     {
+        if (result.TimedOut && ctx.Options.Pressure.Saturated(ctx.Pressure.Read()) is { } reading
+            && !Markers.SaturatedAt(ctx.Markers.Bodies(await ctx.Repo.Thread(prNumber, ct), await ctx.Repo.Login(ct)), sha))
+        {
+            var error = HarnessTexts.Fill(ctx.Texts.GateSaturated, ("minutes", Step.Minutes), ("reading", reading));
+            await Broke(prNumber, sha, error, log, Markers.GateSaturated(sha));
+            throw new MachineSaturated(error);
+        }
         if (result.ExitCode == 0)
         {
             await Verdict(prNumber, sha, green: true, ctx.Texts.GateGreen, null, log);
             return new JobOutcome("green");
         }
         var failures = FailureSet(result.Output, dir);
-        // A run cut by its clock with nothing red is the machine's time, not the PR's red: no round owes it.
-        if (result.TimedOut && failures.Count == 0) return await OutOfTime(prNumber, sha, result.Output, log, ct);
+        if (result.TimedOut && failures.Count == 0) return await OutOfTime(prNumber, sha, result.Output, log);
         // A red that is all main's own is not the PR's round: it waits for main to move.
         if (MainGateJob.RedAt(main) is { } mains && failures.Count > 0 && failures.IsSubsetOf(mains))
         {
@@ -132,35 +140,14 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         return new JobOutcome($"red — {why}", Failed: true);
     }
 
-    // How many runs out of time at one head are still no verdict; the next is red, and a hand's.
-    internal const int LateRuns = 1;
-
-    // Out of time with nothing red: said on the PR with what was green, no failing status, no event,
-    // and gated again after the back-off. Past LateRuns at the same head it is red, with the count,
-    // and fires OutOfTime (the type's default calls a hand), so no builder is sent a round it cannot do.
-    async Task<JobOutcome> OutOfTime(int prNumber, string sha, string output, ILogger log, CancellationToken ct)
+    // Red by time alone: the clock ran out with nothing red. The verdict says what was green and fires
+    // OutOfTime (the type's default calls a hand) instead of a round: no builder can fix a clock.
+    async Task<JobOutcome> OutOfTime(int prNumber, string sha, string output, ILogger log)
     {
         var late = HarnessTexts.Fill(ctx.Texts.GateTimedOut, ("minutes", Step.Minutes));
-        var green = GreenOf(output, ctx.Texts);
-        var count = Markers.LateAt(ctx.Markers.Bodies(await ctx.Repo.Thread(prNumber, ct), await ctx.Repo.Login(ct)), sha) + 1;
-        if (count > LateRuns)
-        {
-            var text = HarnessTexts.Fill(ctx.Texts.GateOutOfTimeTwice, ("late", late), ("count", count), ("green", green));
-            await Verdict(prNumber, sha, green: false, text, null, log, Markers.GateLate(sha));
-            return new JobOutcome($"red — out of time {count} times at this head ({late})", Event: OutOfTimeEvent, Failed: true);
-        }
-        var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", ctx.Texts.GateOutOfTimeWord), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateOutOfTime, ("late", late), ("green", green))))
-            + $"\n\n{ctx.Texts.Signature}\n{Markers.GateLate(sha)}";
-        await ctx.Repo.Comment(prNumber, body);
-        try
-        {
-            await ctx.Repo.SetStatus(sha, Markers.GateContext, "pending", $"out of time ({late}): gated again");
-        }
-        catch (ProviderException e)
-        {
-            log.LogDebug("no gate status on {Sha}: {Error}", sha[..8], e.Message);
-        }
-        return new JobOutcome($"out of time — {late}, nothing red; gated again after the back-off", Again: true, Failed: true);
+        var text = HarnessTexts.Fill(ctx.Texts.GateOutOfTime, ("late", late), ("green", GreenOf(output, ctx.Texts)));
+        await Verdict(prNumber, sha, green: false, text, null, log);
+        return new JobOutcome($"red — {late}", Event: OutOfTimeEvent, Failed: true);
     }
 
     // The Verify event a head red by time alone fires.
@@ -175,11 +162,11 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         return lines.Any(l => BuildSucceeded().IsMatch(l)) ? texts.GateBuildGreen : texts.GateNothingGreen;
     }
 
-    async Task Verdict(int pr, string sha, bool green, string text, string? detail, ILogger log, string? marker = null)
+    async Task Verdict(int pr, string sha, bool green, string text, string? detail, ILogger log)
     {
         var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", green ? "green" : "red"), ("sha", sha[..8]), ("text", text))
             + (detail is null ? "" : $"\n\n```\n{detail}\n```")
-            + $"\n\n{ctx.Texts.Signature}\n{(marker is null ? "" : marker + "\n")}{Markers.Gate(green, sha)}";
+            + $"\n\n{ctx.Texts.Signature}\n{Markers.Gate(green, sha)}";
         await ctx.Repo.Comment(pr, body);
         try
         {
@@ -192,10 +179,10 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         }
     }
 
-    async Task Broke(int pr, string sha, string error, ILogger log)
+    async Task Broke(int pr, string sha, string error, ILogger log, string? marker = null)
     {
         var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", "broke"), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateBroke, ("error", error))))
-            + $"\n\n{ctx.Texts.Signature}";
+            + $"\n\n{ctx.Texts.Signature}" + (marker is null ? "" : $"\n{marker}");
         try
         {
             await ctx.Repo.Comment(pr, body);
@@ -253,6 +240,9 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         if (errors.Count > 0) return string.Join('\n', errors);
         return string.Join('\n', lines.Where(l => l.Length > 0).TakeLast(30));
     }
+
+    // A gate that ran out its clock on a saturated machine: its comment is written, the job ends as a break.
+    internal sealed class MachineSaturated(string message) : Exception(message);
 
     [GeneratedRegex(@"^\s*Failed \S")] private static partial Regex FailedTest();
     [GeneratedRegex(@": error [A-Z]+\d+:")] private static partial Regex BuildError();

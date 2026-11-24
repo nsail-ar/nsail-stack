@@ -7,14 +7,13 @@ using NSail.Harness.Jobs;
 namespace NSail.Harness.Workers;
 
 // The events a finished job fires on its story, in order: its own (Opened, Clean...), then Succeeded
-// or Failed, then Executed. A job that ended on the quota wall, found nothing to do or is to be done
-// again (JobOutcome.Again) fires none,
+// or Failed, then Executed. A job that ended on the quota wall or found nothing to do fires none,
 // and neither does a job that broke: that is the harness's, said on the story apart (Markers.Broke).
 public static class JobEvents
 {
     public static IReadOnlyList<string> Fired(JobOutcome outcome)
     {
-        if (outcome.Silent) return [];
+        if (outcome.Quiet) return [];
         var fired = new List<string>();
         if (outcome.Event is { } own) fired.Add(own);
         fired.Add(outcome.Failed ? "Failed" : "Succeeded");

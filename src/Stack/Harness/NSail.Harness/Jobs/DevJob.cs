@@ -432,6 +432,22 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                 : new Ending("a release red's question — the next round decides it", "HandedOff");
         }
 
+        // A round that pushed nothing on a PR whose head another hand moved past the one it was planned on
+        // and the one it checked out did not stall: the gate judges the new head, and the round counts for nothing.
+        async Task<(int Pr, string Head)?> MovedUnder(int? pr)
+        {
+            if (pushed) return null;
+            var number = pr ?? (await repo.PrsOf(n, "open", ct)).FirstOrDefault(p => p.Head == branch)?.Number;
+            if (number is not { } open) return null;
+            var head = (await repo.Pr(open, ct)).HeadSha;
+            return head.Length > 0 && head != since && head != Item.Sha ? (open, head) : null;
+        }
+
+        string HeadMoved((int Pr, string Head) moved)
+        {
+            return $"{HarnessTexts.Fill(ctx.Texts.HeadMoved, ("pr", moved.Pr), ("head", moved.Head[..Math.Min(8, moved.Head.Length)]))} {ctx.Texts.Signature}";
+        }
+
         if (Out("wall.md") is { Length: > 0 } wall)
         {
             if (await NothingToBuild(wall) is { } landed) return landed;
@@ -473,6 +489,11 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                 await board.Comment(n, JobContext.Signed(handoff, Seat));
                 return new Ending("handed off with nothing pushed, waiting on a blocker — blocked until it lands", "Walled");
             }
+            if (await MovedUnder(null) is { } movedOff)
+            {
+                await board.Comment(n, $"{JobContext.Signed(handoff, Seat)}\n\n{HeadMoved(movedOff)}");
+                return new Ending($"handed off with nothing pushed, PR #{movedOff.Pr} moved under the round — the gate judges its new head");
+            }
             await board.Comment(n, $"{JobContext.Signed(handoff, Seat)}\n{Markers.Voyage}");
             return new Ending("handed off, nothing pushed", "HandedOff");
         }
@@ -491,6 +512,11 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             }
             if (!pushed)
             {
+                if (await MovedUnder(open.Number) is { } moved)
+                {
+                    await board.Comment(n, HeadMoved(moved));
+                    return new Ending($"PR #{moved.Pr} moved under the round, nothing pushed — the gate judges its new head");
+                }
                 await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.NothingPushed, ("pr", open.Number))));
                 return new Ending($"PR #{open.Number} open, nothing pushed — dead", Failed: true);
             }
@@ -504,6 +530,11 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         }
 
         var why = result.TimedOut ? "timeout" : $"exit {result.ExitCode}";
+        if (await MovedUnder(null) is { } movedDead)
+        {
+            await board.Comment(n, HeadMoved(movedDead));
+            return new Ending($"voyage ended ({why}) with nothing pushed, PR #{movedDead.Pr} moved under the round — the gate judges its new head");
+        }
         await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.DeadVoyage, ("why", why), ("pushed", pushed ? ctx.Texts.WorkPushed : ""))));
         if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await ctx.Fire(Item, "Unfinished", n, log, ct);
         return new Ending($"dead voyage ({why})", Failed: true);

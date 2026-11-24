@@ -125,8 +125,8 @@ public static class WorkerTypes
                 ["Approved"] = [Remove(Labels.Stalled)],
             }, Minutes: 60),
         // Verify a PR (Target pr) runs over stories; Verify main (Target main) on its own: see Kind.
-        // OutOfTime: a PR's head red by time alone, past GateJob.LateRuns runs out of time with nothing
-        // red; no builder can make the machine faster, so it waits for a hand.
+        // OutOfTime: a PR's head red by time alone (the clock ran out with nothing failed, past the one
+        // retry a saturated machine earns); no builder can make the machine faster, so it waits for a hand.
         ["Verify"] = new("Verify", WorkKind.Gate, true, false,
             new FilterOptions { Status = PrStages, Pr = "open", Checks = "ungated", Labels = Holds },
             [.. WorkerType.BaseEvents, Jobs.GateJob.OutOfTimeEvent],
