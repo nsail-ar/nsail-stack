@@ -604,6 +604,11 @@ over a popup:
 - **at the foot** — everything else, as ONE strip, seated in the row the form's actions occupy
   where a panel footer claims it, after the content otherwise.
 
+**Being where the user is looking means an anchored refusal out of view comes into view**: the
+press brings the first field in error to the screen and hands it the cursor
+([ui/forms.md](ui/forms.md), *Placing a refusal*), so a "no" below the fold is never a press that
+seems to do nothing.
+
 **The foot is the host's, not the page's: a row editor places its own refusal.** A row refused on
 Confirmar — an `NsListEditor` item, an editable `NsTable` row — draws under the field of the ROW
 the issue names, and anything the row renders no field for as one strip where that row ends: the
