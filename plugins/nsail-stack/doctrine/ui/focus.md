@@ -162,4 +162,5 @@ by an explicit call (`ProductScanField.Focus`), not by an arrival.
 This is the arrival marker's rule alone. A create form's first-field focus (forms.md) is a
 different mechanism — `NsForm.focusFirst`, not `arrivalFocus` — and is not part of it: changing
 it is a separate call, with its own cost to weigh (a sheet being filled in is the one thing on
-screen, not a list the keyboard would cover).
+screen, not a list the keyboard would cover). So is a refused submit's move to the first field in
+error (`nsapp.focusRefused`, forms.md *Placing a refusal*): it answers a press, not an arrival.

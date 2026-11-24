@@ -36,6 +36,10 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
     /// for the possibility.</summary>
     public IReadOnlyList<string> Unplaced => _unplaced;
 
+    /// <summary>Whether the standing refusal drew under at least one field — what the host hands
+    /// the cursor to (NsForm). One drawn only at the foot has no field to move to.</summary>
+    public bool AtField { get; private set; }
+
     /// <summary>The context the messages are posted to and the fields read them back off. A
     /// host that owns one (a form's document) binds its own; a host editing inside someone
     /// else's (a row inside a form) binds the one it was handed, which is what lets the row's
@@ -102,6 +106,7 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
     {
         _messages?.Clear();
         _unplaced.Clear();
+        AtField = false;
         _context?.NotifyValidationStateChanged();
     }
 
@@ -151,6 +156,7 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
 
         _messages.Clear();
         _unplaced.Clear();
+        AtField = false;
 
         if (problem is null)
         {
@@ -181,6 +187,7 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
             if (identifier is { } field && _rendered.Contains(field))
             {
                 _messages.Add(field, message);
+                AtField = true;
             }
             else
             {

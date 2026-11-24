@@ -28,8 +28,18 @@
     [Parameter]
     public EventCallback Reloaded { get; set; }
 
-    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    /// <summary>Held until it completes, so the submit runs the way a real send to the server
+    /// does: past the event's own render, with the fields frozen for the length of it.</summary>
+    [Parameter]
+    public Task? Hold { get; set; }
+
+    async Task HandleSubmit(SubmitEventArgs<FormProblemModel> args)
     {
+        if (Hold is not null)
+        {
+            await Hold;
+        }
+
         args.Problem = Problem;
     }
 

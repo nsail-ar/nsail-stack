@@ -38,7 +38,8 @@ public sealed class ShimTests : IDisposable
     public void Dispose()
     {
         _stop.Cancel();
-        if (_http.IsListening) _http.Stop();
+        // Close alone: after a Stop, the managed listener's Close unbinds again by binding the port anew,
+        // and throws when a parallel test has taken it since.
         _http.Close();
         Directory.Delete(_root, true);
     }

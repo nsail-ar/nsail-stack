@@ -166,6 +166,10 @@ else if (HasDocument)
     bool _reloadable;
     bool _focusPending;
 
+    // A refusal drawn under a field moves the cursor to it, after the render that draws the mark
+    // (RevealRefusal).
+    bool _refusalPending;
+
     /// <summary>The model to edit when the page already holds one — a create page's blank
     /// document, a filter. A form that names <see cref="OnLoad"/> takes its model from there
     /// instead, and this is not read at all.</summary>
@@ -270,6 +274,15 @@ else if (HasDocument)
             _focusPending = false;
 
             await JS.InvokeVoidAsync("nsapp.focusFirst", _formId);
+        }
+
+        // Held while a save runs: its fields are frozen and take no cursor (HandleSubmit renders
+        // again once they thaw).
+        if (_refusalPending && !IsRunning)
+        {
+            _refusalPending = false;
+
+            await JS.InvokeVoidAsync("nsapp.focusRefused", _formId);
         }
     }
 
@@ -391,11 +404,15 @@ else if (HasDocument)
         // surface dirty in time for this submit to spend it and the popup still closes.
         if (!await Settle())
         {
+            RevealRefusal();
+
             return;
         }
 
         if (!_editContext.Validate())
         {
+            RevealRefusal();
+
             return;
         }
 
@@ -458,6 +475,11 @@ else if (HasDocument)
         {
             surface?.SetFinishing(false);
             echoed = surface?.EndSave(window) ?? [];
+        }
+
+        if (_refusalPending)
+        {
+            StateHasChanged();
         }
 
         // A handler that gave up on the submit refused it as surely as the server would have,
@@ -761,8 +783,25 @@ else if (HasDocument)
 
         _hosted = hosted && drew;
 
+        if (Placement.AtField)
+        {
+            RevealRefusal();
+        }
+
         Changed?.Invoke();
 
         return drew;
+    }
+
+    // Brings the first field in error into view and hands it the cursor: a refusal under a field
+    // below the fold is otherwise a press that seems to do nothing. Which field is the browser's to
+    // say, in document order, from the marks the next render draws — a refusal with no field marked
+    // finds none and moves nothing. Its own render, because a submit called from outside the form's
+    // chrome (a wizard's Next) provokes none of the form's.
+    void RevealRefusal()
+    {
+        _refusalPending = true;
+
+        _ = InvokeAsync(StateHasChanged);
     }
 }
