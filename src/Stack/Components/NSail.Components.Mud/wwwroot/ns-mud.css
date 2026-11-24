@@ -174,6 +174,18 @@
     min-width: 0;
 }
 
+/* The open row's fields are top-aligned (align-start on the razor side): a refusal, a Helper or
+   chips grow one field downward and the fields beside it keep their tops (ui/fields.md, the
+   growth is downward). A boolean control there draws neither the gutter nor the outline its
+   labelled neighbours do, so it takes their geometry -- the 8px gutter and the 40px box it is
+   centred in -- the answer .ns-grid gives the same control. */
+.ns-list-editor-fields:has(> .mud-input-outlined-with-label) > .ns-form-check,
+.ns-list-editor-fields:has(> .mud-input-outlined-with-label) > .ns-record-state {
+    margin-top: 0.5rem;
+    min-height: 2.5rem;
+    justify-content: center;
+}
+
 /* A handful of FACTS said as a list — a home card's notices, one line per state. A real
    <ul> for the same reason as above, and here the browser's bullets are kept: the mark is what
    makes two short facts read as two facts instead of one wrapped sentence. Only the indent and
@@ -1917,6 +1929,20 @@
    any width. */
 .ns-help {
     flex-shrink: 0;
+}
+
+/* The ? (NsHelp, and every component rendering its .ns-help root) after a labelled field in a
+   top-aligned row: the row's flex-start would leave it on the field's label gutter. It takes the
+   field's own geometry instead -- the 8px gutter the vendor's outlined-with-label margin draws
+   and a 40px box its glyph is centred in -- so it sits on the INPUT whether a refusal grows the
+   field below it or not. A field inside a wrapper of its own (a stored box, a dropdown's anchor)
+   is reached through the wrapper. Keyed on the vendor's align-start, so a centred row, a
+   stretched one and a column are left alone, and on the labelled field, so a ? beside a boolean
+   control (no gutter, no outline) keeps its place. */
+.align-start:not(.flex-column) > .mud-input-outlined-with-label + .ns-help,
+.align-start:not(.flex-column) > :has(> .mud-input-outlined-with-label) + .ns-help {
+    margin-top: 0.5rem;
+    height: 2.5rem;
 }
 
 /* A control with a help icon beside it sizes to its content: MudCheckbox's control ships

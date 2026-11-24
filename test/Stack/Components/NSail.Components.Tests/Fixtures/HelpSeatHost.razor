@@ -1,0 +1,37 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@* A ? beside a field, in each row shape the help seat (ns-mud.css) must reach or leave alone. *@
+<MudPopoverProvider />
+
+<NsStack Horizontal Align="NsAlign.Start" Class="top-row">
+    <NsTextField @bind-Value="_name" Label="Nombre" />
+    <NsHelp Text="Ayuda" />
+</NsStack>
+
+<NsStack Horizontal Align="NsAlign.Center" Class="centred-row">
+    <NsTextField @bind-Value="_name" Label="Nombre" />
+    <NsHelp Text="Ayuda" />
+</NsStack>
+
+<NsStack Align="NsAlign.Start" Class="column">
+    <NsTextField @bind-Value="_name" Label="Nombre" />
+    <NsHelp Text="Ayuda" />
+</NsStack>
+
+<NsStack Horizontal Align="NsAlign.Start" Class="check-row">
+    <NsCheckBox TValue="bool" @bind-Value="_flag" Label="Activo" />
+    <NsHelp Text="Ayuda" />
+</NsStack>
+
+@code {
+
+    string? _name;
+
+    bool _flag;
+}

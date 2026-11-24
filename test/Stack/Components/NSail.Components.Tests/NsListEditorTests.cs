@@ -433,6 +433,25 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
         Assert.Empty(cut.FindAll("li.ns-list-editor-open.align-center"));
     }
 
+    /// <summary>A refusal, a Helper or chips grow one field of the open row downward; the fields
+    /// beside it keep their tops only if the box holding them aligns to the start and not the
+    /// centre. The folded row's content box keeps centring.</summary>
+    [Fact]
+    public async Task TheOpenRowsFieldsAreTopAligned()
+    {
+        var cut = Render<ListEditorHost>();
+
+        Assert.Empty(cut.FindAll(".ns-list-editor-fields"));
+        Assert.Single(cut.FindAll("li.ns-list-editor-item > div.align-center"));
+
+        await Click(cut, "Editar");
+
+        var fields = cut.Find("li.ns-list-editor-open > .ns-list-editor-fields");
+
+        Assert.Contains("align-start", fields.ClassList);
+        Assert.DoesNotContain("align-center", fields.ClassList);
+    }
+
     static Task Press(IRenderedComponent<ListEditorFormHost> cut, string name)
     {
         return cut.InvokeAsync(() => cut.FindAll($"button[aria-label='{name}']")[0].Click());
