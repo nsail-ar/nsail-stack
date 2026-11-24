@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using NSail.Components;
+using NSail.Storage.Settings;
 
 namespace NSail.Storage;
 
