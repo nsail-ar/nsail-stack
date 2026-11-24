@@ -6,8 +6,11 @@
   "Guide.Storage": "Storage",
 
   "Storage.StorageSettingsPage.Title": "Storage",
-  "Storage.StorageStorePage.Title": "Storage",
+  "Storage.StorageStorePage.Title": "Edit Store",
   "Storage.DefaultStore": "Default",
+  "Storage.Providers.file": "Server folder",
+  "Storage.Providers.s3": "S3-compatible bucket",
+  "Storage.Providers.git": "Git repository",
   "Storage.StorageStorePage.ContainerFolderHint": "The folder on this server where objects are written.",
   "Storage.StorageStorePage.ContainerBucketHint": "The bucket objects are written to.",
   "Storage.StorageStorePage.EndpointHint": "The address of the S3-compatible service, without the bucket.",

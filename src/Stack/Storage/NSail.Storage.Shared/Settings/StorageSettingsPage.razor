@@ -26,7 +26,7 @@
                     <NsTh />
                 </HeaderContent>
                 <RowTemplate Context="row">
-                    <NsTd For="() => row.Name">@StorageNames.Display(row.Name, Translate("Storage.DefaultStore"))</NsTd>
+                    <NsTd For="() => row.Name">@StorageWords.Store(Strings, row.Name)</NsTd>
                     <NsTd For="() => row.Provider">@ProviderName(row.Provider)</NsTd>
                     <NsTd For="() => row.Container">@row.Container</NsTd>
                     <NsTd For="() => row.UsesDefault">@(row.UsesDefault ? "✓" : "")</NsTd>
@@ -60,6 +60,8 @@
 
     string? ProviderName(string? type)
     {
-        return _providers.FirstOrDefault(provider => provider.Type == type)?.DisplayName ?? type;
+        return _providers.FirstOrDefault(provider => provider.Type == type) is { } provider
+            ? StorageWords.Provider(Strings, provider)
+            : type;
     }
 }

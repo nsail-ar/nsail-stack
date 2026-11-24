@@ -15,6 +15,7 @@ public interface IStorageProvider
 {
     string Type { get; }
 
+    // The provider's own name, read by a screen that has no words of its own for Type.
     string DisplayName { get; }
 
     // Whether the target lives behind an address and a credential — what the settings screen

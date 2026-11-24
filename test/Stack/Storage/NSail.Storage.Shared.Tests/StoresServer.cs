@@ -45,8 +45,8 @@ sealed class StoresServer :
     {
         return Task.FromResult(new List<StorageProviderRef>
         {
-            new() { Type = "file", DisplayName = "Local folder" },
-            new() { Type = "s3", DisplayName = "S3-compatible", IsRemote = true },
+            new() { Type = "file", DisplayName = "Server folder" },
+            new() { Type = "s3", DisplayName = "S3-compatible bucket", IsRemote = true },
             new() { Type = "git", DisplayName = "Git repository", IsRemote = true, IsRepository = true },
         });
     }
