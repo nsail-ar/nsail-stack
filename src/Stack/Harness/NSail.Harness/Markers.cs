@@ -7,7 +7,7 @@ using NSail.Harness.Repositories;
 namespace NSail.Harness;
 
 // The harness's own protocol on a PR's thread, in HTML comments people do not see: the gate's verdict
-// at a head (`harness:gate:<green|red>:<sha>`, or `harness:gate:waits:<sha>:<main>`) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
+// at a head (`harness:gate:<green|red>:<sha>`, or `harness:gate:waits:<sha>:<main>`; `harness:gate:saturated:<sha>` is no verdict) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
 // A marker counts only as a whole HTML comment on its own line, written by the harness's own login or
 // by one of the fleet's (`authors`).
 public sealed class Markers(string review, IReadOnlyCollection<string>? authors = null)
@@ -124,6 +124,18 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
     public static string GateWaits(string sha, string main)
     {
         return $"<!-- harness:gate:waits:{sha}:{main} -->";
+    }
+
+    // On the gate's broke comment when a head ran out its clock on a saturated machine: no verdict
+    // (GateAt does not read it), only the count that lets one such timeout per head be the machine's.
+    public static string GateSaturated(string sha)
+    {
+        return $"<!-- harness:gate:saturated:{sha} -->";
+    }
+
+    public static bool SaturatedAt(IEnumerable<string> bodies, string sha)
+    {
+        return bodies.Any(b => Regex.IsMatch(b, $@"^{Regex.Escape(GateSaturated(sha))}[ \t]*\r?$", RegexOptions.Multiline));
     }
 
     public string Review(string word, string sha)

@@ -43,7 +43,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             return new JobOutcome($"red — {unreadable}", Failed: true);
         }
         // A workspace the machine cannot prepare is said in the machine's log alone (HarnessLoop.Sail).
-        catch (Exception e) when (!ct.IsCancellationRequested && e is not (WorkspaceFault or SharedStepException))
+        catch (Exception e) when (!ct.IsCancellationRequested && e is not (WorkspaceFault or SharedStepException or MachineSaturated))
         {
             // Infrastructure is not the PR's red: the comment carries no gate marker and no status is set,
             // so the head stays ungated and the next pass gates it again.
@@ -106,7 +106,21 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         {
             ctx.Leases.Release(lease.Id);
         }
+        return await Judge(prNumber, sha, main, dir, result, log, ct);
+    }
 
+    // What a run says of the head. A clock run out on a machine the kernel reports saturated is the
+    // machine's, once per head: said as infrastructure (no verdict, no status) and gated again after
+    // the backoff; the second is the PR's red, as any timeout on a calm machine.
+    internal async Task<JobOutcome> Judge(int prNumber, string sha, string main, string dir, ShellResult result, ILogger log, CancellationToken ct)
+    {
+        if (result.TimedOut && ctx.Options.Pressure.Saturated(ctx.Pressure.Read()) is { } reading
+            && !Markers.SaturatedAt(ctx.Markers.Bodies(await ctx.Repo.Thread(prNumber, ct), await ctx.Repo.Login(ct)), sha))
+        {
+            var error = HarnessTexts.Fill(ctx.Texts.GateSaturated, ("minutes", Step.Minutes), ("reading", reading));
+            await Broke(prNumber, sha, error, log, Markers.GateSaturated(sha));
+            throw new MachineSaturated(error);
+        }
         if (result.ExitCode == 0)
         {
             await Verdict(prNumber, sha, green: true, ctx.Texts.GateGreen, null, log);
@@ -140,10 +154,10 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         }
     }
 
-    async Task Broke(int pr, string sha, string error, ILogger log)
+    async Task Broke(int pr, string sha, string error, ILogger log, string? marker = null)
     {
         var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", "broke"), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateBroke, ("error", error))))
-            + $"\n\n{ctx.Texts.Signature}";
+            + $"\n\n{ctx.Texts.Signature}" + (marker is null ? "" : $"\n{marker}");
         try
         {
             await ctx.Repo.Comment(pr, body);
@@ -195,6 +209,9 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         if (errors.Count > 0) return string.Join('\n', errors);
         return string.Join('\n', lines.Where(l => l.Length > 0).TakeLast(30));
     }
+
+    // A gate that ran out its clock on a saturated machine: its comment is written, the job ends as a break.
+    internal sealed class MachineSaturated(string message) : Exception(message);
 
     [GeneratedRegex(@"^\s*Failed \S")] private static partial Regex FailedTest();
     [GeneratedRegex(@": error [A-Z]+\d+:")] private static partial Regex BuildError();

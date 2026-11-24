@@ -57,6 +57,7 @@ public sealed class HarnessTexts
     public string GateUnreadable { get; set; } = "a project or the solution of this PR could not be read, so nothing was built or tested";
     public string GateWaits { get; set; } = "red only where `main` is red at `{main}`: not this PR's round. It is gated again once `main` moves.";
     public string GateTimedOut { get; set; } = "passed the {minutes} min";
+    public string GateSaturated { get; set; } = "it passed the {minutes} min while the machine was saturated: {reading}";
     public string GateConflict { get; set; } = "the head does not merge with `main`: there are conflicts. The next round brings `main` in and resolves them.";
     public string GateBroke { get; set; } = "the gate broke on infrastructure, not on this PR ({error}). The head is gated again after a short wait.";
 
