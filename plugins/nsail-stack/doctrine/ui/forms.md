@@ -456,15 +456,16 @@ which is the silence the placement exists to prevent (`RefusalPlacement.Forget`)
 - **A refusal drawn under a field takes the cursor there.** A submit refused by the form's own
   validation, by a row's settle, or by a `Problem` placed at a field — a hosted act's included —
   brings the first field in error, in document order, into view and focuses it
-  (`nsapp.focusRefused`, after the render that draws the marks). Without it a field below the fold
-  refuses out of sight and the press reads as doing nothing. Which field is the browser's to say:
-  the input marked `aria-invalid`, or the error mark of a field with no input of its own, which is
-  scrolled to and not focused. A field on a tab not showing is skipped — its badged header
-  is that refusal's answer. A refusal drawn only at the foot moves nothing, and neither does a
-  submit that took. **The scroll stops at the first fixed-position box**: a form in a dialog
-  scrolls the dialog's own content and never the page behind it, which `scrollIntoView` and a
-  plain `focus()` do not promise. A lookup in error takes the cursor without opening its list, by
-  the same swallow the focus on open arms.
+  (`nsapp.focusRefused`, after the render that draws the marks, and only once a save in flight has
+  ended — its frozen fields take no cursor). Without it a field below the fold refuses out of
+  sight and the press reads as doing nothing. Which field is the browser's to say: the input
+  marked `aria-invalid`, or the error mark of a field with no input of its own, which is scrolled
+  to and not focused. A field on a tab not showing is skipped — its badged header is that
+  refusal's answer. A refusal drawn only at the foot moves nothing, and neither does a submit that
+  took. **The scroll stops at the first fixed-position box**: a form in a dialog scrolls the box
+  that holds the hosted panel's content and never the page behind it, which `scrollIntoView` and
+  a plain `focus()` do not promise. A lookup in error takes the cursor without opening its list,
+  by the same swallow the focus on open arms.
 - **`OnReload` is the one act a refusal may offer** — wired to the screen's own first read, drawn
   beside the `Conflict` message and never under it, because a second line would move the buttons.
 - `NsForm` carries `NsDataAnnotationsValidator`, so `[Required]`/`[MaxLength]` speak under their

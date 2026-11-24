@@ -604,8 +604,8 @@ over a popup:
 - **at the foot** — everything else, as ONE strip, seated in the row the form's actions occupy
   where a panel footer claims it, after the content otherwise.
 
-**Being where the user is looking means an anchored refusal out of view comes into view**: the
-press brings the first field in error to the screen and hands it the cursor
+**Being where the user is looking means an anchored refusal out of view comes into view**: a
+refused submit brings the first field in error to the screen and hands it the cursor
 ([ui/forms.md](ui/forms.md), *Placing a refusal*), so a "no" below the fold is never a press that
 seems to do nothing.
 
