@@ -39,11 +39,16 @@ the files it leaves.
     A board that names its columns or labels otherwise maps them (`Stages`, `Labels`); a repository
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
     seed projects (a non-Markdown change outside them builds it all), the `Everything` files that build it all (by default solutions, `global.json`, props, targets, `nuget.config`, `.editorconfig`, `Directory.Build.rsp`, `*.globalconfig`), the `Tests` and their `TestFilter`): the
-    gate builds and tests what a change affects through the solution's ProjectReference graph (a PR
+    gate builds and tests what a change affects through the solution's ProjectReference graph (the
+    `Solution` itself, when its change only adds projects — their entries, configurations, nesting and new solution
+    folders, `DotNetBuilder.AddedOnly` — seeds those projects instead of building it all, so a new kit builds itself and
+    what references it; a PR
     red only where main's own gate is red waits for main to move: no round owes it; a gate that broke on infrastructure — git, the provider, the disk — writes
     no verdict and no status, only an unmarked comment, and the head is gated again after the backoff,
     and so does the first gate at a head that runs out its clock while the machine is saturated (its
-    comment carries `harness:gate:saturated:<sha>`, which is no verdict, so the second is red); a malformed project or a
+    comment carries `harness:gate:saturated:<sha>`, which is no verdict); any other run that passed its `Minutes` with
+    nothing failed is red by time alone: its verdict names what was green (the build, each test project that passed)
+    and fires the Verify event `OutOfTime`, whose default adds `hand` instead of sending a round no builder can do; a malformed project or a
     missing solution in the PR is its red), and a
     Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):

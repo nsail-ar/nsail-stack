@@ -11,7 +11,8 @@ namespace NSail.Harness.Jobs;
 // merged with today's main, restored, built and tested (the affected set) by the project's gate
 // command, or the repository's builder when the worker names none, in a slot the last build left warm. The verdict is a PR comment carrying the gate's marker
 // (Markers) — the PR itself, readable by any harness — and, when the token may, a commit status too.
-// A red one names what failed, and the planner sends the story to a round.
+// A red one names what failed, and the planner sends the story to a round; one red by time alone, with
+// nothing failed, calls a hand instead (OutOfTime).
 public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
 {
     public WorkItem Item { get; } = item;
@@ -99,7 +100,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             env["TEST_OUTPUT"] = Path.Combine(env["GATE_WORK"], "test-output.txt");
             Directory.CreateDirectory(env["GATE_WORK"]);
             result = Step.Command is { } command
-                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct, keep: IsFailureLine, runsCode: true)
+                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct, keep: IsKeptLine, runsCode: true)
                 : await ctx.Builder!.Gate(dir, main, env, Timeout(Step), w, ct, ctx.Options.RunCodeAs);
         }
         finally
@@ -111,7 +112,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
 
     // What a run says of the head. A clock run out on a machine the kernel reports saturated is the
     // machine's, once per head: said as infrastructure (no verdict, no status) and gated again after
-    // the backoff; the second is the PR's red, as any timeout on a calm machine.
+    // the backoff. Any other run out of time with nothing red is red by time alone (OutOfTime).
     internal async Task<JobOutcome> Judge(int prNumber, string sha, string main, string dir, ShellResult result, ILogger log, CancellationToken ct)
     {
         if (result.TimedOut && ctx.Options.Pressure.Saturated(ctx.Pressure.Read()) is { } reading
@@ -126,15 +127,39 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             await Verdict(prNumber, sha, green: true, ctx.Texts.GateGreen, null, log);
             return new JobOutcome("green");
         }
+        var failures = FailureSet(result.Output, dir);
+        if (result.TimedOut && failures.Count == 0) return await OutOfTime(prNumber, sha, result.Output, log);
         // A red that is all main's own is not the PR's round: it waits for main to move.
-        if (!result.TimedOut && MainGateJob.RedAt(main) is { } mains && FailureSet(result.Output, dir) is { Count: > 0 } own && own.IsSubsetOf(mains))
+        if (MainGateJob.RedAt(main) is { } mains && failures.Count > 0 && failures.IsSubsetOf(mains))
         {
             await Waits(prNumber, sha, main, log);
             return new JobOutcome($"red only where main is red at {main[..8]} — gated again once main moves", Idle: true);
         }
-        var why = result.TimedOut ? HarnessTexts.Fill(ctx.Texts.GateTimedOut, ("minutes", Step.Minutes)) : ctx.Texts.GateRedTests;
+        var why = ctx.Texts.GateRedTests;
         await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", why)), Failures(result.Output), log);
         return new JobOutcome($"red — {why}", Failed: true);
+    }
+
+    // Red by time alone: the clock ran out with nothing red. The verdict says what was green and fires
+    // OutOfTime (the type's default calls a hand) instead of a round: no builder can fix a clock.
+    async Task<JobOutcome> OutOfTime(int prNumber, string sha, string output, ILogger log)
+    {
+        var late = HarnessTexts.Fill(ctx.Texts.GateTimedOut, ("minutes", Step.Minutes));
+        var text = HarnessTexts.Fill(ctx.Texts.GateOutOfTime, ("late", late), ("green", GreenOf(output, ctx.Texts)));
+        await Verdict(prNumber, sha, green: false, text, null, log);
+        return new JobOutcome($"red — {late}", Event: OutOfTimeEvent, Failed: true);
+    }
+
+    // The Verify event a head red by time alone fires.
+    public const string OutOfTimeEvent = "OutOfTime";
+
+    // What a run cut by its clock had finished green: the build, and each test project that passed.
+    internal static string GreenOf(string output, HarnessTexts texts)
+    {
+        var lines = output.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        var suites = lines.Select(l => PassedSuite().Match(l)).Where(m => m.Success).Select(m => m.Groups[1].Value).Distinct().ToList();
+        if (suites.Count > 0) return HarnessTexts.Fill(texts.GateTestsGreen, ("count", suites.Count), ("names", string.Join(", ", suites)));
+        return lines.Any(l => BuildSucceeded().IsMatch(l)) ? texts.GateBuildGreen : texts.GateNothingGreen;
     }
 
     async Task Verdict(int pr, string sha, bool green, string text, string? detail, ILogger log)
@@ -199,6 +224,12 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         return FailedTest().IsMatch(line) || BuildError().IsMatch(line);
     }
 
+    // What the gate reads off its output, kept through the cut: the failures, and what went green.
+    internal static bool IsKeptLine(string line)
+    {
+        return IsFailureLine(line) || PassedSuite().IsMatch(line) || BuildSucceeded().IsMatch(line);
+    }
+
     // What a builder needs to start: the failed test names, else the build errors, else the tail.
     internal static string Failures(string output)
     {
@@ -216,4 +247,6 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
     [GeneratedRegex(@"^\s*Failed \S")] private static partial Regex FailedTest();
     [GeneratedRegex(@": error [A-Z]+\d+:")] private static partial Regex BuildError();
     [GeneratedRegex(@"\s*\[[\d.,]+ m?s\]$")] private static partial Regex TestTime();
+    [GeneratedRegex(@"^\s*Passed!\s+-.*\s-\s+(\S+?)\.dll\b")] private static partial Regex PassedSuite();
+    [GeneratedRegex(@"^\s*Build succeeded\b")] private static partial Regex BuildSucceeded();
 }

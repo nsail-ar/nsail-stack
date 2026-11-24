@@ -28,18 +28,36 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         var changed = diff.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         if (changed.Count == 0) return null;
         var solution = Projects(dir);
-        return Closure(changed, solution, p => File.Exists(Path.Combine(dir, p)), p => References(dir, p));
+        IReadOnlyList<string>? added = null;
+        if (changed.Any(IsSolution))
+        {
+            var before = await Shell.Run("git", ["show", $"{baseSha}:{Normalize(options.Solution)}"], dir, ct: ct, stdoutOnly: true);
+            if (before.ExitCode == 0) added = AddedOnly(before.Output, await File.ReadAllTextAsync(Path.Combine(dir, options.Solution), ct), Path.GetDirectoryName(options.Solution) ?? "");
+        }
+        return Closure(changed, solution, p => File.Exists(Path.Combine(dir, p)), p => References(dir, p), added);
+    }
+
+    bool IsSolution(string file)
+    {
+        return string.Equals(Normalize(file), Normalize(options.Solution), StringComparison.OrdinalIgnoreCase);
     }
 
     // The pure walk over a change: Everything builds all (null); outside Roots seeds nothing when it is Markdown, else is unprovable (null); a file
     // with no owning project is prose when it is Markdown, else unprovable (null); an owner the
-    // solution does not list is unprovable too.
-    internal IReadOnlyList<string>? Closure(IReadOnlyList<string> changed, IReadOnlyList<string> solution, Func<string, bool> exists, Func<string, IEnumerable<string>> references)
+    // solution does not list is unprovable too. The solution itself, when its change only adds projects
+    // (`added`), seeds those projects: a new kit builds itself and what references it, not the whole solution.
+    internal IReadOnlyList<string>? Closure(IReadOnlyList<string> changed, IReadOnlyList<string> solution, Func<string, bool> exists, Func<string, IEnumerable<string>> references, IReadOnlyList<string>? added = null)
     {
         var inSolution = solution.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var seeds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in changed.Select(f => f.Replace('\\', '/')))
         {
+            if (added is not null && IsSolution(file))
+            {
+                if (!added.All(inSolution.Contains)) return null;
+                seeds.UnionWith(added);
+                continue;
+            }
             var name = Path.GetFileName(file);
             if (options.Everything.Any(e => e.Contains('/') ? file.Equals(e, StringComparison.OrdinalIgnoreCase) : FileSystemName.MatchesSimpleExpression(e, name))) return null;
             var documentation = file.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
@@ -103,6 +121,73 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         return paths.Where(p => p.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
             .Select(p => Normalize(Path.Combine(folder, p.Replace('\\', '/'))))
             .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToList();
+    }
+
+    // The projects a solution's change only adds, repository-relative; null when it changes anything
+    // else (a project removed or moved, a configuration of one already there, the solution's own
+    // settings). In a .sln an added project is its Project block and every line naming its GUID (its
+    // configurations, its nesting); a solution folder added with it counts the same. The header's
+    // Visual Studio version lines are the editor's, not the build's. In a .slnx it is its Project
+    // element, and a Folder added with nothing else in it.
+    internal static IReadOnlyList<string>? AddedOnly(string before, string after, string folder)
+    {
+        before = before.TrimStart('﻿');
+        after = after.TrimStart('﻿');
+        if (before.TrimStart().StartsWith('<') != after.TrimStart().StartsWith('<')) return null;
+        var added = before.TrimStart().StartsWith('<') ? AddedToSlnx(before, after) : AddedToSln(before, after);
+        if (added is null) return null;
+        return added.Where(p => p.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+            .Select(p => Normalize(Path.Combine(folder, p.Replace('\\', '/'))))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToList();
+    }
+
+    static List<string>? AddedToSln(string before, string after)
+    {
+        var old = SlnEntry().Matches(before).Select(m => m.Groups[2].Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var fresh = SlnEntry().Matches(after).Where(m => !old.Contains(m.Groups[2].Value)).ToList();
+        if (fresh.Count == 0) return null;
+        var guids = fresh.Select(m => m.Groups[2].Value).ToList();
+        var kept = new List<string>();
+        var inFresh = false;
+        foreach (var line in Lines(after))
+        {
+            if (inFresh)
+            {
+                if (line.Trim() == "EndProject") inFresh = false;
+                continue;
+            }
+            if (SlnEntry().Match(line) is { Success: true } m && guids.Contains(m.Groups[2].Value, StringComparer.OrdinalIgnoreCase))
+            {
+                inFresh = line.Trim() != "EndProject";
+                continue;
+            }
+            if (guids.Any(g => line.Contains(g, StringComparison.OrdinalIgnoreCase))) continue;
+            kept.Add(line);
+        }
+        return kept.SequenceEqual(Lines(before)) ? fresh.Select(m => m.Groups[1].Value).ToList() : null;
+    }
+
+    // A solution's lines as the build reads them: no blank line, no editor version.
+    static IEnumerable<string> Lines(string text)
+    {
+        return text.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Trim().Length > 0 && !EditorVersion().IsMatch(l));
+    }
+
+    static List<string>? AddedToSlnx(string before, string after)
+    {
+        var old = XDocument.Parse(before);
+        var now = XDocument.Parse(after);
+        var paths = old.Descendants("Project").Select(p => (string?)p.Attribute("Path")).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var folders = old.Descendants("Folder").Select(f => (string?)f.Attribute("Name")).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var fresh = now.Descendants("Project").Where(p => (string?)p.Attribute("Path") is { } path && !paths.Contains(path)).ToList();
+        if (fresh.Count == 0) return null;
+        var added = fresh.Select(p => (string)p.Attribute("Path")!).ToList();
+        fresh.ForEach(p => p.Remove());
+        while (now.Descendants("Folder").FirstOrDefault(f => !f.HasElements && (string?)f.Attribute("Name") is { } name && !folders.Contains(name)) is { } empty)
+        {
+            empty.Remove();
+        }
+        return XNode.DeepEquals(old.Root, now.Root) ? added : null;
     }
 
     // A project's ProjectReferences, repository-relative.
@@ -213,7 +298,7 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
             var left = until - DateTimeOffset.UtcNow;
             if (left <= TimeSpan.Zero) return new ShellResult(124, _output.ToString(), TimedOut: true);
             await log.WriteLineAsync($"> dotnet {string.Join(' ', args)}");
-            var r = await Shell.Run(DotnetCli, args, dir, with ?? env, left, log, ct: ct, lowPriority: true, runAs: runAs, keep: Jobs.GateJob.IsFailureLine);
+            var r = await Shell.Run(DotnetCli, args, dir, with ?? env, left, log, ct: ct, lowPriority: true, runAs: runAs, keep: Jobs.GateJob.IsKeptLine);
             _output.Append(r.Output);
             return r with { Output = _output.ToString() };
         }
@@ -235,4 +320,11 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
 
     [GeneratedRegex(@"^Project\(""\{[^}]+\}""\) = ""[^""]+"", ""([^""]+\.csproj)""", RegexOptions.Multiline)]
     private static partial Regex SlnProject();
+
+    // Any .sln entry, a project or a solution folder: its path and its GUID.
+    [GeneratedRegex(@"^Project\(""\{[^}]+\}""\) = ""[^""]+"", ""([^""]+)"", ""(\{[^}]+\})""", RegexOptions.Multiline)]
+    private static partial Regex SlnEntry();
+
+    [GeneratedRegex(@"^(# Visual Studio Version |VisualStudioVersion = |MinimumVisualStudioVersion = )")]
+    private static partial Regex EditorVersion();
 }
