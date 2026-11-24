@@ -1484,12 +1484,73 @@
     // (NsComboboxExpandedMarkTests, which is why onDocumentKeyDown above reads it) and opens on a
     // mousedown, not on a focus. aria-autocomplete is the word that tells the box that SEARCHES
     // from the box that is merely chosen from: "list" against "none".
-    function place(candidate) {
+    function place(candidate, options) {
         if (candidate.getAttribute("aria-autocomplete") === "list")
             suppressOpenFor = candidate;
 
-        candidate.focus();
+        candidate.focus(options);
         suppressOpenFor = null;
+    }
+
+    // What marks a field the form refused: the input itself says aria-invalid, and a field with
+    // no input of its own (a choice drawn as boxes) carries the vendor's error class on the words
+    // under it. The vendor stamps that class on several nested nodes of one field, so the first
+    // match in document order is the field's outermost node, and the box inside it is the field.
+    const REFUSED = '[aria-invalid="true"], .mud-input-error';
+
+    // A refused submit answers where the refusal stands: the first field in error is brought into
+    // view and handed the cursor, or the press reads as doing nothing when the field sits below the
+    // fold. The marks are drawn by the render the C# side calls this after, and a vendor input
+    // that re-renders itself off the validation event may land one frame later, so an empty
+    // answer is asked once more on the next frame.
+    function focusRefused(formId, again) {
+        const root = document.getElementById(formId);
+        if (!root)
+            return;
+
+        for (const mark of root.querySelectorAll(REFUSED)) {
+            if (mark.offsetParent === null)
+                continue;
+
+            const box = mark.matches(TYPABLE) ? mark : mark.querySelector(TYPABLE);
+
+            reveal(box && box.offsetParent !== null ? box : mark);
+
+            if (box && box.offsetParent !== null)
+                place(box, { preventScroll: true });
+
+            return;
+        }
+
+        if (!again)
+            requestAnimationFrame(function () { focusRefused(formId, true); });
+    }
+
+    // Scrolls every box between the element and the first fixed-position ancestor, and the page
+    // only where there is none. A dialog is that fixed ancestor: its own content scrolls to the
+    // field and the page behind it never moves -- which scrollIntoView and a plain focus() do not
+    // promise, since both may scroll every ancestor up to the document.
+    function reveal(el) {
+        const page = document.scrollingElement || document.documentElement;
+
+        for (let box = el.parentElement; box && box !== page && box !== document.body; box = box.parentElement) {
+            const style = getComputedStyle(box);
+
+            if (/(auto|scroll|overlay)/.test(style.overflowY) && box.scrollHeight > box.clientHeight)
+                center(el, box.getBoundingClientRect(), function (by) { box.scrollTop += by; });
+
+            if (style.position === "fixed")
+                return;
+        }
+
+        center(el, { top: 0, bottom: window.innerHeight, height: window.innerHeight }, function (by) { window.scrollBy(0, by); });
+    }
+
+    function center(el, frame, scroll) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top >= frame.top && rect.bottom <= frame.bottom)
+            return;
+        scroll(rect.top - frame.top - (frame.height - rect.height) / 2);
     }
 
     // What the router (NsArrivalFocus) hands the cursor to on a navigation's arrival: the first
@@ -1852,5 +1913,5 @@
         scans.delete(id);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, lightOffer, pressOffer, canScan, scanStart, scanStop, confirmRow };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, focusRefused, arrivalFocus, chords, recall, remember, download, lightOffer, pressOffer, canScan, scanStart, scanStop, confirmRow };
 })();

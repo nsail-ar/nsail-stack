@@ -1,0 +1,28 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Problems
+
+@* A dialog-hosted form whose submit the server refuses at its one field: the refusal leaves the
+   dialog standing, which is the only state the cursor's move can be read in. *@
+
+<NsForm TModel="FormProblemModel" Model="_model" OnSubmit="HandleSubmit">
+    <NsTextField @bind-Value="context.Name" />
+    <NsSubmit Class="probe-submit" />
+</NsForm>
+
+@code {
+
+    readonly FormProblemModel _model = new();
+
+    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    {
+        args.Problem = new Problem(
+            "InvalidModel",
+            "One or more fields contain invalid data",
+            [new Issue("Required", "Obligatorio", nameof(FormProblemModel.Name))],
+            400);
+    }
+}
