@@ -6,6 +6,13 @@ using NSail.Exporting.Excel;
 
 namespace NSail.Exporting.Tests;
 
+// GC.GetTotalMemory reads the whole process, so another class exporting at the same time is
+// measured as this writer's peak and can lift the floor above it: these tests run alone.
+[CollectionDefinition(nameof(StreamingTests), DisableParallelization = true)]
+public sealed class StreamingCollection
+{
+}
+
 /// <summary>The promise the model's IAsyncEnumerable makes: a list of tens of thousands of rows
 /// exports without the result set ever being in memory, and the rows are asked for ONCE — a
 /// second pass would ask a server for every page twice.
@@ -14,6 +21,7 @@ namespace NSail.Exporting.Tests;
 /// the same run can produce — what those rows cost HELD — with the managed heap SAMPLED while the
 /// export runs, because what a buffering writer costs is live only while it writes. The rows
 /// themselves are proved gone by weak reference, which needs no figure at all.</para></summary>
+[Collection(nameof(StreamingTests))]
 public class StreamingTests
 {
     const int Rows = 50_000;
