@@ -233,6 +233,15 @@ it grey with the footer's Cancelar for the length of a save — one way out of a
 with the other. It is `NsDialogExit`'s seam, whose second face (the vendor's own Escape key) only
 a dialog host holds.
 
+**A hosted close asks before it throws an edit away.** It is no navigation, so the surface's
+`NavigationLock` never hears it: `Close()` on a hosted surface asks the question the lock asks
+(`NsSurfaceContext` hands it over) whenever `HasUnansweredChanges`, and calls the host's close on
+a yes. One gesture asks once, and the latch ends with the answer, so a declined close leaves the X
+live — the constraint a refused pop has above. The vendor's Escape closes the instance without
+reaching `Close()`, so while the surface holds changes the dialog withdraws it and answers the key
+itself (`NsCloseOnEscape` around the title row and the content), and hands it back once nothing
+is left to ask about.
+
 A host whose chrome is its own draws no `SurfaceChrome`: the hosted dialog (`NsOpenDialog`,
 `NsDialogExit`) is not routed, nothing deep-links into it mid-read, and the page inside it keeps
 drawing its own row with its own X — which is what a bar standing outside a shell does too.

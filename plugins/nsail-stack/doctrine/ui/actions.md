@@ -223,8 +223,10 @@ hint, expander, lookup's list or text field's camera inside is open, because the
 `TitleContent`. **Not the whole refusal, and that bound is a constraint**: a form standing
 `Disabled` refuses writes for as long as its screen says so and the X greys with it, so a dialog
 whose Escape went too would have no way out at all — there is no backdrop click and no Back. A save
-ends; a standing refusal does not. What Escape does not gain either way is the unsaved-changes
-question: a dialog closes through its host rather than a navigation, so neither exit asks it
+ends; a standing refusal does not. **Over unanswered changes the key is the house's**: the vendor's
+handler closes without asking, so `NsOpenDialog` withdraws it while the surface holds changes
+(`NsDialogExit` reports that edge too) and answers Escape through `Surface.Close()`, which asks
+the unsaved-changes question exactly as the X does
 ([intentional-ui-cases-controls.md](../intentional-ui-cases-controls.md), *The exit, and the dialog that ends in Cerrar*).
 
 **An act REFUSED inside a form is refused on that form, and that one is not opt-in.** `Submits`

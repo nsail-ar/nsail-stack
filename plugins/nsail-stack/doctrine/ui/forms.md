@@ -205,7 +205,12 @@ saving, the two answers are the same one.
   closes it — but the close is spent on `LocationChanged`, never on the line after
   `NavigateTo` (`SurfaceContext.Follow`): the guard *awaits* its question, so a close fired
   before the answer arrives tears the form down while the person is still reading the protest.
-  Declining keeps the dialog and the address; confirming closes it once and follows.
+  Declining keeps the dialog and the address; confirming closes it once and follows. **Its X and
+  its Escape ask too**, though neither is a navigation: `SurfaceContext.Close()` on a hosted
+  surface asks the same question over unanswered changes before it calls the host's close, one
+  question per gesture, and a no keeps the dialog, every value and a live X. Escape reaches it
+  because the dialog withdraws the vendor's key while the surface holds changes and answers it
+  itself ([surfaces.md](surfaces.md)).
 - **That route's own query is filter or component state, never identity** — on a named surface
   as on the main one. A screen writing its own `?tab=` or `?search=` through `SetQuery` has not
   moved: the guard stays silent, and `NsSurface` keys its content by the same path, so the page
