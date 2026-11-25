@@ -1926,10 +1926,13 @@
    to be read at instead of the popover's own shrink-to-fit — which would run a 200-character
    sentence off the edge of a wide screen and fold it into a column on a narrow one. The cap is
    the smaller of a comfortable measure and the viewport, because the bubble is fixed-positioned
-   and has nothing else to be bounded by. The type is the body2 the NsText block it replaced
+   and has nothing else to be bounded by. A word longer than the measure — a path, a URL, a
+   token — breaks inside it: a measure alone would let it run past the edge and, the bubble
+   being over the page, widen the page. The type is the body2 the NsText block it replaced
    already rendered, read from the theme's own properties rather than restated. */
 .ns-help-popover .ns-help-text {
     max-width: min(24rem, 80vw);
+    overflow-wrap: anywhere;
     padding: 12px 16px;
     font-size: var(--mud-typography-body2-size);
     line-height: var(--mud-typography-body2-lineheight);
