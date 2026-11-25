@@ -283,7 +283,7 @@ seam:
   repository's `.editorconfig` and, through `NSail.Types`'s `buildTransitive` global config, in
   every product that takes the packages).
 - An attribute's value travels only if its **type cannot carry prose**: `Guid`, a number, a
-  `bool`, an enum, a date or a duration. Every string is dropped, a code included — a
+  `bool`, an enum, a date or a duration. Every string attribute is dropped, a code included — a
   Problem's Code and a patient's name are the same type, so the Code rides the span and the
   `traceId` joins the two.
 - An exception travels as `exception.type` and its **frames**; the message does not. Its

@@ -4,6 +4,7 @@
 using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 
@@ -51,6 +52,7 @@ public sealed class LogScrubTests
         Assert.Equal(typeof(InvalidOperationException).FullName, record.Tag("exception.type"));
         Assert.Contains(nameof(Raised), stack, StringComparison.Ordinal);
         Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(record.Tag("db.response.status_code"));
     }
 
     // A wrapper names its cause: Npgsql's "likely due to a transient failure" says nothing of
@@ -107,6 +109,21 @@ public sealed class LogScrubTests
 
         Assert.Null(record.Tag("db.response.status_code"));
         Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // The scrubber reads DbException.SqlState; this is the proof that Npgsql's own type answers
+    // through it rather than hiding it, as the background runner's refused connections do.
+    [Fact]
+    public void A_refused_connection_travels_with_its_sqlstate_and_never_its_message()
+    {
+        var refused = Thrown(() => new PostgresException("sorry, too many clients already", "FATAL", "FATAL", "53300"));
+
+        var record = Scrubbed(logger => logger.LogError(refused, "Background job {Job} failed its pass", "HorizonJob"));
+
+        Assert.Equal(typeof(PostgresException).FullName, record.Tag("exception.type"));
+        Assert.Equal("53300", record.Tag("db.response.status_code"));
+        Assert.DoesNotContain("too many clients", record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(record.Tag("Job"));
     }
 
     [Fact]
@@ -219,7 +236,7 @@ public sealed class LogScrubTests
         }
     }
 
-    // What Npgsql's PostgresException is to the scrubber, without the scrubber's tests taking Npgsql.
+    // A DbException whose SqlState the test chooses, shaped like a code or not.
     sealed class FailedRead(string message, string state) : DbException(message)
     {
         public override string? SqlState => state;
