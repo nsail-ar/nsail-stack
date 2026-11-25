@@ -259,13 +259,17 @@ public abstract class NsPartial : NsComponent
             : Strings.Translate("Common.InUse");
     }
 
-    /// <summary>Opens a component in a modal dialog (see DialogManager.Open).</summary>
+    /// <summary>Opens a component in a modal dialog (see DialogManager.Open); an icon is drawn
+    /// before the title.</summary>
     protected Task OpenDialog<TComponent>(
         string? title = null,
-        IReadOnlyDictionary<string, object?>? parameters = null)
+        IReadOnlyDictionary<string, object?>? parameters = null,
+        Glyph? icon = null)
         where TComponent : IComponent
     {
-        return Dialogs.Open<TComponent>(title, parameters);
+        return icon is { } glyph
+            ? Dialogs.Open<TComponent>(title, parameters, glyph)
+            : Dialogs.Open<TComponent>(title, parameters);
     }
 
     /// <summary>Typed page URL from the route table; with multiple templates the one

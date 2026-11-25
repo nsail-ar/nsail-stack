@@ -49,7 +49,19 @@
                     <NsDialogExit Saving="WithdrawEscape" Guarding="GuardEscape">
                         <NsCloseOnEscape Focuses="false" Closes="@EscapeFor(surface)">
                             <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
-                                @if (!string.IsNullOrEmpty(Title))
+                                @if (Icon is { } icon)
+                                {
+                                    <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center">
+                                        <span class="ns-title-icon-slot">
+                                            <NsIcon Icon="@icon" />
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(Title))
+                                        {
+                                            <MudText Typo="Typo.h6">@Title</MudText>
+                                        }
+                                    </NsStack>
+                                }
+                                else if (!string.IsNullOrEmpty(Title))
                                 {
                                     <MudText Typo="Typo.h6">@Title</MudText>
                                 }
@@ -90,6 +102,9 @@
 
     [Parameter]
     public string? Title { get; set; }
+
+    [Parameter]
+    public Glyph? Icon { get; set; }
 
     [Parameter]
     public IReadOnlyDictionary<string, object?>? ComponentParameters { get; set; }

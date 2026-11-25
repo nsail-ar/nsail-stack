@@ -246,7 +246,10 @@ with focus on the dialog's own box Escape does nothing, and the X still asks.
 
 A host whose chrome is its own draws no `SurfaceChrome`: the hosted dialog (`NsOpenDialog`,
 `NsDialogExit`) is not routed, nothing deep-links into it mid-read, and the page inside it keeps
-drawing its own row with its own X — which is what a bar standing outside a shell does too.
+drawing its own row with its own X — which is what a bar standing outside a shell does too. Its
+title row is the opener's, so its glyph is too: `OpenDialog` (`DialogManager.Open`) takes an
+`icon`, drawn before the title in the title icon slot a page's bar uses (styling.md,
+`.ns-title-icon-slot`); a dialog opened with none draws no slot.
 
 **The surface's own row is the first one it rendered, and three things ride that claim**
 (`SurfaceContext.ClaimsRow`, handed back by `ReleaseRow` from `Dispose`): the hamburger, so a
