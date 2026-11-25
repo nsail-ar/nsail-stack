@@ -32,6 +32,12 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         var pr = await ctx.Repo.Pr(prNumber, ct);
         if (!pr.Open) return new JobOutcome($"PR #{prNumber} is not open", Idle: true);
         var sha = pr.HeadSha;
+        // The plan read the thread before this job held the story: another harness may have judged the head since.
+        if (Markers.VerdictAt(await Bodies(prNumber, ct), sha) is { } said)
+        {
+            log.LogInformation("PR #{Pr}: {Said} at {Sha} already — no gate", prNumber, said, sha[..8]);
+            return new JobOutcome($"{said.ToString().ToLowerInvariant()} at {sha[..8]} already — no gate", Idle: true);
+        }
 
         try
         {
@@ -51,6 +57,11 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             await Broke(prNumber, sha, e.Message, log);
             throw;
         }
+    }
+
+    async Task<IReadOnlyList<string>> Bodies(int prNumber, CancellationToken ct)
+    {
+        return [.. ctx.Markers.Bodies(await ctx.Repo.Thread(prNumber, ct), await ctx.Repo.Login(ct))];
     }
 
     // A message as the checkout would say it: the slot's own path is the machine's, never the PR's to read.
@@ -113,10 +124,19 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
     // What a run says of the head. A clock run out on a machine the kernel reports saturated is the
     // machine's, once per head: said as infrastructure (no verdict, no status) and gated again after
     // the backoff. Any other run out of time with nothing red is red by time alone (OutOfTime).
+    // A head judged while this run built (another harness's verdict) keeps that verdict: this run's word is
+    // dropped, said in the log alone — no comment, no status, no event.
     internal async Task<JobOutcome> Judge(int prNumber, string sha, string main, string dir, ShellResult result, ILogger log, CancellationToken ct)
     {
+        var bodies = await Bodies(prNumber, ct);
+        if (Markers.VerdictAt(bodies, sha) is { } said)
+        {
+            var word = result.TimedOut ? "a run out of time" : result.ExitCode == 0 ? "green" : "red";
+            log.LogWarning("PR #{Pr}: {Word} at {Sha} dropped — the head already reads {Said}", prNumber, word, sha[..8], said);
+            return new JobOutcome($"{word} dropped — {said.ToString().ToLowerInvariant()} at {sha[..8]} already", Idle: true);
+        }
         if (result.TimedOut && ctx.Options.Pressure.Saturated(ctx.Pressure.Read()) is { } reading
-            && !Markers.SaturatedAt(ctx.Markers.Bodies(await ctx.Repo.Thread(prNumber, ct), await ctx.Repo.Login(ct)), sha))
+            && !Markers.SaturatedAt(bodies, sha))
         {
             var error = HarnessTexts.Fill(ctx.Texts.GateSaturated, ("minutes", Step.Minutes), ("reading", reading));
             await Broke(prNumber, sha, error, log, Markers.GateSaturated(sha));
