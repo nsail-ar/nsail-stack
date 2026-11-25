@@ -454,8 +454,14 @@ public sealed class HostDialogSurfaceTests : BunitContext, IAsyncLifetime
         Assert.Contains("d-flex", dialogContent.ClassList);
         Assert.Contains("flex-column", dialogContent.ClassList);
 
-        // NsPanel's root becomes a genuine flex item of that box, so its own flex-1/min-h-0
-        // classes (dead weight before the fix) finally have something to shrink against.
+        // Between that box and NsPanel stands the content's Escape wrapper: a flex item of the
+        // box (flex-1 min-h-0) and a flex column itself, so NsPanel's root is a flex item of
+        // the wrapper and its own flex-1/min-h-0 classes have a bounded height to shrink against.
+        var wrapper = dialogContent.Children.Single();
+        Assert.Contains("flex-1", wrapper.ClassList);
+        Assert.Contains("min-h-0", wrapper.ClassList);
+        Assert.Contains("flex-column", wrapper.ClassList);
+
         var panel = dialogContent.QuerySelector(".ns-container");
         Assert.NotNull(panel);
         Assert.Contains("flex-1", panel!.ClassList);

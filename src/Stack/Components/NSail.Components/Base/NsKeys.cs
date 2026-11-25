@@ -37,7 +37,8 @@ public static class NsKeys
 
     /// <summary>Closes the surface. Answered by the surfaces themselves and not by the layer
     /// in ns.js — a routed overlay by NsCloseOnEscape, a hosted dialog by the vendor's own
-    /// CloseOnEscapeKey, both through the guard the X goes through — so what a close declares
+    /// CloseOnEscapeKey and over unsaved changes by NsCloseOnEscape, which asks as the X does —
+    /// so what a close declares
     /// here is read by the badge and by assistive technology, never dispatched.</summary>
     public const string Close = "Esc";
 

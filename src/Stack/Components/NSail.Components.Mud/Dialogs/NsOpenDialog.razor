@@ -15,12 +15,13 @@
         @* MudBlazor's own .mud-dialog-content is a plain block box (flex:1 1 auto + overflow:auto
            as a FLEX ITEM of .mud-dialog, but never display:flex itself) — the min-h-0/flex-1
            chain NsPanel's own Header/Content/Footer split depends on needs its immediate parent
-           to BE a flex container, or those classes on NsPanel's root are inert. ContentClass
-           restores exactly the chain NsDialog (the routed modal surface) already gets for free
-           from NsCloseOnEscape's own flex-column div: NsForm renders display:contents, so a
-           hosted NsPanel becomes THIS element's direct flex child and can finally shrink to the
-           dialog's bounded height, letting its own Content scroll while its Footer stays pinned
-           — instead of .mud-dialog-content being the one and only scroll owner, dragging
+           to BE a flex container, or those classes on NsPanel's root are inert. Two links make
+           that chain, the same one NsDialog (the routed modal surface) builds: ContentClass
+           turns this box into a flex column, so the content's NsCloseOnEscape div below
+           (flex-1 min-h-0) is a flex item bounded by the dialog's height; that div is itself a
+           flex column and NsForm renders display:contents, so a hosted NsPanel is ITS direct
+           flex child and can shrink, letting its own Content scroll while its Footer stays
+           pinned — instead of .mud-dialog-content being the one and only scroll owner, dragging
            whatever a form renders last (its submit row) into the scroll with everything else.
 
            ns-container on the same box, for the same reason one level up: a dialog is

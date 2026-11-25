@@ -182,7 +182,10 @@ opens a list of withheld rows is a button that does nothing.
   ns.js's native listeners. Inside a hosted
   dialog the dialog's Escape is the vendor's native listener, which no Blazor stop reaches, so the
   six report their open state up and `NsOpenDialog` withdraws `CloseOnEscapeKey` while any is
-  open ([actions.md](actions.md)). **A menu the pointer opened is the one exception**: the vendor
+  open ([actions.md](actions.md)). Over unanswered changes the key is the house's
+  `NsCloseOnEscape` around the dialog's content, a Blazor ancestor the stop does reach — so the
+  yield holds there exactly as on a routed surface, and the open state reported up is the second
+  bar. **A menu the pointer opened is the one exception**: the vendor
   publishes no open state to bind the stop to and a flag of the house's own would drift from it,
   so its Escape closes the list and still reaches the surface behind.
 - **An outside click is already the vendor's**, through the overlay it draws for an open menu;

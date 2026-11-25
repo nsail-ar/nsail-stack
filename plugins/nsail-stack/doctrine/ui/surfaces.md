@@ -240,7 +240,9 @@ a yes. One gesture asks once, and the latch ends with the answer, so a declined 
 live — the constraint a refused pop has above. The vendor's Escape closes the instance without
 reaching `Close()`, so while the surface holds changes the dialog withdraws it and answers the key
 itself (`NsCloseOnEscape` around the title row and the content), and hands it back once nothing
-is left to ask about.
+is left to ask about. The house's handler hears the key only with focus inside one of those two
+wrappers — the vendor's interceptor holds the whole dialog — which an edit always leaves it in;
+with focus on the dialog's own box Escape does nothing, and the X still asks.
 
 A host whose chrome is its own draws no `SurfaceChrome`: the hosted dialog (`NsOpenDialog`,
 `NsDialogExit`) is not routed, nothing deep-links into it mid-read, and the page inside it keeps
