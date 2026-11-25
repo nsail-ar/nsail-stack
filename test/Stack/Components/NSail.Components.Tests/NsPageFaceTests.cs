@@ -71,7 +71,54 @@ public sealed class NsPageFaceTests : BunitContext
         var with = Render<NsPageFace>(ps => ps.Add(p => p.Id, "b").Add(p => p.Message, "m").Add(p => p.LogoUrl, "/probe/logo.svg"));
 
         Assert.Empty(without.FindAll(".ns-remote-image"));
-        Assert.NotEmpty(with.FindAll(".ns-remote-image"));
+        Assert.NotEmpty(with.FindAll("#b .ns-brand-column .ns-remote-image"));
+    }
+
+    [Fact]
+    public void TheMessageAndTheDetailAreCenteredLines()
+    {
+        var cut = Render<NsPageFace>(ps => ps
+            .Add(p => p.Id, "ns-probe-face")
+            .Add(p => p.Message, "Nothing here")
+            .Add(p => p.Detail, "trace 42"));
+
+        var lines = cut.FindAll("#ns-probe-face .ns-page-face-line");
+
+        Assert.Equal(["Nothing here", "trace 42"], lines.Select(line => line.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void TheWordsWrapAtTheFacesMeasureNotAtTheMarksColumn()
+    {
+        var cut = Render<NsPageFace>(ps => ps
+            .Add(p => p.Id, "ns-probe-face")
+            .Add(p => p.Message, "Nothing here")
+            .Add(p => p.Detail, "trace 42")
+            .Add(p => p.LogoUrl, "/probe/logo.svg"));
+
+        Assert.Equal(2, cut.FindAll("#ns-probe-face .ns-page-face .ns-page-face-line").Count);
+        Assert.Empty(cut.FindAll("#ns-probe-face .ns-brand-column .ns-page-face-line"));
+    }
+
+    [Fact]
+    public void TheStylesheetCentersTheLinesAndCapsTheMeasure()
+    {
+        var css = File.ReadAllText(StylesheetPath());
+
+        Assert.Matches(@"\.ns-page-face\s*\{[^}]*max-width:\s*40rem;", css);
+        Assert.Matches(@"\.ns-page-face-line\s*\{[^}]*text-align:\s*center;", css);
+        Assert.Matches(@"\.ns-brand-column\s*\{[^}]*max-width:\s*320px;", css);
+    }
+
+    static string StylesheetPath()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "NSail.sln")))
+        {
+            dir = dir.Parent;
+        }
+
+        return Path.Combine(dir!.FullName, "src", "Stack", "Components", "NSail.Components.Mud", "wwwroot", "ns-mud.css");
     }
 
     [Fact]

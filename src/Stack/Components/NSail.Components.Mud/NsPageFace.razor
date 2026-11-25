@@ -16,19 +16,23 @@
    width is the viewport, and NsRemoteImage's max-width:100% only bites once the container
    is already narrower than the mark. A shared ceiling, not a shared size: this frame's mark
    draws at NsRemoteImage's own fixed Height, not at NsSplash's name-driven width, so a wide
-   lockup still draws at two different sizes between the two faces. *@
+   lockup still draws at two different sizes between the two faces. The ceiling is the
+   mark's alone: the words wrap at ns-page-face's reading measure, centered on the same axis,
+   or a long message breaks ragged-right at 320px under a centered logo. *@
 <div id="@Id" class="fixed inset-0 z-max d-flex flex-column align-center justify-center pa-6 bg-background">
-    <NsStack Align="NsAlign.Center" Gap="NsSize.Md" Class="ns-brand-column">
+    <NsStack Align="NsAlign.Center" Gap="NsSize.Md" Class="ns-page-face">
         @if (LogoUrl is not null)
         {
-            <NsRemoteImage Url="@LogoUrl" Alt="" Height="160" As="NsAs.Main" />
+            <NsStack Align="NsAlign.Center" Class="ns-brand-column">
+                <NsRemoteImage Url="@LogoUrl" Alt="" Height="160" As="NsAs.Main" />
+            </NsStack>
         }
 
-        <NsText As="NsTextAs.Title">@Message</NsText>
+        <NsText As="NsTextAs.Title" Class="ns-page-face-line">@Message</NsText>
 
         @if (Detail is not null)
         {
-            <NsText As="NsTextAs.Subtitle">@Detail</NsText>
+            <NsText As="NsTextAs.Subtitle" Class="ns-page-face-line">@Detail</NsText>
         }
 
         <NsStack Horizontal Align="NsAlign.Center" Gap="NsSize.Md">
