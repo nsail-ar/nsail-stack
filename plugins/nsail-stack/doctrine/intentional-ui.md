@@ -282,6 +282,31 @@ surface's own open pushed an entry to spend, and `Back()` on a deep link leaves 
 How the hosts translate a size, stack against the shell and carry the query seam:
 [ui/surfaces.md](ui/surfaces.md).
 
+### Which surface: where the attention is
+
+**A screen's surface follows where the user's attention is while they use it**, not how big it
+is.
+
+- **Main is a task that takes the whole attention** and carries acts of its own — a sale, a
+  delivery. **A screen with secondary acts goes on Main**: they open over it, as asides and
+  modals, and a screen already in the aside has no room left for them. A delivery is an event
+  around the person in front of you: they may pay, ask for the invoice, change their mind.
+- **The aside is an act on Main where the attention divides**: the act has it, and Main stays in
+  view because what it shows is what the act applies to — charging while the sale or the order
+  stays readable. It also fits **working down a list**: reviewing orders, one goes to the
+  workshop, one gets a message, one is dropped; receiving three things from a courier, checking
+  the tracking number and the person, marking several. The attention goes back and forth between
+  the list and the aside, so the list must stay in view, and every step costs no navigation.
+- **The modal is the last resort**: immediate, blocking, and it hides the context, which is
+  right only when the context no longer matters — one short act that waits for something to
+  happen. Waiting for a customer to scan a QR, the amount and the items are no longer the
+  thought; the payment going through is. A confirmation is the other one. Keeping the modal for
+  these leaves it free when an aside is already open: the QR over the charge.
+
+The question that decides it: *does the user need to see what is behind while doing this?* Yes:
+an aside. No, and it is one short thing that waits: a modal. It is the task itself, with acts of
+its own: Main.
+
 ### A menu is not a surface
 
 **An anchored menu (`NsMenu`) is chrome, not a place**: no route, no `?name=`, no size token —
