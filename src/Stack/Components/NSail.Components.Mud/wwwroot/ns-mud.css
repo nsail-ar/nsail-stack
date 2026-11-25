@@ -3294,10 +3294,10 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 .ns-time-grid-hour .ns-time-grid-mark {
     line-height: 1;
-    /* The mark names the line above it, so it rides up by half its own text height to sit
-       on that line instead of hanging below it. */
+    /* The mark names the line it sits above: it rides up by its full text height plus a small
+       gap, in its own em, so the line never strikes through the text. */
     display: block;
-    margin-top: -0.375rem;
+    margin-top: -1.15em;
     text-align: end;
 }
 

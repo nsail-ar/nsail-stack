@@ -43,11 +43,12 @@ public sealed class NsTimeGridDayTests : BunitContext
         Assert.Equal(24, cut.FindAll(".ns-time-grid-gutter .ns-time-grid-hour").Count);
         Assert.Equal(24, cut.FindAll(".ns-time-grid-column .ns-time-grid-hour").Count);
 
-        // The marks are clock hours from midnight, so the first names 00 and the last 23.
+        // The day's top edge is unlabelled: the marks run from 01 to 23.
         var marks = cut.FindAll(".ns-time-grid-gutter .ns-time-grid-mark");
-        Assert.Equal(24, marks.Count);
-        Assert.Equal(new TimeOnly(0, 0).ToString("t", CultureInfo.GetCultureInfo("en-US")), marks[0].TextContent.Trim());
-        Assert.Equal(new TimeOnly(23, 0).ToString("t", CultureInfo.GetCultureInfo("en-US")), marks[23].TextContent.Trim());
+        Assert.Equal(23, marks.Count);
+        Assert.Equal(new TimeOnly(1, 0).ToString("t", CultureInfo.GetCultureInfo("en-US")), marks[0].TextContent.Trim());
+        Assert.Equal(new TimeOnly(23, 0).ToString("t", CultureInfo.GetCultureInfo("en-US")), marks[22].TextContent.Trim());
+        Assert.DoesNotContain(new TimeOnly(0, 0).ToString("t", CultureInfo.GetCultureInfo("en-US")), marks.Select(m => m.TextContent.Trim()));
     }
 
     /// <summary>The reported defect, pinned: 20:01 against an 08–20 window. The line is drawn,
