@@ -312,6 +312,7 @@ public class WatchTests
         Assert.Equal("{Item} failed", line.Template);
         Assert.Equal("dev1", line.Cell);
         Assert.Equal("NSail.Harness.GitHub.GitHubException", line.ExceptionType);
+        Assert.Equal("   at X", line.StackTrace);
         Assert.Null(line.TraceId);
         Assert.Equal(2026, line.At.Year);
         Assert.StartsWith("https://logs.example/web/logs?org_identifier=default", line.Link!.ToString());

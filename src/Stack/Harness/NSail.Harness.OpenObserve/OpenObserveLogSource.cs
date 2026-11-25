@@ -14,7 +14,8 @@ namespace NSail.Harness.OpenObserve;
 // the OpenTelemetry export's as OpenObserve flattens them: `service_name`, the logger in
 // `instrumentation_library_name`, the message template in `body`, `exception_type` and
 // `exception_stacktrace` (read behind `exception_inner_stacktrace`, the cause chain), the cell in
-// `nsail_tenant`, `trace_id` when the line had one; a failed pass's `providercall`, `providerstatus` and `ratelimitremaining` (its placeholders, in any case).
+// `nsail_tenant`, `trace_id` when the line had one; a failed pass's `providercall`,
+// `providerstatus` and `ratelimitremaining` (its placeholders, in any case).
 public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions options) : ILogSource
 {
     public string Name => "OpenObserve";
@@ -74,7 +75,7 @@ public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions opt
         return new Uri($"{endpoint}/web/logs?org_identifier={Uri.EscapeDataString(options.Organization)}&stream_type=logs&stream={Uri.EscapeDataString(options.Stream)}&from={from}&to={to}");
     }
 
-    // The causes first, as Exception.ToString() lays them out, so a deep cause survives a cut.
+    // The causes first, outermost to innermost, so a cut keeps the cause.
     static string? Stack(JsonElement hit)
     {
         var frames = Text(hit, "exception_stacktrace");
