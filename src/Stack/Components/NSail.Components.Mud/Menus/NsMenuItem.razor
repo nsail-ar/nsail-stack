@@ -20,7 +20,8 @@
    where the form refuses writes, and the kit that drew the menu names nothing. *@
 @if (_allowed && Offers(Action) && !Refused)
 {
-    <MudMenuItem Icon="@(Action.Running ? NsIcons.Progress.Markup : Action.Icon?.Markup)"
+    <MudMenuItem @ref="_row"
+                 Icon="@(Action.Running ? NsIcons.Progress.Markup : Action.Icon?.Markup)"
                  Disabled="@(Action.Disabled || Action.Running)"
                  Class="@(Selected == true ? "ns-menu-item ns-menu-item-selected" : "ns-menu-item")"
                  Href="@Address"
@@ -109,8 +110,13 @@
     // render, which is why the flag starts true and only OnParametersSetAsync can turn it off.
     bool _allowed = true;
 
+    MudMenuItem? _row;
+
     [CascadingParameter]
     Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    [CascadingParameter]
+    MudMenu? Holder { get; set; }
 
     /// <summary>The row's behavior and its face: a link (PageType, or a Url drawn as an anchor
     /// that opens a new browser tab) or a command (OnClick),
@@ -149,6 +155,16 @@
         _allowed = Action.PageType is null
             || Services.GetService(typeof(PageGate)) is not PageGate gate
             || await gate.Allows(Action.PageType, AuthenticationState);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            MenuRows.Forget(Holder, _row);
+        }
+
+        base.Dispose(disposing);
     }
 
     async Task Run()

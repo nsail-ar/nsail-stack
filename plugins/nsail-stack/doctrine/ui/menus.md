@@ -158,6 +158,12 @@ opens a list of withheld rows is a button that does nothing.
   own search draws while somebody types would take the cursor from it and the keys after with it.
   `NsMenuBlock` clears the vendor's private mark when a control of its own takes focus
   (`MudVendorContractTests` pins the name); only an arrow then moves the cursor onto the rows.
+- **A row that leaves an open menu leaves its count.** The vendor counts every row that
+  registers while the menu is open and forgets none until it closes, and its arrows walk that
+  count by position: after a search that drew no row, Arrow Down would land on a row that is
+  gone and the cursor would stay in the search. `NsMenuItem` and a nested `NsMenu` take
+  themselves out of the count when they are disposed (`MenuRows`; `MudVendorContractTests` pins
+  the private members it reads), so the arrows reach the rows a corrected term brings back.
 - **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
   surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
   make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`,

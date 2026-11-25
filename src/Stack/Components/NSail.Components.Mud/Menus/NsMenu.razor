@@ -66,6 +66,10 @@
 
     MudMenu? _menu;
 
+    // The menu this one is a submenu of; null at the top.
+    [CascadingParameter]
+    MudMenu? Holder { get; set; }
+
     /// <summary>The trigger's glyph. Unset with Content unset too leaves the trigger a plain
     /// labelled button — the shape a nested NsMenu takes, where the label is the row.</summary>
     [Parameter]
@@ -182,6 +186,16 @@
         }
 
         return _menu.CloseMenuAsync();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            MenuRows.ForgetSubmenu(Holder, _menu);
+        }
+
+        base.Dispose(disposing);
     }
 
     string GetClasses()
