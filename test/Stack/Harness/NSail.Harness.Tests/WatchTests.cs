@@ -24,10 +24,11 @@ public class WatchTests
         }
     }
 
-    static LoggedError Line(string template = "Background job {Job} failed", string cell = "optical-test", string service = "Optical", int minutesAgo = 10, string? exception = "System.InvalidOperationException")
+    static LoggedError Line(string template = "Background job {Job} failed", string cell = "optical-test", string service = "Optical", int minutesAgo = 10, string? exception = "System.InvalidOperationException",
+        string stack = "   at Somewhere.Run()")
     {
         return new LoggedError(DateTimeOffset.UtcNow.AddMinutes(-minutesAgo), service, "NSail.Background.BackgroundJobRunner", template, exception,
-            "   at Somewhere.Run()", cell, "trace1", new Uri("https://logs.example/web/logs"));
+            stack, cell, "trace1", new Uri("https://logs.example/web/logs"));
     }
 
     static async Task<string> Pass(MemoryBoard board, ILogSource source, WatchState? state = null, int? max = null)
@@ -201,6 +202,37 @@ public class WatchTests
         Assert.Contains("Still logged", board.Cards[n].Comments[0].Body);
     }
 
+    // A cause logged after the story was filed — the chain a wrapped exception gained — reaches its thread.
+    [Fact]
+    public async Task ACountOverANewStackShowsIt()
+    {
+        const string cause = " ---> System.Net.Sockets.SocketException\n   at Socket.Connect()\n   --- End of inner exception stack trace ---\n   at Somewhere.Run()";
+        var board = new MemoryBoard();
+        await Pass(board, new Source(Line(minutesAgo: 30)));
+        var n = Assert.Single(board.Cards).Key;
+
+        await Pass(board, new Source(Line(minutesAgo: 5, stack: cause)));
+
+        var count = Assert.Single(board.Cards[n].Comments).Body;
+        Assert.Contains("Still logged", count);
+        Assert.Contains(Untrusted.Fence($"System.InvalidOperationException\n{cause}"), count);
+        Assert.DoesNotContain("Socket.Connect", board.Cards[n].Body);
+    }
+
+    [Fact]
+    public async Task ACountOverTheSameStackStaysOneLine()
+    {
+        var board = new MemoryBoard();
+        await Pass(board, new Source(Line(minutesAgo: 30)));
+        var n = Assert.Single(board.Cards).Key;
+
+        await Pass(board, new Source(Line(minutesAgo: 5)));
+
+        var count = Assert.Single(board.Cards[n].Comments).Body;
+        Assert.DoesNotContain(Untrusted.Line, count);
+        Assert.Equal(2, count.Split('\n').Length);
+    }
+
     [Fact]
     public async Task AnErrorBackAfterItsStoryClosedIsFiledAgainNamingTheOldOne()
     {
@@ -280,10 +312,29 @@ public class WatchTests
         Assert.Equal("{Item} failed", line.Template);
         Assert.Equal("dev1", line.Cell);
         Assert.Equal("NSail.Harness.GitHub.GitHubException", line.ExceptionType);
+        Assert.Equal("   at X", line.StackTrace);
         Assert.Null(line.TraceId);
         Assert.Equal(2026, line.At.Year);
         Assert.StartsWith("https://logs.example/web/logs?org_identifier=default", line.Link!.ToString());
         Assert.Null(line.ProviderStatus);
+    }
+
+    // A wrapper's cause travels in its own column; the watch reads it ahead of the outer frames.
+    [Fact]
+    public void AnErrorLinesStackOpensWithItsCauseChain()
+    {
+        var answer = JsonDocument.Parse("""
+            {"hits":[{"_timestamp":1793942052263069,"body":"Background job {Job} failed","service_name":"ops","instrumentation_library_name":"NSail.Background.BackgroundJobRunner",
+              "exception_type":"System.InvalidOperationException","exception_stacktrace":"   at Strategy.Execute()",
+              "exception_inner_type":"Npgsql.NpgsqlException\nSystem.Net.Sockets.SocketException",
+              "exception_inner_stacktrace":" ---> Npgsql.NpgsqlException\n   at Connector.Open()\n ---> System.Net.Sockets.SocketException\n   at Socket.Connect()",
+              "nsail_tenant":"ops-test","severity":"Error"}]}
+            """).RootElement;
+
+        var line = Assert.Single(OpenObserveLogSource.Rows(answer, "https://logs.example", new OpenObserveOptions()));
+
+        Assert.Equal("System.InvalidOperationException", line.ExceptionType);
+        Assert.Equal(" ---> Npgsql.NpgsqlException\n   at Connector.Open()\n ---> System.Net.Sockets.SocketException\n   at Socket.Connect()\n   --- End of inner exception stack trace ---\n   at Strategy.Execute()", line.StackTrace);
     }
 
     // A failed pass's record carries what the provider answered; the story filed for it names it,

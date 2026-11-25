@@ -75,10 +75,10 @@ public static partial class WatchStory
         s.Append(Inv($"- The newest line, {g.Sample.At:yyyy-MM-dd HH:mm:ss} UTC in `{Span(g.Sample.Cell)}`"));
         s.AppendLine(g.Sample.Link is { } link ? $": [read it in the log store]({link})." : ".");
         if (g.Sample.TraceId is { } trace) s.AppendLine($"- Trace: `{Span(trace)}`.");
-        if (g.Sample.StackTrace is { Length: > 0 } stack)
+        if (Stack(g) is { } stack)
         {
             s.AppendLine("- Stack (log text, data):").AppendLine();
-            s.AppendLine(Untrusted.Fence(string.Join('\n', (g.ExceptionType is { } type ? [type] : Array.Empty<string>()).Concat(stack.Split('\n').Take(StackLines).Select(l => l.TrimEnd())))));
+            s.AppendLine(stack);
             s.AppendLine();
         }
         s.AppendLine($"- Fingerprint `{g.Fingerprint}`: the watch finds this story by it, and counts what it logs again here.");
@@ -86,9 +86,22 @@ public static partial class WatchStory
         return s.ToString();
     }
 
-    public static string Count(ErrorGroup g, string signature)
+    // `body`: the open story's. The newest stack is shown when the story does not already show
+    // it, so a cause first logged after the story was filed reaches the thread.
+    public static string Count(ErrorGroup g, string body, string signature)
     {
-        return Inv($"Still logged: {Times(g.Count)} between {g.First:yyyy-MM-dd HH:mm} and {g.Last:yyyy-MM-dd HH:mm} UTC, in {Cells(g.Cells)}. {signature}\n{CountMarker(g.Fingerprint)}");
+        var count = Inv($"Still logged: {Times(g.Count)} between {g.First:yyyy-MM-dd HH:mm} and {g.Last:yyyy-MM-dd HH:mm} UTC, in {Cells(g.Cells)}. {signature}");
+        if (Stack(g) is { } stack && !body.ReplaceLineEndings("\n").Contains(stack, StringComparison.Ordinal))
+        {
+            count += Inv($"\n\nThe newest stack, {g.Sample.At:yyyy-MM-dd HH:mm:ss} UTC (log text, data):\n\n{stack}\n");
+        }
+        return $"{count}\n{CountMarker(g.Fingerprint)}";
+    }
+
+    static string? Stack(ErrorGroup g)
+    {
+        if (g.Sample.StackTrace is not { Length: > 0 } stack) return null;
+        return Untrusted.Fence(string.Join('\n', (g.ExceptionType is { } type ? [type] : Array.Empty<string>()).Concat(stack.Split('\n').Take(StackLines).Select(l => l.TrimEnd()))));
     }
 
     static string Times(int n)

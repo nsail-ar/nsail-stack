@@ -13,8 +13,9 @@ namespace NSail.Harness.OpenObserve;
 // The error lines of OpenObserve's logs stream, over its search API (SQL). The store's columns are
 // the OpenTelemetry export's as OpenObserve flattens them: `service_name`, the logger in
 // `instrumentation_library_name`, the message template in `body`, `exception_type` and
-// `exception_stacktrace`, the cell in `nsail_tenant`, `trace_id` when the line had one; a failed
-// pass's `providercall`, `providerstatus` and `ratelimitremaining` (its placeholders, in any case).
+// `exception_stacktrace` (read behind `exception_inner_stacktrace`, the cause chain), the cell in
+// `nsail_tenant`, `trace_id` when the line had one; a failed pass's `providercall`,
+// `providerstatus` and `ratelimitremaining` (its placeholders, in any case).
 public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions options) : ILogSource
 {
     public string Name => "OpenObserve";
@@ -55,7 +56,7 @@ public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions opt
                 Text(hit, "instrumentation_library_name") ?? "",
                 Text(hit, "body") ?? "",
                 Text(hit, "exception_type"),
-                Text(hit, "exception_stacktrace"),
+                Stack(hit),
                 Text(hit, "nsail_tenant") ?? "",
                 Text(hit, "trace_id"),
                 Link(endpoint, options, at),
@@ -72,6 +73,14 @@ public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions opt
         var from = Microseconds(at.AddMinutes(-1)).ToString(CultureInfo.InvariantCulture);
         var to = Microseconds(at.AddMinutes(1)).ToString(CultureInfo.InvariantCulture);
         return new Uri($"{endpoint}/web/logs?org_identifier={Uri.EscapeDataString(options.Organization)}&stream_type=logs&stream={Uri.EscapeDataString(options.Stream)}&from={from}&to={to}");
+    }
+
+    // The causes first, outermost to innermost, so a cut keeps the cause.
+    static string? Stack(JsonElement hit)
+    {
+        var frames = Text(hit, "exception_stacktrace");
+        if (Text(hit, "exception_inner_stacktrace") is not { } causes) return frames;
+        return frames is null ? causes : $"{causes}\n   --- End of inner exception stack trace ---\n{frames}";
     }
 
     static string? Text(JsonElement hit, string name)

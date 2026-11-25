@@ -14,7 +14,7 @@ namespace NSail.Harness.Tests;
 public sealed class ShimTests : IDisposable
 {
     readonly string _root = Directory.CreateTempSubdirectory("shim").FullName;
-    readonly HttpListener _http = new();
+    readonly HttpListener _http;
     readonly CancellationTokenSource _stop = new();
     readonly Lock _gate = new();
     readonly List<string> _said = [];
@@ -25,11 +25,13 @@ public sealed class ShimTests : IDisposable
 
     public ShimTests()
     {
-        var port = FreePort();
-        _url = $"http://127.0.0.1:{port}";
-        if (OperatingSystem.IsWindows()) return;
-        _http.Prefixes.Add($"{_url}/");
-        _http.Start();
+        if (OperatingSystem.IsWindows())
+        {
+            _http = new();
+            _url = $"http://127.0.0.1:{FreePort()}";
+            return;
+        }
+        (_http, _url) = Listen();
         _ = Serve();
         // The fake dotnet says what it was asked and whether a turn was held for it.
         Executable.Write(Path.Combine(_root, "dotnet"), $"#!/usr/bin/env bash\necho \"dotnet $* held=${{HARNESS_LEASE_HELD:-}}\" >> '{Path.Combine(_root, "said")}'\n[ \"$1\" = build ] && [ -n \"${{FAIL_BUILD:-}}\" ] && exit 3\nexit 0\n");
@@ -205,6 +207,26 @@ public sealed class ShimTests : IDisposable
                 }
                 c.Response.Close();
             });
+        }
+    }
+
+    // A free port is free only until a parallel test binds it, so a port taken in between is asked again;
+    // the refused listener is left unclosed, since its Close binds the taken port anew and throws.
+    static (HttpListener Http, string Url) Listen()
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            var url = $"http://127.0.0.1:{FreePort()}";
+            var http = new HttpListener();
+            http.Prefixes.Add($"{url}/");
+            try
+            {
+                http.Start();
+                return (http, url);
+            }
+            catch (HttpListenerException) when (attempt < 10)
+            {
+            }
         }
     }
 

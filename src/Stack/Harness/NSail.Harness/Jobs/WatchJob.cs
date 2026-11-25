@@ -69,7 +69,7 @@ public sealed class WatchJob(WorkItem item, JobContext ctx, WatchState state) : 
             if (stories.FirstOrDefault(s => s.Open) is { } open)
             {
                 if (await SaidToday(open.Number, g.Fingerprint, ct)) continue;
-                await board.Comment(open.Number, WatchStory.Count(g, ctx.Texts.Signature));
+                await board.Comment(open.Number, WatchStory.Count(g, open.Body, ctx.Texts.Signature));
                 counted.Add(open.Number);
                 continue;
             }
