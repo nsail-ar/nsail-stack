@@ -83,7 +83,8 @@ number on the gate, never the order a composition root happened to register in.
 where `MainLayout` puts the nav menu, so the **progress rail collapses on mobile exactly like
 the nav does**; a caller passing none keeps the bare centered frame sign-in uses. It draws no
 app bar of its own: the wizard names itself in its panel's own header (`NsPageHeader`, the same
-component every document page uses), so the title sits flush with the panel below it and the
+component every document page uses) wearing `NsIcons.Rocket`, since `/onboarding` is in no menu
+and the title bar holds its icon slot's box either way, so the title sits flush with the panel below it and the
 hamburger rides the title row, shown only below the drawer's breakpoint — exactly how every
 other screen behaves.
 

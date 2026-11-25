@@ -102,6 +102,18 @@ public sealed class NsWizardTests : BunitContext, IAsyncLifetime
         Assert.NotNull(cut.Find(".ns-probe-working"));
     }
 
+    /// <summary>The title bar holds its icon slot's box, so the wizard fills it: a page with no
+    /// glyph of its own would leave an empty box before the title.</summary>
+    [Fact]
+    public void TheTitleWearsTheGettingStartedGlyphInTheIconSlot()
+    {
+        var cut = Mount(Step("Welcome", typeof(WizardInformationalStepProbe), 10));
+
+        var slot = Assert.Single(cut.FindAll(".ns-title-icon-slot"));
+
+        Assert.Contains(NsIcons.Rocket.Markup, slot.InnerHtml, StringComparison.Ordinal);
+    }
+
     /// <summary>An informational step registers nothing, so nothing has to enable its button:
     /// it is born complete and the chrome's Next is live on arrival.</summary>
     [Fact]

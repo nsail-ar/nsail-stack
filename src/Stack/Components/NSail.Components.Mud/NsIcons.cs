@@ -284,6 +284,10 @@ public static class NsIcons
     public static readonly Glyph Send =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M144-192v-576l720 288-720 288Zm72-107 454-181-454-181v109l216 72-216 72v109Zm0 0v-362 362Z"/></g>""");
 
+    /// <summary>Material Symbols <c>rocket_launch</c> — getting started.</summary>
+    public static readonly Glyph Rocket =
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="m241-547 78 26q15-28 31-54.5t34-52.5l-55-7-88 88Zm138 65 102 102q48-25 91-54.5t81-67.5q60-60 99.5-133T792-792q-85 0-158 39t-133 99q-38 38-68 81t-54 91Zm149-118q0-30 21-51t51-21q30 0 51 21t21 51q0 30-21 51t-51 21q-30 0-51-21t-21-51Zm19 359 88-88-7-55q-26 18-52.5 34T521-319l26 78Zm307-614q26 102-18.5 210T710-456l-8 8.5-8 8.5 12 101q2 17-3.5 32.5T685-278L515-108l-68-203-135-136-204-68 170-171q12-12 27.5-17.5T338-707l101 13 9.5-9 9.5-9q81-81 187.5-125.5T854-855ZM178-331q32-30 75.5-29.5T329-328q30 30 30.5 72.5T332-181q-43 49-107.5 61.5T96-96q11-63 23-126.5T178-331Zm45 57q-17 17-22.5 40T188-188q23-6 45.5-12t38.5-23q11-12 13.5-28t-8.5-27q-11-11-26.5-9T223-274Z"/></g>""");
+
     /// <summary>Material Symbols <c>move_to_inbox</c> — it arrives: goods landing in a store, a
     /// job coming back from a workshop. Send's counterpart, and generic for the same reason.</summary>
     public static readonly Glyph Receive =
