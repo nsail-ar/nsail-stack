@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -275,6 +276,21 @@ public sealed class NsHelpTests : BunitContext, IAsyncLifetime
         var rule = css.IndexOf($".{tone} .mud-icon-root {{", StringComparison.Ordinal);
         Assert.True(rule >= 0, $"the {tone} rule was not found in the stylesheet.");
         Assert.Contains($"color: var({palette});", css[rule..css.IndexOf('}', rule)], StringComparison.Ordinal);
+    }
+
+    /// <summary>The bubble keeps its reading measure and breaks a word longer than it — a path
+    /// with no spaces in a task's log would otherwise run past its edge and widen the page.</summary>
+    [Fact]
+    public void TheBubbleBreaksAWordLongerThanItsMeasure()
+    {
+        var css = Regex.Replace(HouseStylesheet.Read(), @"/\*.*?\*/", "", RegexOptions.Singleline);
+
+        var rule = Regex.Match(css, @"(?:^|\})\s*\.ns-help-popover \.ns-help-text\s*\{(?<body>[^}]*)\}");
+
+        Assert.True(rule.Success, "the bubble's text rule was not found in the stylesheet.");
+        Assert.Matches(@"max-width:\s*min\(24rem,\s*80vw\);", rule.Groups["body"].Value);
+        Assert.Matches(@"overflow-wrap:\s*anywhere;", rule.Groups["body"].Value);
+        Assert.DoesNotMatch(@"white-space:\s*nowrap", rule.Groups["body"].Value);
     }
 
     /// <summary>No vendor type in a public NSail API — the whole point of the popover living
