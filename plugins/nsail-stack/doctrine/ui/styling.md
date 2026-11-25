@@ -448,10 +448,10 @@ lifts the half-row cap and takes a line of the row. The side menu's cap on it is
 [navigation.md](navigation.md).
 
 **A button's label never wraps** (Material: «Don't wrap text»): one that does not fit ends in `…`
-the same way, on `ns-button-label`, the span every boxed `NsButton`, `NsSubmit` and `NsLink` face
-draws its word in. `NsLink`'s bare-anchor `Inline` face has no box and no span: it is a link in a
-line of text and wraps with it. The vendor's `.mud-button-label` keeps its `inline-flex` and only
-gives up its min-content floor, and the root is held to its container's width. A face that styles
+the same way, on `ns-button-label`, the span every boxed `NsButton`, `NsSubmit`, `NsLink` and
+`NsClose` face draws its word in. `NsLink`'s bare-anchor `Inline` face has no box and no span: it
+is a link in a line of text and wraps with it. The vendor's `.mud-button-label` keeps its
+`inline-flex` and only gives up its min-content floor, and the root is held to its container's width. A face that styles
 its own label (the contact channel, the sign-in tiles, the disclosure) does it scoped under its
 container, on top of that rule, so its case and size hold and a word too long for it is cut like
 any other — the disclosure's sentence included. The one face handed back is a pressable column

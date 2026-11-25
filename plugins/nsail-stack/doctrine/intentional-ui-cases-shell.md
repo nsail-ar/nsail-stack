@@ -190,8 +190,9 @@ WOULD be to say, and nothing about when.
 testing on a disabled button and on a disabled chip (`pointer-events: none`), so the pointer never
 meets the control at all and the trigger lookup walks up past it — which leaves the one face with
 nothing BUT the bubble to say what it is (a row's grey pencil, the X under a frozen form) silent.
-`[data-ns-whisper]:disabled` takes that back. It is safe because the refusal is the ATTRIBUTE's,
-not the CSS's: a disabled control receives hover and never a press, a focus or a click. The one
+`[data-ns-whisper]:disabled` takes that back, and so does a disabled boxed face with a label span,
+which whispers whether or not it declared a word (a tracked form's submit with no `Label` arrives
+refused). It is safe because the refusal is the ATTRIBUTE's, not the CSS's: a disabled control receives hover and never a press, a focus or a click. The one
 response that would have outlived both is the vendor's ripple, a document-level `pointerdown` over
 whatever carries its class, so **a refused face declares no ripple**.
 
