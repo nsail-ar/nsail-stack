@@ -24,10 +24,11 @@ public class WatchTests
         }
     }
 
-    static LoggedError Line(string template = "Background job {Job} failed", string cell = "optical-test", string service = "Optical", int minutesAgo = 10, string? exception = "System.InvalidOperationException")
+    static LoggedError Line(string template = "Background job {Job} failed", string cell = "optical-test", string service = "Optical", int minutesAgo = 10, string? exception = "System.InvalidOperationException",
+        string stack = "   at Somewhere.Run()")
     {
         return new LoggedError(DateTimeOffset.UtcNow.AddMinutes(-minutesAgo), service, "NSail.Background.BackgroundJobRunner", template, exception,
-            "   at Somewhere.Run()", cell, "trace1", new Uri("https://logs.example/web/logs"));
+            stack, cell, "trace1", new Uri("https://logs.example/web/logs"));
     }
 
     static async Task<string> Pass(MemoryBoard board, ILogSource source, WatchState? state = null, int? max = null)
@@ -199,6 +200,37 @@ public class WatchTests
         Assert.Single(board.Cards);
         Assert.Single(board.Cards[n].Comments);
         Assert.Contains("Still logged", board.Cards[n].Comments[0].Body);
+    }
+
+    // A cause logged after the story was filed — the chain a wrapped exception gained — reaches its thread.
+    [Fact]
+    public async Task ACountOverANewStackShowsIt()
+    {
+        const string cause = " ---> System.Net.Sockets.SocketException\n   at Socket.Connect()\n   --- End of inner exception stack trace ---\n   at Somewhere.Run()";
+        var board = new MemoryBoard();
+        await Pass(board, new Source(Line(minutesAgo: 30)));
+        var n = Assert.Single(board.Cards).Key;
+
+        await Pass(board, new Source(Line(minutesAgo: 5, stack: cause)));
+
+        var count = Assert.Single(board.Cards[n].Comments).Body;
+        Assert.Contains("Still logged", count);
+        Assert.Contains(Untrusted.Fence($"System.InvalidOperationException\n{cause}"), count);
+        Assert.DoesNotContain("Socket.Connect", board.Cards[n].Body);
+    }
+
+    [Fact]
+    public async Task ACountOverTheSameStackStaysOneLine()
+    {
+        var board = new MemoryBoard();
+        await Pass(board, new Source(Line(minutesAgo: 30)));
+        var n = Assert.Single(board.Cards).Key;
+
+        await Pass(board, new Source(Line(minutesAgo: 5)));
+
+        var count = Assert.Single(board.Cards[n].Comments).Body;
+        Assert.DoesNotContain(Untrusted.Line, count);
+        Assert.Equal(2, count.Split('\n').Length);
     }
 
     [Fact]
