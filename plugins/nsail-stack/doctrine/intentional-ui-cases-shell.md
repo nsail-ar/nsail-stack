@@ -178,7 +178,8 @@ compares the text against the control's `innerText`, case-folded, and stays shut
 already on screen. **That is what makes the double cartel unrepresentable**, and it costs no gate:
 a label a container query hid, one the footer's emphasis ladder hid and one that was never written
 are all the same empty `innerText`, so no breakpoint is restated in CSS and nothing is kept in step
-by hand between the two languages. A control the caller pinned with `Breakpoint="Always"` declares
+by hand between the two languages. A label the stylesheet cut short in `…` is the one word on
+screen `innerText` reports whole, so the span is asked first: one wider than its box whispers. A control the caller pinned with `Breakpoint="Always"` declares
 the same text as one that collapses — the markup says what there WOULD be to say, and nothing
 about when.
 

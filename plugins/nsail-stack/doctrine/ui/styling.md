@@ -447,6 +447,14 @@ pill's top edge. `Stretch` spans the chip across its box, label centered; in the
 lifts the half-row cap and takes a line of the row. The side menu's cap on it is in
 [navigation.md](navigation.md).
 
+**A button's label never wraps** (Material: «Don't wrap text»): one that does not fit ends in `…`
+the same way, on `ns-button-label`, the span every `NsButton`, `NsSubmit` and `NsLink` face draws
+its word in. The vendor's `.mud-button-label` keeps its `inline-flex` and only gives up its
+min-content floor, and the root is held to its container's width. A face that styles its own
+label (the contact channel, the sign-in tiles, the disclosure) does it scoped under its container,
+on top of that rule. The whole word stays the accessible name and the whisper, and the whisper
+opens over a cut label: `innerText` reports it whole, so `ns.js` asks the span whether it was cut.
+
 **Colour goes on the datum, never on the container.** A card is never tinted as a whole — a
 permanently coloured tile is an alarm nobody sees by Thursday — so what carries the tone is the
 number, the name or the dot beside it, and only while it has something to say: *Vencidas* reads
