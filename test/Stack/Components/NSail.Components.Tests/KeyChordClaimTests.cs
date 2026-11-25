@@ -299,8 +299,8 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         Assert.Empty(glyph.QuerySelectorAll("kbd"));
     }
 
-    // A filter's submit claims nothing, so it whispers nothing: there is no second place that
-    // decides whether to paint a bubble.
+    // A filter's submit claims nothing, so it declares no whisper of its own: there is no second
+    // place that decides whether to paint a bubble. A cut word is read off its label span (ns.js).
     [Fact]
     public void AFiltersSubmit_WhispersNothing()
     {

@@ -122,7 +122,8 @@ public sealed class ButtonLabelEllipsisTests : BunitContext, IAsyncLifetime
         Assert.Matches(@"max-width:\s*none;", Body(css, @"\.ns-table \.mud-table-head \.ns-th-order\.mud-button-root"));
     }
 
-    /// <summary>AC1: every face that draws a word carries the span the cut selects.</summary>
+    /// <summary>AC1: every face that draws a word carries the span the cut selects, as the
+    /// root's grandchild: the root's own hold and the whisper both name that nesting.</summary>
     [Fact]
     public void EveryWordedFaceCarriesTheLabelSpan()
     {
@@ -137,9 +138,9 @@ public sealed class ButtonLabelEllipsisTests : BunitContext, IAsyncLifetime
             .Add(x => x.Icon, NsIcons.Till));
         var submit = Render<NsSubmit>();
 
-        Assert.Equal(Long, button.Find(".mud-button-label > .ns-button-label").TextContent);
-        Assert.Equal(Long, link.Find(".mud-button-label > .ns-button-label").TextContent);
-        Assert.NotEmpty(submit.Find(".mud-button-label > .ns-button-label").TextContent.Trim());
+        Assert.Equal(Long, button.Find(".mud-button-root > .mud-button-label > .ns-button-label").TextContent);
+        Assert.Equal(Long, link.Find(".mud-button-root > .mud-button-label > .ns-button-label").TextContent);
+        Assert.NotEmpty(submit.Find(".mud-button-root > .mud-button-label > .ns-button-label").TextContent.Trim());
     }
 
     /// <summary>AC2: a long label is still whole in the accessible name and the whisper's
@@ -176,9 +177,46 @@ public sealed class ButtonLabelEllipsisTests : BunitContext, IAsyncLifetime
 
         var gate = Regex.Match(script, @"function whisperAdds\(el, text\) \{(?<body>.*?)\n    \}", RegexOptions.Singleline).Groups["body"].Value;
 
-        Assert.Contains("el.querySelector(\":scope > .mud-button-label > .ns-button-label\")", gate);
+        Assert.Contains("const label = buttonLabel(el);", gate);
         Assert.Contains("label.scrollWidth > label.clientWidth", gate);
+        Assert.Contains("el.querySelector(\":scope > .mud-button-label > .ns-button-label\")", Function(script, "buttonLabel(el)"));
         Assert.True(gate.IndexOf("scrollWidth", StringComparison.Ordinal) < gate.IndexOf("el.innerText", StringComparison.Ordinal));
+    }
+
+    /// <summary>AC2: a face that declares no word of its own — a filter's submit, a submit's
+    /// ChildContent with no Label — still whispers its cut label, read off the span.</summary>
+    [Fact]
+    public void ASubmitWithNoDeclaredWordWhispersItsCutLabel()
+    {
+        var filter = Render<NsSubmit>(p => p.Add(x => x.As, NsAs.Filter)).Find("button");
+        var custom = Render<NsSubmit>(p => p.AddChildContent("Presupuestar y enviar")).Find("button");
+
+        foreach (var face in new[] { filter, custom })
+        {
+            Assert.Null(face.GetAttribute("data-ns-whisper"));
+            Assert.Null(face.GetAttribute("aria-label"));
+            Assert.True(face.Matches(".mud-button-root:has(> .mud-button-label > .ns-button-label)"));
+        }
+
+        var script = File.ReadAllText(Path.Combine(
+            RepoRoot(),
+            "src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js"));
+
+        var selector = Regex.Match(script, @"const WHISPER_SELECTOR = '(?<list>[^']*)';").Groups["list"].Value;
+        Assert.Contains(".mud-button-root:has(> .mud-button-label > .ns-button-label)", selector.Split(", "));
+
+        var text = Function(script, "whisperText(el)");
+        Assert.Contains("const label = buttonLabel(el);", text);
+        Assert.Contains("label.textContent", text);
+    }
+
+    static string Function(string script, string signature)
+    {
+        var body = Regex.Match(script, @"function " + Regex.Escape(signature) + @" \{(?<body>.*?)\n    \}", RegexOptions.Singleline);
+
+        Assert.True(body.Success, $"ns.js no longer carries 'function {signature}'.");
+
+        return body.Groups["body"].Value;
     }
 
     static string Body(string css, string selector)
