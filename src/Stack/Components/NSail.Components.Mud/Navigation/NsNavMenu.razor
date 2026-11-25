@@ -329,10 +329,13 @@
         });
     }
 
+    // Only the doors this session is drawn are counted (Leaves is what the gate and Visible
+    // left, and a page entry is the only row that draws a number): a hidden entry's count would
+    // be an ask its server refuses, for a number drawn nowhere.
     async Task Recount()
     {
         _counted = GetCurrentPath();
-        _counts = await Menu.GetCounts();
+        _counts = await Menu.GetCounts(Leaves(_items).Select(leaf => leaf.Name).ToHashSet(StringComparer.Ordinal));
     }
 
     int Count(NavMenuItem item)

@@ -51,6 +51,8 @@ public sealed class NavMenu : IDisposable
 
     IReadOnlyDictionary<string, int>? _handedCounts;
 
+    IReadOnlySet<string> _drawn = new HashSet<string>(StringComparer.Ordinal);
+
     bool _registered;
 
     PersistingComponentStateSubscription _persisting;
@@ -119,9 +121,18 @@ public sealed class NavMenu : IDisposable
     /// the session lasts — and whoever publishes <see cref="NavMenuCountsChanged"/> is saying
     /// exactly that the last answer is spent. A contributor that cannot answer is left out
     /// rather than allowed to take the drawer down with it — a number is chrome, and the map
-    /// is not.</summary>
-    public Task<IReadOnlyDictionary<string, int>> GetCounts()
+    /// is not.
+    ///
+    /// <para>Only the entries in <paramref name="drawn"/> are asked: a count belongs to the door
+    /// it is drawn beside, and a door the session is not drawn — refused, hidden, or under a
+    /// group that went — has nothing to ask, nor a server that owes the session an answer. The
+    /// set is the drawer's, so the persist callback asks for the same doors: the last set
+    /// handed in is the one it asks, and a caller asking for fewer narrows the
+    /// handoff.</para></summary>
+    public Task<IReadOnlyDictionary<string, int>> GetCounts(IReadOnlySet<string> drawn)
     {
+        _drawn = drawn;
+
         // The arrival's numbers, resolved by the prerender and handed over. TAKEN rather than
         // read: this is the one ask of the session the handoff answers, and every later one —
         // a navigation, a NavMenuCountsChanged — is somebody saying the last answer is spent.
@@ -129,10 +140,12 @@ public sealed class NavMenu : IDisposable
         {
             _handedCounts = null;
 
-            return Task.FromResult(handed);
+            return Task.FromResult<IReadOnlyDictionary<string, int>>(handed
+                .Where(count => drawn.Contains(count.Key))
+                .ToDictionary(StringComparer.Ordinal));
         }
 
-        return Ask();
+        return Ask(drawn);
     }
 
     /// <summary>What the modules offer for a term, in registration order, under whatever the
@@ -179,11 +192,11 @@ public sealed class NavMenu : IDisposable
         _persisting.Dispose();
     }
 
-    async Task<IReadOnlyDictionary<string, int>> Ask()
+    async Task<IReadOnlyDictionary<string, int>> Ask(IReadOnlySet<string> drawn)
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        foreach (var contributor in _counts)
+        foreach (var contributor in _counts.Where(contributor => drawn.Contains(contributor.Name)))
         {
             try
             {
@@ -241,11 +254,12 @@ public sealed class NavMenu : IDisposable
 
         // The counts are asked at persist time rather than carried out of the render: in the
         // prerendering scope this is an in-process send with the session already in hand, and
-        // it is a number — the later it is read the truer it is.
+        // it is a number — the later it is read the truer it is. The doors are the ones the
+        // prerender's drawer last said it draws; with no drawer, nothing is drawn to count.
         _handoff.PersistAsJson(HandoffKey, new NavMenuHandoff
         {
             Arrangements = arranged,
-            Counts = await Ask()
+            Counts = await Ask(_drawn)
         });
     }
 
