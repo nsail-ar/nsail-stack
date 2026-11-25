@@ -29,6 +29,7 @@ public sealed class SurfaceContext
     readonly SurfaceHistory _history;
     readonly Surface? _name;
     readonly Action? _close;
+    readonly Func<Task<bool>>? _leaves;
     readonly Type? _pageType;
     string? _title;
     Glyph? _icon;
@@ -48,6 +49,7 @@ public sealed class SurfaceContext
     volatile bool _finishing;
     bool _closesOnArrival;
     bool _popping;
+    bool _asking;
 
     internal SurfaceContext(
         Surface? name,
@@ -56,7 +58,8 @@ public sealed class SurfaceContext
         IJSRuntime js,
         SurfaceHistory history,
         Action? close = null,
-        Type? pageType = null)
+        Type? pageType = null,
+        Func<Task<bool>>? leaves = null)
     {
         _name = name;
         _navigation = navigation;
@@ -65,6 +68,7 @@ public sealed class SurfaceContext
         _history = history;
         _close = close;
         _pageType = pageType;
+        _leaves = leaves;
     }
 
     public Surface? Name => _name;
@@ -911,13 +915,14 @@ public sealed class SurfaceContext
     }
 
     /// <summary>Closes this surface: host-managed surfaces (dialogs) close through their
-    /// host; named ones by leaving the entry their open pushed, or by removing their query
-    /// parameter when the open pushed nothing. No-op on the default surface.</summary>
+    /// host, asking first over changes nothing saved; named ones by leaving the entry their
+    /// open pushed, or by removing their query parameter when the open pushed nothing. No-op
+    /// on the default surface.</summary>
     public void Close()
     {
         if (_close is not null)
         {
-            _close();
+            CloseHosted();
             return;
         }
 
@@ -945,6 +950,47 @@ public sealed class SurfaceContext
         }
 
         Follow(_navigation.GetUriWithQueryParameter(_name!.Value.Name, (string?)null));
+    }
+
+    // A host's close is no navigation, so no NavigationLock hears it: the question the routed
+    // guard asks is asked here (leaves, handed over by NsSurfaceContext). One gesture asks once —
+    // the X and Escape both land here and neither is debounced — and the latch ends with the
+    // answer, so a declined close leaves the X live.
+    void CloseHosted()
+    {
+        if (_asking)
+        {
+            return;
+        }
+
+        if (_leaves is null || !HasUnansweredChanges)
+        {
+            _close!();
+            return;
+        }
+
+        _ = AskThenClose();
+    }
+
+    async Task AskThenClose()
+    {
+        _asking = true;
+
+        bool confirmed;
+
+        try
+        {
+            confirmed = await _leaves!();
+        }
+        finally
+        {
+            _asking = false;
+        }
+
+        if (confirmed)
+        {
+            _close!();
+        }
     }
 
     // One gesture spends one entry. history.back() is a round trip — JS interop, popstate,

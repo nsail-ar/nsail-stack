@@ -12,8 +12,8 @@
    Nothing here would redraw on its own — mutating the surface re-renders nothing — so the wire is
    the surface's RefusalChanged, which carries exactly the two words below and nothing else: this is
    the only reader of them, and a save in flight is already on StateChanged as HasWork for everything
-   that draws a spinner. Escape is the same exit's second face and goes back to the host (Saving),
-   which is the only one holding the dialog instance. *@
+   that draws a spinner. Escape is the same exit's second face and goes back to the host (Saving,
+   Guarding), which is the only one holding the dialog instance. *@
 <CascadingValue Value="Refuses" Name="ParentDisabled">
     @ChildContent
 </CascadingValue>
@@ -21,6 +21,8 @@
 @code {
 
     bool _reported;
+
+    bool _guarding;
 
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
@@ -37,6 +39,15 @@
     [Parameter]
     public EventCallback<bool> Saving { get; set; }
 
+    /// <summary>Called when the surface starts and stops holding changes, for Escape's other
+    /// constraint: the vendor's key closes the instance without asking, so the host withdraws it
+    /// while there is something to ask about and answers the key itself through
+    /// <c>Surface.Close()</c>, which asks (NsOpenDialog). A delegate and not an EventCallback:
+    /// the answer is an option on the dialog instance, and re-rendering the host would hand the
+    /// hosted component its parameters again on the first edit.</summary>
+    [Parameter]
+    public Func<bool, Task>? Guarding { get; set; }
+
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
@@ -49,6 +60,7 @@
         if (Surface is not null)
         {
             Surface.RefusalChanged += OnRefusalChanged;
+            Surface.StateChanged += OnStateChanged;
         }
     }
 
@@ -71,11 +83,31 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
+    void OnStateChanged()
+    {
+        _ = InvokeAsync(ReportGuarding);
+    }
+
+    Task ReportGuarding()
+    {
+        var guarding = Surface?.HasChanges == true;
+
+        if (guarding == _guarding || Guarding is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        _guarding = guarding;
+
+        return Guarding(guarding);
+    }
+
     public void Dispose()
     {
         if (Surface is not null)
         {
             Surface.RefusalChanged -= OnRefusalChanged;
+            Surface.StateChanged -= OnStateChanged;
         }
     }
 }

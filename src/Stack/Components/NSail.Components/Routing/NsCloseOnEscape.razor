@@ -3,6 +3,7 @@
 
 @namespace NSail.Components
 @using Microsoft.AspNetCore.Components.Web
+@implements IHandleEvent
 
 @* Escape is how every overlay in the world is dismissed, and a routed surface had no key
    handling at all. The wrapper is focusable and takes focus once, because the click that
@@ -50,6 +51,14 @@
         {
             await _element.FocusAsync();
         }
+    }
+
+    // Every key pressed inside bubbles through here, and nothing this renders depends on one:
+    // the render ComponentBase adds after a handler would redraw the whole hosted content per
+    // keystroke — a hosted dialog's component is handed its parameters again each time.
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg)
+    {
+        return callback.InvokeAsync(arg);
     }
 
     async Task OnKeyDown(KeyboardEventArgs args)

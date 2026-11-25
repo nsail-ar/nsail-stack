@@ -41,24 +41,30 @@
                    cascade a routed surface's chrome takes for granted. Two are re-provided:
                    the surface, or the X would erase itself for want of one, and the hosted
                    form's own refusal, which travels up through that surface and comes back
-                   down through NsDialogExit — which reports the save back here for Escape,
-                   the one thing the X cannot answer for itself. DialogContent needs neither,
-                   MudDialog renders it in place. *@
+                   down through NsDialogExit — which reports the save and the changes back here
+                   for Escape, the one thing the X cannot answer for itself. DialogContent needs
+                   neither, MudDialog renders it in place. *@
                 <CascadingValue Value="surface" IsFixed="true">
-                    <NsDialogExit Saving="WithdrawEscape">
-                        <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
-                            @if (!string.IsNullOrEmpty(Title))
-                            {
-                                <MudText Typo="Typo.h6">@Title</MudText>
-                            }
-                            <NsClose As="NsAs.Inline" />
-                        </NsStack>
+                    <NsDialogExit Saving="WithdrawEscape" Guarding="GuardEscape">
+                        <NsCloseOnEscape Focuses="false" Closes="@EscapeFor(surface)">
+                            <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
+                                @if (!string.IsNullOrEmpty(Title))
+                                {
+                                    <MudText Typo="Typo.h6">@Title</MudText>
+                                }
+                                <NsClose As="NsAs.Inline" />
+                            </NsStack>
+                        </NsCloseOnEscape>
                     </NsDialogExit>
                 </CascadingValue>
             </TitleContent>
             <DialogContent>
                 <CascadingValue Value="_holds" IsFixed="true">
-                    <DynamicComponent Type="ComponentType" Parameters="ResolvedParameters" />
+                    <NsCloseOnEscape Class="d-flex flex-column flex-1 min-h-0"
+                                     Focuses="false"
+                                     Closes="@EscapeFor(surface)">
+                        <DynamicComponent Type="ComponentType" Parameters="ResolvedParameters" />
+                    </NsCloseOnEscape>
                 </CascadingValue>
             </DialogContent>
         </MudDialog>
@@ -70,6 +76,8 @@
     bool? _granted;
 
     bool _saving;
+
+    bool _guarding;
 
     EscapeHolds _holds = default!;
 
@@ -104,19 +112,47 @@
         return ApplyEscape();
     }
 
+    Task GuardEscape(bool guarding)
+    {
+        _guarding = guarding;
+
+        return ApplyEscape();
+    }
+
     // Escape is the VENDOR's own handler and it closes this instance directly, reaching neither
     // Surface.Close() nor the refusal the X draws. With BackdropClick off the X and Escape are the
     // only two ways out (MudDialogManager), so greying one while the other walks out mid-save closes
     // one of two: the key is withdrawn for the length of the save and handed back after it. It is
     // withdrawn too while something open inside answers Escape itself (EscapeHolds), so one Escape
-    // closes that thing and the next one the dialog. The option is the whole answer here — rolling
-    // our own key handler would take a document-level interceptor's reach down to one element's
-    // focus and miss every key pressed with a select's popover open.
+    // closes that thing and the next one the dialog. The vendor's handler is kept wherever it can
+    // answer — a house handler has one element's focus where the vendor's interceptor has the whole
+    // dialog's — and handed over only while the surface holds changes, which it cannot ask about:
+    // then the key is withdrawn and the house's own (NsCloseOnEscape, title row and content) goes
+    // through Surface.Close(), which asks.
     Task ApplyEscape()
     {
         return MudDialog.SetOptionsAsync(MudDialog.Options with
         {
-            CloseOnEscapeKey = _saving || _holds.Any ? false : _granted
+            CloseOnEscapeKey = _saving || _holds.Any || _guarding ? false : _granted
         });
+    }
+
+    // No receiver, so the press re-renders nothing here: this host's render hands the hosted
+    // component its parameters again, a dictionary that always reads as changed.
+    EventCallback EscapeFor(SurfaceContext surface)
+    {
+        return new EventCallback(null, (Action)(() => Escaped(surface)));
+    }
+
+    // Only while the key is the house's: anywhere else the vendor's own has answered it already,
+    // or the key is withdrawn for a reason that holds the house's too.
+    void Escaped(SurfaceContext surface)
+    {
+        if (!_guarding || _saving || _holds.Any || _granted == false)
+        {
+            return;
+        }
+
+        surface.Close();
     }
 }

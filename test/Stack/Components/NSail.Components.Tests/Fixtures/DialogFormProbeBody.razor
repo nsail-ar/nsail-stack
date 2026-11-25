@@ -9,9 +9,10 @@
    and the rest): a real NsForm inside a real NsPanel, with the footer's own Cancelar beside the
    submit — the two faces of the exit that have to agree. The submit waits on the gate the test
    holds, so the save is still in flight while the header X is read, and the escape probe prints
-   what the dialog's own options say about Escape at this moment. *@
+   what the dialog's own options say about Escape at this moment. Untracked as those are, unless
+   the test asks for a tracked one — the form whose edits the dialog's exit asks about. *@
 
-<NsForm TModel="CheckBoxTrackingModel" Model="Model" Disabled="Disabled" Untracked OnSubmit="HandleSubmit">
+<NsForm TModel="CheckBoxTrackingModel" Model="Model" Disabled="Disabled" Untracked="!Tracked" OnSubmit="HandleSubmit">
     <NsPanel>
         <Content>
             <div class="dialog-form-body">
@@ -29,7 +30,7 @@
 @code {
 
     [CascadingParameter]
-    IMudDialogInstance? Dialog { get; set; }
+    public IMudDialogInstance? Dialog { get; set; }
 
     [Parameter, EditorRequired]
     public CheckBoxTrackingModel Model { get; set; } = default!;
@@ -37,6 +38,10 @@
     /// <summary>The form refuses writes — what a page hands its own NsForm.</summary>
     [Parameter]
     public bool Disabled { get; set; }
+
+    /// <summary>The form reports its edits to the surface.</summary>
+    [Parameter]
+    public bool Tracked { get; set; }
 
     /// <summary>Held by the test for as long as it wants the save in flight.</summary>
     [Parameter]
