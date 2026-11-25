@@ -28,12 +28,6 @@ public sealed class LogScrubTests
 
     const string Category = "Consulting";
 
-    const string SqlStateTag = "db.response.status_code";
-
-    const string JobTemplate = "Background job {Job} failed its pass";
-
-    const string Refusal = "sorry, too many clients already";
-
     [Fact]
     public void The_values_a_line_was_formatted_from_do_not_travel()
     {
@@ -58,47 +52,78 @@ public sealed class LogScrubTests
         Assert.Equal(typeof(InvalidOperationException).FullName, record.Tag("exception.type"));
         Assert.Contains(nameof(Raised), stack, StringComparison.Ordinal);
         Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
-        Assert.Null(record.Tag(SqlStateTag));
+        Assert.Null(record.Tag("db.response.status_code"));
+    }
+
+    // A wrapper names its cause: Npgsql's "likely due to a transient failure" says nothing of
+    // whether the connection timed out, dropped or met a restart until its inner chain travels.
+    [Fact]
+    public void An_exceptions_inner_chain_travels_as_types_and_frames_outermost_first()
+    {
+        var outer = Thrown(() => new InvalidOperationException(
+            $"{Document} could not be saved",
+            Thrown(() => new AggregateException(
+                $"{Name} failed twice",
+                Thrown(() => new TimeoutException($"{Clinical} timed out", Thrown(() => new IOException($"{Name} dropped")))),
+                Thrown(() => new ArgumentException($"{Document} is not valid"))))));
+
+        var record = Scrubbed(logger => logger.LogError(outer, "Unhandled exception mapped to problem {Code}", "Unhandled"));
+
+        var inner = Assert.IsType<string>(record.Tag("exception.inner.stacktrace"));
+
+        Assert.Equal(typeof(InvalidOperationException).FullName, record.Tag("exception.type"));
+        Assert.Equal(outer.StackTrace, record.Tag("exception.stacktrace"));
+        Assert.Equal(
+            string.Join('\n', typeof(AggregateException).FullName, typeof(TimeoutException).FullName, typeof(IOException).FullName, typeof(ArgumentException).FullName),
+            record.Tag("exception.inner.type"));
+        Assert.Equal(5, inner.Split(nameof(Thrown)).Length);
+        Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Clinical, record.Flattened, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void A_database_failure_travels_with_its_sqlstate_and_never_its_message()
+    public void A_database_errors_sqlstate_travels_from_anywhere_in_the_chain()
     {
-        var record = Scrubbed(logger => logger.LogError(Raised(TooManyClients()), JobTemplate, "HorizonJob"));
+        var record = Scrubbed(logger => logger.LogError(
+            new InvalidOperationException(
+                "An exception has been raised that is likely due to a transient failure.",
+                new FailedRead($"terminating connection for {Name}", "57P01")),
+            "Unhandled exception mapped to problem {Code}",
+            "Unhandled"));
+
+        Assert.Equal(typeof(InvalidOperationException).FullName, record.Tag("exception.type"));
+        Assert.Equal(typeof(FailedRead).FullName, record.Tag("exception.inner.type"));
+        Assert.Equal("57P01", record.Tag("db.response.status_code"));
+        Assert.DoesNotContain("transient", record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void A_sqlstate_that_is_not_a_code_does_not_travel()
+    {
+        var record = Scrubbed(logger => logger.LogError(
+            new FailedRead("read failed", $"{Name} has no access"),
+            "Unhandled exception mapped to problem {Code}",
+            "Unhandled"));
+
+        Assert.Null(record.Tag("db.response.status_code"));
+        Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // The scrubber reads DbException.SqlState; this is the proof that Npgsql's own type answers
+    // through it rather than hiding it, as the background runner's refused connections do.
+    [Fact]
+    public void A_refused_connection_travels_with_its_sqlstate_and_never_its_message()
+    {
+        var refused = Thrown(() => new PostgresException("sorry, too many clients already", "FATAL", "FATAL", "53300"));
+
+        var record = Scrubbed(logger => logger.LogError(refused, "Background job {Job} failed its pass", "HorizonJob"));
 
         Assert.Equal(typeof(PostgresException).FullName, record.Tag("exception.type"));
-        Assert.Equal("53300", record.Tag(SqlStateTag));
-        Assert.IsType<string>(record.Tag("exception.stacktrace"));
-        Assert.DoesNotContain(Refusal, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("53300", record.Tag("db.response.status_code"));
+        Assert.DoesNotContain("too many clients", record.Flattened, StringComparison.OrdinalIgnoreCase);
         Assert.Null(record.Tag("Job"));
-    }
-
-    [Fact]
-    public void A_sqlstate_is_found_inside_the_exception_that_wraps_it()
-    {
-        var wrapped = new InvalidOperationException($"{Document} could not take the lock", TooManyClients());
-
-        var record = Scrubbed(logger => logger.LogError(new AggregateException(wrapped), JobTemplate, "HorizonJob"));
-
-        Assert.Equal(typeof(AggregateException).FullName, record.Tag("exception.type"));
-        Assert.Equal("53300", record.Tag(SqlStateTag));
-        Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(Refusal, record.Flattened, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // A provider fills SqlState, not the server, so what is not shaped like the standard's code
-    // is prose until proven otherwise.
-    [Theory]
-    [InlineData(null)]
-    [InlineData("Juan Perez")]
-    [InlineData("53300 ")]
-    public void A_sqlstate_not_shaped_like_one_does_not_travel(string? sqlState)
-    {
-        var record = Scrubbed(logger => logger.LogError(new ProviderException(sqlState), JobTemplate, "HorizonJob"));
-
-        Assert.Equal(typeof(ProviderException).FullName, record.Tag("exception.type"));
-        Assert.Null(record.Tag(SqlStateTag));
-        Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -188,29 +213,33 @@ public sealed class LogScrubTests
 
     static Exception Raised(string message)
     {
-        return Raised(new InvalidOperationException(message));
-    }
-
-    static Exception Raised(Exception exception)
-    {
         try
         {
-            throw exception;
+            throw new InvalidOperationException(message);
         }
-        catch (Exception thrown)
+        catch (InvalidOperationException thrown)
         {
             return thrown;
         }
     }
 
-    static PostgresException TooManyClients()
+    static T Thrown<T>(Func<T> raise)
+        where T : Exception
     {
-        return new PostgresException(Refusal, "FATAL", "FATAL", "53300");
+        try
+        {
+            throw raise();
+        }
+        catch (T thrown)
+        {
+            return thrown;
+        }
     }
 
-    sealed class ProviderException(string? sqlState) : DbException($"{Name} was refused")
+    // A DbException whose SqlState the test chooses, shaped like a code or not.
+    sealed class FailedRead(string message, string state) : DbException(message)
     {
-        public override string? SqlState => sqlState;
+        public override string? SqlState => state;
     }
 
     // LogRecord instances are pooled and reused, so what a test keeps is what it read on the

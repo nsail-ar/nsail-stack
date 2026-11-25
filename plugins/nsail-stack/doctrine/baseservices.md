@@ -283,14 +283,17 @@ seam:
   repository's `.editorconfig` and, through `NSail.Types`'s `buildTransitive` global config, in
   every product that takes the packages).
 - An attribute's value travels only if its **type cannot carry prose**: `Guid`, a number, a
-  `bool`, an enum, a date or a duration. Every string is dropped, a code included — a
+  `bool`, an enum, a date or a duration. Every string attribute is dropped, a code included — a
   Problem's Code and a patient's name are the same type, so the Code rides the span and the
   `traceId` joins the two.
-- An exception travels as `exception.type` and its **frames**; the message does not. A
-  database failure also carries its **SqlState** as `db.response.status_code`, read off the
-  first `DbException` in the exception or what it wraps: the server's closed code is what tells
-  a full server from one starting up or a refused password, and a value not shaped like one
-  (five digits or capitals) is dropped as prose.
+- An exception travels as `exception.type` and its **frames**; the message does not. Its
+  inner chain travels likewise, each cause's type and frames (`exception.inner.type`,
+  `exception.inner.stacktrace`), because a wrapper hides its cause — Npgsql's "transient
+  failure" `InvalidOperationException` says nothing of whether the connection timed out,
+  dropped or met a restart. A `DbException`'s SqlState travels too (`db.response.status_code`):
+  a code, and one the scrubber takes only in a SQLSTATE's five-character shape. The outer's
+  two tags stay exactly what they were, so the watch's fingerprint of a filed error does not
+  move when its cause starts travelling.
 - The cut is at the exporter, behind every other logging provider, so the console and the
   file a developer reads keep the whole line.
 

@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Data.Common;
+using System.Text;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 
@@ -13,7 +14,7 @@ namespace NSail.Telemetry;
 /// document number or a Problem's Title — and the OTLP exporter sends every attribute, the
 /// exception's message and its rendered stack. What travels is what the source declares: the
 /// category, the level, the event id and the message template, plus the values whose type
-/// cannot carry prose, and a database failure's SqlState. The console and the file a developer reads are written before this
+/// cannot carry prose. The console and the file a developer reads are written before this
 /// processor, so the cut costs local diagnosis nothing.</summary>
 public sealed class LogScrubber : BaseProcessor<LogRecord>
 {
@@ -21,6 +22,13 @@ public sealed class LogScrubber : BaseProcessor<LogRecord>
 
     const string StackTag = "exception.stacktrace";
 
+    // OpenTelemetry's conventions name nothing past the outer exception. The outer keeps the
+    // two tags above unchanged, so a fingerprint taken from them does not move with its cause.
+    const string InnerTypeTag = "exception.inner.type";
+
+    const string InnerStackTag = "exception.inner.stacktrace";
+
+    // The conventions' own name for a database's status code; for PostgreSQL it is the SQLSTATE.
     const string SqlStateTag = "db.response.status_code";
 
     // The message template, which is the record's body and the one string that travels: it is
@@ -51,14 +59,22 @@ public sealed class LogScrubber : BaseProcessor<LogRecord>
                 kept.Add(new KeyValuePair<string, object?>(StackTag, frames));
             }
 
-            if (SqlState(exception) is { } code)
+            var chain = Chain(exception);
+
+            if (chain.Count > 1)
             {
-                kept.Add(new KeyValuePair<string, object?>(SqlStateTag, code));
+                kept.Add(new KeyValuePair<string, object?>(InnerTypeTag, string.Join('\n', chain.Skip(1).Select(link => link.GetType().FullName))));
+                kept.Add(new KeyValuePair<string, object?>(InnerStackTag, InnerFrames(chain)));
+            }
+
+            if (chain.Select(SqlState).FirstOrDefault(state => state is not null) is { } state)
+            {
+                kept.Add(new KeyValuePair<string, object?>(SqlStateTag, state));
             }
 
             // The two the exporter writes from the exception itself both carry its message —
-            // the stack trace it renders is ToString(), which opens with it. The frames read
-            // off StackTrace above do not.
+            // the stack trace it renders is ToString(), which opens with it and with every inner
+            // exception's. The frames read off StackTrace above and in InnerFrames do not.
             data.Exception = null;
         }
 
@@ -69,35 +85,66 @@ public sealed class LogScrubber : BaseProcessor<LogRecord>
         data.FormattedMessage = null;
     }
 
-    // The one string read off an exception: the server's own code for the failure, which tells a
-    // full server from one starting up or a refused password. It is checked against the SQL
-    // standard's shape (five digits or capitals) because a provider, not the server, fills the
-    // property, and a value of that shape cannot carry prose.
-    static string? SqlState(Exception exception)
+    // Outermost first, each exception before its causes, and an aggregate's every cause in
+    // order: its InnerException is only the first of them.
+    static List<Exception> Chain(Exception outer)
     {
-        if (exception is DbException { SqlState: { } code } && IsSqlState(code))
-        {
-            return code;
-        }
+        var chain = new List<Exception>();
+        var seen = new HashSet<Exception>(ReferenceEqualityComparer.Instance);
+        var pending = new Stack<Exception>();
 
-        IEnumerable<Exception> inner = exception is AggregateException aggregate
-            ? aggregate.InnerExceptions
-            : exception.InnerException is { } single ? [single] : [];
+        pending.Push(outer);
 
-        foreach (var cause in inner)
+        while (pending.TryPop(out var link))
         {
-            if (SqlState(cause) is { } found)
+            if (!seen.Add(link))
             {
-                return found;
+                continue;
+            }
+
+            chain.Add(link);
+
+            IEnumerable<Exception> causes = link switch
+            {
+                AggregateException aggregate => aggregate.InnerExceptions,
+                { InnerException: { } inner } => [inner],
+                _ => [],
+            };
+
+            foreach (var cause in causes.Reverse())
+            {
+                pending.Push(cause);
             }
         }
 
-        return null;
+        return chain;
     }
 
-    static bool IsSqlState(string code)
+    // ToString()'s shape for the causes, with each one's header cut to its type.
+    static string InnerFrames(List<Exception> chain)
     {
-        return code.Length == 5 && code.All(character => char.IsAsciiDigit(character) || char.IsAsciiLetterUpper(character));
+        var frames = new StringBuilder();
+
+        foreach (var link in chain.Skip(1))
+        {
+            frames.Append(" ---> ").Append(link.GetType().FullName).Append('\n');
+
+            if (link.StackTrace is { } trace)
+            {
+                frames.Append(trace).Append('\n');
+            }
+        }
+
+        return frames.ToString().TrimEnd('\n');
+    }
+
+    // A SQLSTATE is five letters and digits by the standard; a provider's override that answers
+    // anything else is not trusted to be free of prose.
+    static string? SqlState(Exception link)
+    {
+        return link is DbException { SqlState: { Length: 5 } state } && state.All(char.IsAsciiLetterOrDigit)
+            ? state
+            : null;
     }
 
     // An id or a timing by type. A string is prose until something proves otherwise
