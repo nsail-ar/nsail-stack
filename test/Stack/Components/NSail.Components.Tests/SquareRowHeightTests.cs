@@ -126,17 +126,35 @@ public sealed partial class SquareRowHeightTests
         }
     }
 
-    /// <summary>Nothing but the filled face's own size classes gives the square's padding a number,
-    /// once per pointer: a page or a container that did would be the per-caller branch
-    /// principles.md refuses.</summary>
+    /// <summary>A collapsed face with no fill (NsButton's Inline rung) reads the pair too, so every
+    /// boxed face carries one: the flat glyph's box, 12px around the Md glyph at either pointer,
+    /// declared before the filled face that overrides it. An undefined property would pad it 0 —
+    /// a 20px target, grown by the floor to a 20 by 44 rectangle.</summary>
+    [Fact]
+    public void A_face_with_no_fill_collapses_to_the_flat_glyphs_box()
+    {
+        var css = Rules(ReadStylesheet());
+
+        var face = Assert.Single(css, rule => rule.Selector == ".mud-button" && rule.Has("--ns-square-padding"));
+
+        Assert.Null(face.Query);
+        Assert.Equal("12px", face.Get("--ns-square-padding"));
+        Assert.Equal("auto", face.Get("--ns-square-glyph"));
+        Assert.True(css.IndexOf(face) < css.FindIndex(rule => rule.Selector == ".mud-button-filled" && rule.Has("--ns-square-padding")),
+            "The default has to come before the filled face's pair, at the same weight, so the fill wins.");
+    }
+
+    /// <summary>Nothing but the boxed face's default and the filled face's own size classes gives
+    /// the square's padding a number, once per pointer: a page or a container that did would be
+    /// the per-caller branch principles.md refuses.</summary>
     [Fact]
     public void The_pair_is_declared_once_for_each_pointer_and_size()
     {
         var css = Rules(ReadStylesheet());
         var sizes = Sizes.Select(size => size.Selector).ToHashSet();
 
-        var padding = css.Where(rule => rule.Has("--ns-square-padding")).ToList();
-        var glyph = css.Where(rule => rule.Has("--ns-square-glyph")).ToList();
+        var padding = css.Where(rule => rule.Has("--ns-square-padding") && rule.Selector != ".mud-button").ToList();
+        var glyph = css.Where(rule => rule.Has("--ns-square-glyph") && rule.Selector != ".mud-button").ToList();
 
         Assert.Equal(2 * sizes.Count, padding.Count);
         Assert.All(padding, rule => Assert.Contains(rule.Selector, sizes));

@@ -325,7 +325,9 @@ button's type to — and under a coarse one the padding that brings the vendor's
 size to the touch floor, so it stays a square the floor never grows. The pair is two custom
 properties on the filled face in `ns-mud.css`, one value per pointer and size, read by the
 square and every collapsed face alike; those are the only numbers it carries, and each is the
-worded face's or the floor's, not one of its own. **Whether there is
+worded face's or the floor's, not one of its own. A collapsed face with no fill (the `Inline`
+rung) reads the default every boxed face carries instead: the flat glyph's 44px box, the bare
+icon button's beside it. **Whether there is
 text at all is `Breakpoint`'s word alone** (`NsBreakpoint`: `Always`, `Xs`…`Xxl`, `Never`), never
 a second flag on the control — so the same square is reached by `Never` outright and by a
 container query taking the label away, and the `ns-collapse-*` blocks restate that geometry

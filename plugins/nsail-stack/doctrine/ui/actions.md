@@ -256,7 +256,8 @@ the text shows** — an `IconOnly` flag would be one more knob that ends up affe
 breakpoint anyway. There is no second knob.
 
 - `Always` pins the label on. `Xs`…`Xxl` read as *"the label shows from this container width
-  up"*: below it the control collapses to its icon alone, **and takes the same square**.
+  up"*: below it the control collapses to its icon alone, **and takes the same square** — a
+  filled face the square, an `Inline` one the flat glyph's 44px box.
   `Never` is icon-only outright — the collapse, unconditional, with no container query written
   at all. It does nothing without an `Icon`: there would be nothing left to click.
 - **Inside a footer the row outranks the word.** `.ns-panel-footer`'s own container query
