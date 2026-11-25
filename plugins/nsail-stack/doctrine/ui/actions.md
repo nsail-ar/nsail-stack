@@ -75,8 +75,9 @@ complaint the rule answers: a phone's title row came out three different heights
   (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`, `NsMenu`'s labelled trigger) and the link a
   tapped `NsChip`'s bubble carries.
 - **The icon-only square is the worded face's height under either pointer**
-  ([styling.md](styling.md)): under a fine one it takes the worded face's 36px, and under a
-  coarse one it is already 44px by construction (12px around the Md glyph), so the floor leaves
+  ([styling.md](styling.md)): under a fine one it takes the worded face's height at its size
+  (36px at `Md`), and under a coarse one it is already 44px by construction (its padding brings
+  the vendor's glyph for its size to the floor), so the floor leaves
   it exactly as it is. It is a `min-height` for that reason — a square whose box this grew would
   be the rectangle again.
 - **The flat worded anchor gets its own box.** A bare `<a>` has none to grow, so `NsLink`'s
@@ -441,9 +442,13 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   (default 3) as icon buttons at one size, the rest in an overflow kebab, nothing for an empty
   list. **That kebab is an `NsMenu` like any other**, so the Stack names the vendor's popup in
   one place ([menus.md](menus.md)) — and it is NAMED like any other, carrying the house's word
-  for an overflow, so no grid offers a button a reader meets unnamed. **That one size is the house's ordinary icon action (`Md`)**
-  — the same box a page's own icon-only `NsLink` renders at any intention, so a toolbar, the
-  links beside it and a card header's squares agree without any of them naming a number. A
+  for an overflow, so no grid offers a button a reader meets unnamed. **That one size is the
+  house's ordinary icon action (`Md`)** — the flat glyph's box, the same one a page's own
+  icon-only `NsLink` renders at `Inline`, so a toolbar and the flat links beside it agree
+  without any of them naming a number. A filled square is not that box: it is the worded
+  face's height ([styling.md](styling.md)), which under a fine pointer is shorter than the flat
+  glyph's 44px, so a row that has to stand straight pairs a square with worded buttons and a
+  flat glyph with flat glyphs. A
   grid's action column compacts the *padding*, never the glyph: **a passive label must not
   outweigh the controls that act.**
 - **A host whose own acts are buttons asks for `Buttons`** — a dialog's footer, a row of

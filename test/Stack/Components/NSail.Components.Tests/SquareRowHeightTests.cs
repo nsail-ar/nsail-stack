@@ -11,18 +11,47 @@ namespace NSail.Components.Tests;
 /// a real screen is the browser walks'.</summary>
 public sealed partial class SquareRowHeightTests
 {
-    // The worded face's block padding: the vendor's medium .mud-button (6px 16px), which the house
-    // leaves standing under a fine pointer. A square that wrote any other number here would stand
-    // taller or shorter than the label beside it.
-    const string WordedBlockPadding = "6px";
+    // Each filled size's selector, the worded face's block padding at that size (the vendor's
+    // filled button: 4px 10px, 6px 16px, 8px 22px), which the house leaves standing under a fine
+    // pointer, and the glyph the vendor sets in a button of that size (.mud-button-icon-size-*,
+    // which outranks the house's .mud-icon-size-* step on a button's own icon). A square that
+    // padded any other number under a fine pointer would stand taller or shorter than the label
+    // beside it.
+    static readonly (string Selector, int WordedBlockPadding, int Glyph)[] Sizes =
+    [
+        (".mud-button-filled-size-small", 4, 18),
+        (".mud-button-filled", 6, 20),
+        (".mud-button-filled-size-large", 8, 22),
+    ];
+
+    public static TheoryData<string, int> WordedPaddings()
+    {
+        var data = new TheoryData<string, int>();
+
+        foreach (var size in Sizes)
+        {
+            data.Add(size.Selector, size.WordedBlockPadding);
+        }
+
+        return data;
+    }
+
+    public static TheoryData<string, int> Glyphs()
+    {
+        var data = new TheoryData<string, int>();
+
+        foreach (var size in Sizes)
+        {
+            data.Add(size.Selector, size.Glyph);
+        }
+
+        return data;
+    }
 
     // The box a label rides in is one line of the button's own text.
     const string OneLine = "1lh";
 
-    // The vendor's icon-button padding and the glyph it pads (.mud-button-icon-size-medium, 20px),
-    // which under a coarse pointer has to come out at the floor TouchTargetFloorTests pins.
-    const int IconButtonPadding = 12;
-    const int MdGlyph = 20;
+    // Under a coarse pointer each square has to come out at the floor TouchTargetFloorTests pins.
     const int Floor = 44;
 
     const string FooterAct = ".ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)";
@@ -30,34 +59,36 @@ public sealed partial class SquareRowHeightTests
     // Each face a container query takes the word from, and the glyph wrapper inside it.
     static readonly (string Face, string Glyph)[] Collapses =
     [
-        (".ns-collapse-sm.mud-button", ".ns-collapse-sm .mud-button-icon-start"),
-        (".ns-collapse-md.mud-button", ".ns-collapse-md .mud-button-icon-start"),
-        (".ns-collapse-lg.mud-button", ".ns-collapse-lg .mud-button-icon-start"),
-        (".ns-collapse-xl.mud-button", ".ns-collapse-xl .mud-button-icon-start"),
+        (".ns-collapse-sm.mud-button", ".ns-collapse-sm .mud-button-label .mud-button-icon-start"),
+        (".ns-collapse-md.mud-button", ".ns-collapse-md .mud-button-label .mud-button-icon-start"),
+        (".ns-collapse-lg.mud-button", ".ns-collapse-lg .mud-button-label .mud-button-icon-start"),
+        (".ns-collapse-xl.mud-button", ".ns-collapse-xl .mud-button-label .mud-button-icon-start"),
         (FooterAct, FooterAct + " .mud-button-icon-start"),
     ];
 
-    [Fact]
-    public void Under_a_fine_pointer_the_square_is_the_worded_faces_padding_around_one_line()
+    [Theory]
+    [MemberData(nameof(WordedPaddings))]
+    public void Under_a_fine_pointer_the_square_is_the_worded_faces_padding_around_one_line(string size, int wordedBlockPadding)
     {
         var css = Rules(ReadStylesheet());
 
-        var root = Assert.Single(css, rule => rule.Selector == ":root" && rule.Query is null && rule.Has("--ns-square-padding"));
+        var face = Assert.Single(css, rule => rule.Selector == size && rule.Query is null && rule.Has("--ns-square-padding"));
 
-        Assert.Equal(WordedBlockPadding, root.Get("--ns-square-padding"));
-        Assert.Equal(OneLine, root.Get("--ns-square-glyph"));
+        Assert.Equal($"{wordedBlockPadding}px", face.Get("--ns-square-padding"));
+        Assert.Equal(OneLine, Assert.Single(css, rule => rule.Selector == ".mud-button-filled" && rule.Query is null).Get("--ns-square-glyph"));
     }
 
-    [Fact]
-    public void Under_a_coarse_pointer_the_square_is_the_floor_by_construction()
+    [Theory]
+    [MemberData(nameof(Glyphs))]
+    public void Under_a_coarse_pointer_the_square_is_the_floor_by_construction(string size, int glyph)
     {
         var css = Rules(ReadStylesheet());
 
-        var root = Assert.Single(css, rule => rule.Selector == ":root" && rule.Query == "@media (pointer: coarse)" && rule.Has("--ns-square-padding"));
+        var face = Assert.Single(css, rule => rule.Selector == size && rule.Query == "@media (pointer: coarse)" && rule.Has("--ns-square-padding"));
+        var padding = int.Parse(face.Get("--ns-square-padding").TrimEnd('p', 'x'));
 
-        Assert.Equal($"{IconButtonPadding}px", root.Get("--ns-square-padding"));
-        Assert.Equal("auto", root.Get("--ns-square-glyph"));
-        Assert.Equal(Floor, IconButtonPadding + MdGlyph + IconButtonPadding);
+        Assert.Equal(Floor, padding + glyph + padding);
+        Assert.Equal("auto", Assert.Single(css, rule => rule.Selector == ".mud-button-filled" && rule.Query == "@media (pointer: coarse)").Get("--ns-square-glyph"));
     }
 
     /// <summary>K2: equal padding on every side, no floor under the width, no shrinking in a
@@ -73,7 +104,7 @@ public sealed partial class SquareRowHeightTests
         Assert.Equal("var(--ns-square-padding)", face.Get("padding"));
         Assert.Equal("0", face.Get("flex-shrink"));
 
-        AssertSquareGlyph(Assert.Single(css, rule => rule.Selector == ".ns-square .mud-button-icon-start"));
+        AssertSquareGlyph(Assert.Single(css, rule => rule.Selector == ".ns-square .mud-button-label .mud-button-icon-start"));
     }
 
     /// <summary>AC2: a face whose word the container took away reads the same pair, so it is the
@@ -95,15 +126,22 @@ public sealed partial class SquareRowHeightTests
         }
     }
 
-    /// <summary>Nothing else in the file gives the square's padding a number: a page or a
-    /// container that did would be the per-caller branch principles.md refuses.</summary>
+    /// <summary>Nothing but the filled face's own size classes gives the square's padding a number,
+    /// once per pointer: a page or a container that did would be the per-caller branch
+    /// principles.md refuses.</summary>
     [Fact]
-    public void The_pair_is_declared_once_for_each_pointer()
+    public void The_pair_is_declared_once_for_each_pointer_and_size()
     {
         var css = Rules(ReadStylesheet());
+        var sizes = Sizes.Select(size => size.Selector).ToHashSet();
 
-        Assert.Equal(2, css.Count(rule => rule.Has("--ns-square-padding")));
-        Assert.Equal(2, css.Count(rule => rule.Has("--ns-square-glyph")));
+        var padding = css.Where(rule => rule.Has("--ns-square-padding")).ToList();
+        var glyph = css.Where(rule => rule.Has("--ns-square-glyph")).ToList();
+
+        Assert.Equal(2 * sizes.Count, padding.Count);
+        Assert.All(padding, rule => Assert.Contains(rule.Selector, sizes));
+        Assert.Equal(2, glyph.Count);
+        Assert.All(glyph, rule => Assert.Equal(".mud-button-filled", rule.Selector));
     }
 
     static void AssertSquareGlyph(Rule glyph)

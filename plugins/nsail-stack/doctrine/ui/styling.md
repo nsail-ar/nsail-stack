@@ -182,8 +182,9 @@ marked *(cases)* has its story there.
     positioned absolutely against a card**: the door is a button among the card's own, and it
     wears its own intention's ink. **The header compacts its block padding, never its acts** —
     `.ns-card-header` halves the vendor's block padding on every card (`ns-mud.css`), so a header
-    sits close to its square rather than doubling it; the squares keep the `Md` box and the touch
-    floor, and the inline padding keeps the title in line with the content.
+    sits close to its square rather than doubling it; the squares keep their own size — the
+    worded face's height, and the touch floor — and the inline padding keeps the title in line
+    with the content.
   - **A card with no title draws no header at all** — `NsCard` renders the box only while
     `Header` (or `Door`) is non-null, so a titleless card never pays for a near-empty row above
     the content for its lone act. The act rides the content instead, as the sibling of whatever
@@ -313,17 +314,18 @@ and a refused one losing its lift is a third signal saying what the other two sa
 aims at the filled face alone — the flat rung and every icon button carry no fill to quiet, and
 are refused by the ink they share with it.
 
-**A filled button with no visible text is a SQUARE** at the house's icon-action box
-(`ns-square`) — `min-width: 0`, equal padding, the house's corner radius, its own fill and
-shadow — never the vendor's 64px-floored rectangle. **It stands one height with the worded
-face beside it**, because a toolbar mixes the two and a row of two heights stands crooked
-(Material 3 gives a filled icon button and a common button one container height). So it is
-sized off the worded face, never off a number of its own: under a fine pointer it is the
-vendor's block padding around a glyph box one line of the button's own text tall (`1lh`) — the
-box a label rides in, whatever the theme sets the button's type to — and under a coarse one the
-vendor's icon-button padding around the `Md` glyph, which is the touch floor by construction
-and stays a square the floor never grows. The pair is two custom properties beside `ns-square`
-in `ns-mud.css`, read by the square and every collapsed face alike. **Whether there is
+**A filled button with no visible text is a SQUARE** (`ns-square`) — `min-width: 0`, equal
+padding, the house's corner radius, its own fill and shadow — never the vendor's 64px-floored
+rectangle. **It stands one height with the worded face of its size beside it**, because a
+toolbar mixes the two and a row of two heights stands crooked (Material 3 gives a filled icon
+button and a common button one container height). So it is sized off the worded face, at each
+`Size`: under a fine pointer it is that face's own block padding around a glyph box one line of
+the button's own text tall (`1lh`) — the box a label rides in, whatever the theme sets the
+button's type to — and under a coarse one the padding that brings the vendor's glyph for that
+size to the touch floor, so it stays a square the floor never grows. The pair is two custom
+properties on the filled face in `ns-mud.css`, one value per pointer and size, read by the
+square and every collapsed face alike; those are the only numbers it carries, and each is the
+worded face's or the floor's, not one of its own. **Whether there is
 text at all is `Breakpoint`'s word alone** (`NsBreakpoint`: `Always`, `Xs`…`Xxl`, `Never`), never
 a second flag on the control — so the same square is reached by `Never` outright and by a
 container query taking the label away, and the `ns-collapse-*` blocks restate that geometry
@@ -332,9 +334,9 @@ rectangle again, and a toolbar's search box is the thing on that row that gives 
 width (`.ns-toolbar-search`), not a content one, and once it is spent the row wraps rather than
 squeezing a worded button's label into `…` ([intentional-ui.md](../intentional-ui.md), the page
 name never gives way). The flat rung has no fill to shape, so its wordless face stays the bare
-glyph. **The one number a chromed face does carry is the touch floor** — 44px under a coarse
+glyph. **The one height a chromed face is given is the touch floor** — 44px under a coarse
 pointer, which this box already measures and a worded one grows to ([actions.md](actions.md),
-*One height under a finger*).
+*One height under a finger*); every other height it has is its content's.
 
 ---
 

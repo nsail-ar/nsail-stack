@@ -773,8 +773,8 @@
    pointer keeps the vendor's 36px, which is what every desktop measurement in the house reads.
 
    min-height and not height: under a coarse pointer the squares and the collapsed faces
-   already measure 44 and this leaves them exactly as they are (a square whose box this grew would be a rectangle again),
-   and a face whose own content is taller than the floor — a two-line label — still gets its
+   already measure 44 and this leaves them exactly as they are (a square whose box this grew
+   would be a rectangle again), and a face whose own content is taller than the floor — a two-line label — still gets its
    height from the content.
 
    Unscoped by container on purpose. A height that changes with what the face is drawn inside
@@ -2989,16 +2989,23 @@ div.mud-input-slot.mud-input-root::placeholder {
 
    ONE HEIGHT WITH THE WORDED FACE BESIDE IT, because a toolbar mixes the two and a row of two
    heights stands crooked (Material 3 gives a filled icon button and a common button one
-   container height for the same reason). So the square is sized off the worded face, never off
-   a number of its own. Under a fine pointer it keeps the vendor's 6px block padding on every
-   side around a glyph box one line of the button's own text tall (1lh, resolved on the glyph's
-   wrapper, which inherits the button's type): that line in that padding is exactly the box a
-   label rides in, so the two are one height whatever the theme sets the button's type to.
-   Under a coarse pointer the floor grows the worded face to 44px (THE TOUCH-TARGET FLOOR), and
-   a square that floor grew would be a rectangle again, so there it goes back to the vendor's
-   icon-button padding around the bare Md glyph — 12 + 1.25rem + 12, the floor by
-   construction — and the floor leaves it as it is. The pair is stated once, here, for the
-   square and the collapsed faces alike.
+   container height for the same reason). So the square is sized off the worded face of its own
+   size. Under a fine pointer it keeps that face's block padding on every side — the vendor's
+   filled button pads 4px, 6px and 8px at small, medium and large — around a glyph box one line
+   of the button's own text tall (1lh, resolved on the glyph's wrapper, which inherits the
+   button's type): that line in that padding is exactly the box a label rides in, so the two
+   are one height whatever the theme sets the button's type to. Under a coarse pointer the floor
+   grows the worded face to 44px (THE TOUCH-TARGET FLOOR), and a square that floor grew would be
+   a rectangle again, so there it pads the bare glyph out to the floor by construction — the
+   vendor sets a button's glyph at 18px, 20px and 22px by size, so 13, 12 and 11 around it make
+   44 — and the floor leaves it as it is. The pair is stated here, once per pointer and size, on
+   the filled face itself, so the square and the collapsed faces read the one their button's
+   size gives.
+
+   The glyph's selector goes through .mud-button-label because the vendor states a small
+   button's glyph margins at that weight (.mud-button-label .mud-button-icon-start
+   .mud-button-icon-size-small): a lighter selector loses to it, and the small square comes out
+   6px wider than it is tall.
 
    flex-shrink because a toolbar is a flex row and a square is not the thing in it that gives:
    below its own min-width a flex item is squeezed by whatever else is on the row, and a
@@ -3009,15 +3016,31 @@ div.mud-input-slot.mud-input-root::placeholder {
    nobody handed over (this block), and a label the container query took away (the
    ns-collapse-* block further down, which restates only the geometry — the fill and the
    shadow are the rank's and never move). */
-:root {
+.mud-button-filled {
     --ns-square-padding: 6px;
     --ns-square-glyph: 1lh;
 }
 
+.mud-button-filled-size-small {
+    --ns-square-padding: 4px;
+}
+
+.mud-button-filled-size-large {
+    --ns-square-padding: 8px;
+}
+
 @media (pointer: coarse) {
-    :root {
+    .mud-button-filled {
         --ns-square-padding: 12px;
         --ns-square-glyph: auto;
+    }
+
+    .mud-button-filled-size-small {
+        --ns-square-padding: 13px;
+    }
+
+    .mud-button-filled-size-large {
+        --ns-square-padding: 11px;
     }
 }
 
@@ -3027,7 +3050,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     flex-shrink: 0;
 }
 
-.ns-square .mud-button-icon-start {
+.ns-square .mud-button-label .mud-button-icon-start {
     margin-inline: 0;
     inline-size: var(--ns-square-glyph);
     block-size: var(--ns-square-glyph);
@@ -3575,7 +3598,7 @@ div.mud-input-slot.mud-input-root::placeholder {
         flex-shrink: 0;
     }
 
-    .ns-collapse-sm .mud-button-icon-start {
+    .ns-collapse-sm .mud-button-label .mud-button-icon-start {
         margin-inline: 0;
         inline-size: var(--ns-square-glyph);
         block-size: var(--ns-square-glyph);
@@ -3591,7 +3614,7 @@ div.mud-input-slot.mud-input-root::placeholder {
         flex-shrink: 0;
     }
 
-    .ns-collapse-md .mud-button-icon-start {
+    .ns-collapse-md .mud-button-label .mud-button-icon-start {
         margin-inline: 0;
         inline-size: var(--ns-square-glyph);
         block-size: var(--ns-square-glyph);
@@ -3607,7 +3630,7 @@ div.mud-input-slot.mud-input-root::placeholder {
         flex-shrink: 0;
     }
 
-    .ns-collapse-lg .mud-button-icon-start {
+    .ns-collapse-lg .mud-button-label .mud-button-icon-start {
         margin-inline: 0;
         inline-size: var(--ns-square-glyph);
         block-size: var(--ns-square-glyph);
@@ -3623,7 +3646,7 @@ div.mud-input-slot.mud-input-root::placeholder {
         flex-shrink: 0;
     }
 
-    .ns-collapse-xl .mud-button-icon-start {
+    .ns-collapse-xl .mud-button-label .mud-button-icon-start {
         margin-inline: 0;
         inline-size: var(--ns-square-glyph);
         block-size: var(--ns-square-glyph);

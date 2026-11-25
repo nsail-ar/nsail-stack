@@ -276,7 +276,7 @@ public sealed class IconOnlyStateTests : BunitContext, IAsyncLifetime
     /// SquareRowHeightTests'. The corner radius is deliberately NOT here: .mud-button already
     /// gives the house's default, and restating it would be a second copy of one number.</summary>
     [Fact]
-    public void TheSquareIsWrittenOnceAsTheHousesIconActionBox()
+    public void TheSquareIsWrittenOnceAsOnePaddingAroundOneGlyphBox()
     {
         var css = ReadStylesheet();
 
@@ -292,7 +292,7 @@ public sealed class IconOnlyStateTests : BunitContext, IAsyncLifetime
 
         Assert.Contains(
             """
-            .ns-square .mud-button-icon-start {
+            .ns-square .mud-button-label .mud-button-icon-start {
                 margin-inline: 0;
                 inline-size: var(--ns-square-glyph);
                 block-size: var(--ns-square-glyph);

@@ -100,8 +100,8 @@ Six components share the pivot — `NsButton`, `NsAction`, `NsLink`, `NsPageLink
     **Icon-only is a state of the label, not a
     rank**: a control with an `Icon` and no visible label — at `Never`, never given a `Label`,
     or collapsed by a container query. `Inline` in that state is the flat glyph a grid row's
-    actions wear; **every intention with a fill is a SQUARE at the house's icon-action box,
-    with its own fill and shadow — never a rectangle** ([ui/actions.md](ui/actions.md)). A
+    actions wear; **every intention with a fill is a SQUARE, the height of the worded
+    face beside it, with its own fill and shadow — never a rectangle** ([ui/actions.md](ui/actions.md)). A
     screen whose principal act is a glyph writes `Main` at `Never`; there is no `InlineMain`.
 
 **Every surface owes the user one way out that is not the save button, and it lives in the
