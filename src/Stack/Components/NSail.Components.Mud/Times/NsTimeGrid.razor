@@ -37,7 +37,12 @@
             @foreach (var hour in Hours)
             {
                 <div class="ns-time-grid-hour">
-                    <span class="ns-time-grid-mark">@hour.ToString("t", Culture)</span>
+                    @* The day's top edge needs no label — the head already marks it, and a mark
+                       above that line would sit inside the head, clipped. *@
+                    @if (hour != TimeOnly.MinValue)
+                    {
+                        <span class="ns-time-grid-mark">@hour.ToString("t", Culture)</span>
+                    }
                 </div>
             }
         </div>
