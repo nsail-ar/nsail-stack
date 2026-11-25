@@ -287,11 +287,15 @@ module's by being mounted early.
   `INavMenuCount` names an ENTRY — `Name`, the same merge key and the same localization key —
   and answers how many things are waiting behind it; `AddNavMenuCount<T>()` registers one, apart
   from `AddNavMenu` because they are separate decisions: a module may count for a door somebody
-  else planted, and an app that mounted the door may still not want the number on it. A count
-  whose entry the app hid is drawn nowhere, with nothing on either side needing to know.
+  else planted, and an app that mounted the door may still not want the number on it. **A count
+  whose entry the session is not drawn is never asked**, with nothing on either side needing to
+  know: `NsNavMenu` hands `NavMenu.GetCounts(drawn)` the names of the page entries its gate and
+  `Visible` left, and the prerender's handoff asks the same set. A door refused, hidden or under
+  a group that went is a server that would refuse the ask, and a number drawn nowhere — so the
+  drawer owns the decision and a contributor never guards its own permission.
   **It is apart from `INavMenuContributor` because the two answer at different rates**: the tree
   is a function of the session and `NavMenu` asks it once for one, while a number is the point of
-  being a number — `NavMenu.GetCounts()` remembers nothing, `NsNavMenu` asks it when the drawer
+  being a number — `NavMenu.GetCounts` remembers nothing, `NsNavMenu` asks it when the drawer
   builds and again on every **arrival**, and a contributor that throws is left out rather than
   allowed to take the map down with it — and logged with the entry's name, so a number that
   stopped showing has a trace to read. A surface written over the address the person is already

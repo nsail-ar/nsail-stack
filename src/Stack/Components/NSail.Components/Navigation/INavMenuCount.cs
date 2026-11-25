@@ -6,7 +6,8 @@ namespace NSail.Components;
 /// <summary>How many things are waiting behind a menu entry, drawn beside its label so a
 /// person sees there is work there without opening it. Name is the entry's Name — the same
 /// merge key and the same localization key — so a contributor never has to know where the app
-/// arranged the door it counts for, and a count whose entry the app hid is drawn nowhere.
+/// arranged the door it counts for, and a count whose entry the session is not drawn is never
+/// asked: the drawer decides, so a contributor never guards its own permission.
 ///
 /// <para>Separate from <see cref="INavMenuContributor"/> because the two answer at different
 /// rates: the tree is a function of the session and is asked once for it, while a number is the
