@@ -171,8 +171,9 @@ public sealed partial class GitHubClient(HttpClient http)
     // A rate-limited answer (403/429 with a wait) is waited out once and sent again: the limit is shared
     // with every job and lane on the token, so a second refusal is thrown. A 5xx is sent again, a few
     // times, only when the call reads (a GET, a GraphQL query), and so is a 2xx whose body `malformed`
-    // refuses and a connection lost before the answer arrived whole. What still fails is returned for its
-    // caller to throw.
+    // refuses, a connection lost before the answer arrived whole, and a 401: GitHub answers "Bad
+    // credentials" now and then to the token every call before and after it is served with, and a token
+    // truly revoked is refused on every attempt. What still fails is returned for its caller to throw.
     async Task<HttpResponseMessage> Dispatch(Func<HttpRequestMessage> build, bool reads, CancellationToken ct, Func<string, bool>? malformed = null)
     {
         var waitedLimit = false;
@@ -195,7 +196,7 @@ public sealed partial class GitHubClient(HttpClient http)
                 wait = waitedLimit ? null : LimitWait(response);
                 waitedLimit = wait is not null;
             }
-            else if (reads && attempt < Attempts && ((int)response.StatusCode >= 500
+            else if (reads && attempt < Attempts && ((int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.Unauthorized
                 || (response.IsSuccessStatusCode && malformed is not null && malformed(await response.Content.ReadAsStringAsync(ct)))))
             {
                 wait = TimeSpan.FromSeconds(attempt);

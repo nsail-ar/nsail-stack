@@ -30,6 +30,9 @@ public class GitHubMergedTests
     {
         public List<string> Sent { get; } = [];
 
+        // How many of the first list reads GitHub refuses as it refused a valid token on dev1.
+        public int Refused { get; init; }
+
         public int Listed => Sent.Count(s => s == "POST /graphql");
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -37,6 +40,10 @@ public class GitHubMergedTests
             var path = request.RequestUri!.AbsolutePath;
             Sent.Add($"{request.Method} {path}");
             string body;
+            if (path == "/graphql" && Listed <= Refused)
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized) { RequestMessage = request, Content = new StringContent(BadCredentials, Encoding.UTF8, "application/json") };
+            }
             if (path == "/graphql")
             {
                 using var sent = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
@@ -58,9 +65,17 @@ public class GitHubMergedTests
         }
     }
 
+    const string BadCredentials = """
+        {
+          "message": "Bad credentials",
+          "documentation_url": "https://docs.github.com/rest",
+          "status": "401"
+        }
+        """;
+
     static GitHubRepository Repo(Hub hub, TimeSpan? fresh = null)
     {
-        var gh = new GitHubClient(new HttpClient(hub) { BaseAddress = new Uri("https://api.github.com/") });
+        var gh = new GitHubClient(new HttpClient(hub) { BaseAddress = new Uri("https://api.github.com/") }) { Delay = (_, _) => Task.CompletedTask };
         return new GitHubRepository(gh, new RepositoryOptions { Name = "o/r", Authors = ["crew"] }, new StoryNames("app", ["story"]), "t")
         {
             MergedFresh = fresh ?? TimeSpan.FromMinutes(1),
@@ -134,5 +149,17 @@ public class GitHubMergedTests
 
         Assert.Equal("own", (await repo.MergeOf(9))?.Sha);
         Assert.Equal(1, Assert.Single(await repo.PrsOf(9, "merged")).Number);
+    }
+
+    [Fact]
+    public async Task AListReadGitHubRefusesOnceAsBadCredentialsIsSentAgain()
+    {
+        var hub = new Hub([Node(8, 3, Now)], [Node(6, 3, Now.AddDays(-1))]) { Refused = 1 };
+        var repo = Repo(hub);
+
+        var prs = await repo.PrsOf(3, "merged");
+
+        Assert.Equal([6, 8], prs.Select(p => p.Number));
+        Assert.Equal(3, hub.Listed);
     }
 }
