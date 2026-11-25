@@ -92,7 +92,9 @@ exception type). It never reads a message's members.
 - `LogScrubber` (log processor, at the exporter only, so console and file keep the full line)
   keeps the category, level, event id and message template. An attribute travels only if its type
   cannot carry prose (`Guid`, numbers, `bool`, enums, dates, durations); every string is dropped.
-  An exception travels as `exception.type` and its frames, never its message.
+  An exception travels as `exception.type` and its frames, never its message; a database failure
+  adds its SqlState as `db.response.status_code` when the exception, or one it wraps, is a
+  `DbException` whose `SqlState` has the standard's five-character shape.
 - A log line therefore cannot carry an alert. What the backend must name rides a metric attribute.
 
 **Reading failures back.** `IFailureLog.Read(FailureLogQuery(UserId, Since, Max), ct)` answers one

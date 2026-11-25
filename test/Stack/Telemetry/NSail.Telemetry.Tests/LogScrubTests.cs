@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 
@@ -25,6 +27,12 @@ public sealed class LogScrubTests
     const string RequestTemplate = "Request starting {Path}";
 
     const string Category = "Consulting";
+
+    const string SqlStateTag = "db.response.status_code";
+
+    const string JobTemplate = "Background job {Job} failed its pass";
+
+    const string Refusal = "sorry, too many clients already";
 
     [Fact]
     public void The_values_a_line_was_formatted_from_do_not_travel()
@@ -50,6 +58,47 @@ public sealed class LogScrubTests
         Assert.Equal(typeof(InvalidOperationException).FullName, record.Tag("exception.type"));
         Assert.Contains(nameof(Raised), stack, StringComparison.Ordinal);
         Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(record.Tag(SqlStateTag));
+    }
+
+    [Fact]
+    public void A_database_failure_travels_with_its_sqlstate_and_never_its_message()
+    {
+        var record = Scrubbed(logger => logger.LogError(Raised(TooManyClients()), JobTemplate, "HorizonJob"));
+
+        Assert.Equal(typeof(PostgresException).FullName, record.Tag("exception.type"));
+        Assert.Equal("53300", record.Tag(SqlStateTag));
+        Assert.IsType<string>(record.Tag("exception.stacktrace"));
+        Assert.DoesNotContain(Refusal, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(record.Tag("Job"));
+    }
+
+    [Fact]
+    public void A_sqlstate_is_found_inside_the_exception_that_wraps_it()
+    {
+        var wrapped = new InvalidOperationException($"{Document} could not take the lock", TooManyClients());
+
+        var record = Scrubbed(logger => logger.LogError(new AggregateException(wrapped), JobTemplate, "HorizonJob"));
+
+        Assert.Equal(typeof(AggregateException).FullName, record.Tag("exception.type"));
+        Assert.Equal("53300", record.Tag(SqlStateTag));
+        Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Refusal, record.Flattened, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // A provider fills SqlState, not the server, so what is not shaped like the standard's code
+    // is prose until proven otherwise.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Juan Perez")]
+    [InlineData("53300 ")]
+    public void A_sqlstate_not_shaped_like_one_does_not_travel(string? sqlState)
+    {
+        var record = Scrubbed(logger => logger.LogError(new ProviderException(sqlState), JobTemplate, "HorizonJob"));
+
+        Assert.Equal(typeof(ProviderException).FullName, record.Tag("exception.type"));
+        Assert.Null(record.Tag(SqlStateTag));
+        Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -139,14 +188,29 @@ public sealed class LogScrubTests
 
     static Exception Raised(string message)
     {
+        return Raised(new InvalidOperationException(message));
+    }
+
+    static Exception Raised(Exception exception)
+    {
         try
         {
-            throw new InvalidOperationException(message);
+            throw exception;
         }
-        catch (InvalidOperationException thrown)
+        catch (Exception thrown)
         {
             return thrown;
         }
+    }
+
+    static PostgresException TooManyClients()
+    {
+        return new PostgresException(Refusal, "FATAL", "FATAL", "53300");
+    }
+
+    sealed class ProviderException(string? sqlState) : DbException($"{Name} was refused")
+    {
+        public override string? SqlState => sqlState;
     }
 
     // LogRecord instances are pooled and reused, so what a test keeps is what it read on the

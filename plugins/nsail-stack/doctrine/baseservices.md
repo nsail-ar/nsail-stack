@@ -286,7 +286,11 @@ seam:
   `bool`, an enum, a date or a duration. Every string is dropped, a code included — a
   Problem's Code and a patient's name are the same type, so the Code rides the span and the
   `traceId` joins the two.
-- An exception travels as `exception.type` and its **frames**; the message does not.
+- An exception travels as `exception.type` and its **frames**; the message does not. A
+  database failure also carries its **SqlState** as `db.response.status_code`, read off the
+  first `DbException` in the exception or what it wraps: the server's closed code is what tells
+  a full server from one starting up or a refused password, and a value not shaped like one
+  (five digits or capitals) is dropped as prose.
 - The cut is at the exporter, behind every other logging provider, so the console and the
   file a developer reads keep the whole line.
 
