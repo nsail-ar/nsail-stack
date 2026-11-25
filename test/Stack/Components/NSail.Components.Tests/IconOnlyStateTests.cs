@@ -246,7 +246,7 @@ public sealed class IconOnlyStateTests : BunitContext, IAsyncLifetime
                 '\n',
                 "    .ns-collapse-sm.mud-button {",
                 "        min-width: 0;",
-                "        padding: 12px;",
+                "        padding: var(--ns-square-padding);",
                 "        flex-shrink: 0;",
                 "    }"),
             css);
@@ -270,22 +270,34 @@ public sealed class IconOnlyStateTests : BunitContext, IAsyncLifetime
     }
 
     /// <summary>The one place the shape is written, read for what a render cannot see: no floor
-    /// under the width (the vendor's is 64px, which is what made a lone glyph a pill) and the
-    /// same padding on every side, which is what puts the box at the house's own icon action —
-    /// 12 + 24 + 12. The corner radius is deliberately NOT here: .mud-button already gives the
-    /// house's default, and restating it would be a second copy of one number.</summary>
+    /// under the width (the vendor's is 64px, which is what made a lone glyph a pill) and one
+    /// padding on every side around a glyph box as wide as it is tall, which is what keeps it a
+    /// square — what that padding and box measure under each pointer is
+    /// SquareRowHeightTests'. The corner radius is deliberately NOT here: .mud-button already
+    /// gives the house's default, and restating it would be a second copy of one number.</summary>
     [Fact]
-    public void TheSquareIsWrittenOnceAsTheHousesIconActionBox()
+    public void TheSquareIsWrittenOnceAsOnePaddingAroundOneGlyphBox()
     {
+        var css = ReadStylesheet();
+
         Assert.Contains(
             """
             .ns-square.mud-button {
                 min-width: 0;
-                padding: 12px;
+                padding: var(--ns-square-padding);
                 flex-shrink: 0;
             }
             """,
-            ReadStylesheet());
+            css);
+
+        Assert.Contains(
+            """
+            .ns-square .mud-button-label .mud-button-icon-start {
+                margin-inline: 0;
+                inline-size: var(--ns-square-glyph);
+                block-size: var(--ns-square-glyph);
+            """,
+            css);
     }
 
     /// <summary>Important and Default are one shape and one shadow with two washes (Leonardo,

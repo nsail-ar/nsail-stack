@@ -33,8 +33,9 @@ public sealed class TouchTargetFloorTests
         Assert.Equal("@media (pointer: coarse) {", lines[Query(lines, Floor)]);
     }
 
-    // min-height and not height: the icon-only square already measures 44 by construction (12px
-    // around the Md glyph) and a box this GREW would be the vendor's rectangle again, the very
+    // min-height and not height: under a coarse pointer the icon-only square already measures 44
+    // by construction (SquareRowHeightTests: its padding around the vendor's glyph for the
+    // button's size) and a box this GREW would be the vendor's rectangle again, the very
     // shape ns-square exists to refuse. So the floor leaves it exactly as it is, which is the
     // AC's "an icon-only action keeps its own box under either pointer" — and the same min-height
     // is what lets the worded anchor's own box (ns-link, NsLinkIconedAnchorTests) grow from
