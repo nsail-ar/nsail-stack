@@ -205,7 +205,8 @@ the files it leaves.
     else `Unrecognized`): enums, as none of GitHub's text reaches the store. A GitHub call refused for
     its rate limit (a 403 or 429 naming `Retry-After`, or `x-ratelimit-reset` with no calls left) waits
     that out once, when it is at most a minute away, and is sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
-    no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice, and so is a GraphQL
+    no wait or a farther one, throws. A read that gets a 5xx or a 401 is sent again up to twice (GitHub
+    answers "Bad credentials", now and then, to the token it serves the calls around it with), and so is a GraphQL
     query answered 2xx with a body that is not a GraphQL answer (empty, not a JSON object, or `errors` that
     are not a list of objects with a `message`), or a read whose connection is lost before its answer
     arrives whole; one still malformed throws with its status, and a write or a mutation is never sent again. Any other refusal throws at once. A limit, on a pass or at a job's end, holds every pass after it for the wait it asked,
