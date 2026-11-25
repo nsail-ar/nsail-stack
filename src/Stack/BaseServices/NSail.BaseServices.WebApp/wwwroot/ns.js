@@ -1133,8 +1133,14 @@
     // question about the RENDERED control. innerText answers it for a label a container query
     // hid, one the footer's emphasis ladder hid, and one that was never written, with no
     // breakpoint restated anywhere and nothing to keep in step. Case-folded because a vendor
-    // button uppercases its own label in CSS and innerText reports what is painted.
+    // button uppercases its own label in CSS and innerText reports what is painted. A label the
+    // stylesheet cut short in "…" still reports its whole text, so the cut is asked of the span.
     function whisperAdds(el, text) {
+        const label = el.querySelector(".ns-button-label");
+
+        if (label && label.scrollWidth > label.clientWidth)
+            return true;
+
         const shown = (el.innerText || "").replace(/\s+/g, " ").trim();
 
         return shown.toLocaleLowerCase() !== text.toLocaleLowerCase();

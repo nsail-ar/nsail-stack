@@ -1442,6 +1442,30 @@
     white-space: nowrap;
 }
 
+/* A button's label holds one line and ends in an ellipsis, as a chip's does: the vendor
+   breaks a long one onto centred lines and the button grows into a block. The clip is the
+   label's own span (ns-button-label, NsResponsive's hook on every NsButton, NsSubmit and
+   NsLink face); .mud-button-label keeps the vendor's inline-flex that sets icon and text on
+   the button's centre line, and only gives up the min-content floor that would refuse to
+   shrink it. The root is held to its container, or a shrink-to-fit button would take the
+   whole line's width and push past the box. Nothing here sizes, cases or moves a label
+   that fits. */
+.mud-button-root:has(> .mud-button-label > .ns-button-label) {
+    max-width: 100%;
+}
+
+.mud-button-label:has(> .ns-button-label) {
+    min-width: 0;
+}
+
+.ns-button-label {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* The boxes a product's Brand wraps around the chip are flex items that will not shrink below
    their content, so a long name would widen them past the row. Every box between the row and
    the chip may shrink to nothing, save the chip's own side of the row, which is held at half
