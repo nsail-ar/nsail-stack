@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
+using System.Text;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 
@@ -12,7 +14,8 @@ namespace NSail.Telemetry;
 /// document number or a Problem's Title — and the OTLP exporter sends every attribute, the
 /// exception's message and its rendered stack. What travels is what the source declares: the
 /// category, the level, the event id and the message template, plus the values whose type
-/// cannot carry prose. The console and the file a developer reads are written before this
+/// cannot carry prose; an exception travels as its type and the frames of its whole cause
+/// chain, with no message at any depth. The console and the file a developer reads are written before this
 /// processor, so the cut costs local diagnosis nothing.</summary>
 public sealed class LogScrubber : BaseProcessor<LogRecord>
 {
@@ -43,14 +46,14 @@ public sealed class LogScrubber : BaseProcessor<LogRecord>
         {
             kept.Add(new KeyValuePair<string, object?>(TypeTag, exception.GetType().FullName));
 
-            if (exception.StackTrace is { } frames)
+            if (Frames(exception) is { } frames)
             {
                 kept.Add(new KeyValuePair<string, object?>(StackTag, frames));
             }
 
             // The two the exporter writes from the exception itself both carry its message —
-            // the stack trace it renders is ToString(), which opens with it. The frames read
-            // off StackTrace above do not.
+            // the stack trace it renders is ToString(), which opens with it. The frames
+            // rendered above do not.
             data.Exception = null;
         }
 
@@ -59,6 +62,50 @@ public sealed class LogScrubber : BaseProcessor<LogRecord>
         // Null unless a host asked for the rendered line, and what it renders is the template
         // with every one of the values above already substituted into it.
         data.FormattedMessage = null;
+    }
+
+    // ToString()'s layout with every message left out, after its first line: the outer type
+    // travels as exception.type. An inner exception is where a wrapped failure names its cause.
+    static string? Frames(Exception exception)
+    {
+        var rendered = Rendered(exception);
+        var first = rendered.IndexOf(Environment.NewLine, StringComparison.Ordinal);
+        return first < 0 ? null : rendered[(first + Environment.NewLine.Length)..];
+    }
+
+    static string Rendered(Exception exception)
+    {
+        var text = new StringBuilder(exception.GetType().FullName);
+
+        if (exception.InnerException is { } inner)
+        {
+            text.Append(Environment.NewLine).Append(" ---> ").Append(Rendered(inner))
+                .Append(Environment.NewLine).Append("   --- End of inner exception stack trace ---");
+        }
+
+        if (exception.StackTrace is { } frames)
+        {
+            text.Append(Environment.NewLine).Append(frames);
+        }
+
+        if (exception is AggregateException aggregate)
+        {
+            for (var i = 0; i < aggregate.InnerExceptions.Count; i++)
+            {
+                if (aggregate.InnerExceptions[i] == aggregate.InnerException)
+                {
+                    continue;
+                }
+
+                text.Append(Environment.NewLine)
+                    .Append(CultureInfo.InvariantCulture, $" ---> (Inner Exception #{i}) ")
+                    .Append(Rendered(aggregate.InnerExceptions[i]))
+                    .Append("<---")
+                    .Append(Environment.NewLine);
+            }
+        }
+
+        return text.ToString();
     }
 
     // An id or a timing by type. A string is prose until something proves otherwise
