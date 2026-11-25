@@ -7,11 +7,12 @@ namespace NSail.Components.Tests;
 
 /// <summary>A footer act never gives up its content width: where the acts do not fit the row
 /// grows a line, the same answer the title row and the toolbar row above it give. A row that
-/// cannot wrap has only flex-shrink left, and a shrunk worded button breaks its own LABEL in
-/// two. Read off the stylesheet, which is where the whole behaviour lives — bUnit lays out no
-/// box model and runs no container query (FooterButtonCollapseTests says so for the ladder in
-/// the same block), so what a render could prove is the DOM shape and not the geometry. What
-/// the rule then does to five worded acts at a real width is a browser walk's.</summary>
+/// cannot wrap has only flex-shrink left, and a shrunk worded button cuts its LABEL short in
+/// «…» though a line of its own would have held it whole. Read off the stylesheet, which is
+/// where the whole behaviour lives — bUnit lays out no box model and runs no container query
+/// (FooterButtonCollapseTests says so for the ladder in the same block), so what a render could
+/// prove is the DOM shape and not the geometry. What the rule then does to five worded acts at
+/// a real width is a browser walk's.</summary>
 public sealed class FooterRowWrapTests
 {
     const string Footer = ".ns-panel-footer {";

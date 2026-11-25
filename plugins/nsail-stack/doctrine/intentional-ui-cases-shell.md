@@ -178,16 +178,21 @@ compares the text against the control's `innerText`, case-folded, and stays shut
 already on screen. **That is what makes the double cartel unrepresentable**, and it costs no gate:
 a label a container query hid, one the footer's emphasis ladder hid and one that was never written
 are all the same empty `innerText`, so no breakpoint is restated in CSS and nothing is kept in step
-by hand between the two languages. A control the caller pinned with `Breakpoint="Always"` declares
-the same text as one that collapses — the markup says what there WOULD be to say, and nothing
-about when.
+by hand between the two languages. A button's label the stylesheet cut short in `…`
+(`ns-button-label`) is the one word on screen `innerText` reports whole, so the control's own label
+span is asked first: one wider than its box whispers, and a boxed face that declared no text (a
+filter's submit, a submit's `ChildContent` with no `Label`) whispers that span's own words. A
+chip's cut label has no such span and is not asked. A control the caller pinned with
+`Breakpoint="Always"` declares the same text as one that collapses — the markup says what there
+WOULD be to say, and nothing about when.
 
 **A refused control whispers too**, and the stylesheet owes it one line: the vendor drops hit
 testing on a disabled button and on a disabled chip (`pointer-events: none`), so the pointer never
 meets the control at all and the trigger lookup walks up past it — which leaves the one face with
 nothing BUT the bubble to say what it is (a row's grey pencil, the X under a frozen form) silent.
-`[data-ns-whisper]:disabled` takes that back. It is safe because the refusal is the ATTRIBUTE's,
-not the CSS's: a disabled control receives hover and never a press, a focus or a click. The one
+`[data-ns-whisper]:disabled` takes that back, and so does a disabled boxed face with a label span,
+which whispers whether or not it declared a word (a tracked form's submit with no `Label` arrives
+refused). It is safe because the refusal is the ATTRIBUTE's, not the CSS's: a disabled control receives hover and never a press, a focus or a click. The one
 response that would have outlived both is the vendor's ripple, a document-level `pointerdown` over
 whatever carries its class, so **a refused face declares no ripple**.
 

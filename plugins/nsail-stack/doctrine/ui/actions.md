@@ -263,7 +263,9 @@ breakpoint anyway. There is no second knob.
   a control's own answer and a footer at that width has no room for a line of worded buttons
   ([intentional-ui.md](../intentional-ui.md), important acts sit at the bottom with text).
   **Above that breakpoint nothing takes a word**: where the acts outgrow the row the row grows
-  a line instead, so an act that still carries a word on a laptop is read whole or not at all.
+  a line instead, so an act that still carries a word on a laptop is read whole or not at all —
+  save one whose word alone is wider than the row: that one holds its line and ends in `…`, and
+  the whisper gives back the whole word ([styling.md](styling.md)).
 - **The one exception: `NsLink`'s bare-anchor `Inline` face (`Icon` and `Label` together, no
   box) reads no `Breakpoint` at all.** That face sets no `aria-label` of its own — the word
   inside the anchor IS its whole accessible name — so collapsing it away at a container width
@@ -288,7 +290,8 @@ breakpoint anyway. There is no second knob.
   **A refused control whispers too** — the grey pencil of a row that may not be edited, the X
   under a frozen form: that is the face with nothing BUT the bubble to say what it is. The
   vendor drops hit testing on a disabled control, so the stylesheet hands it back to whatever
-  declares a bubble and the refusal stays the `disabled` attribute's — which is the one the
+  declares a bubble, and to every boxed face with a label span (a tracked form's submit with no
+  `Label` arrives refused, its word cut), and the refusal stays the `disabled` attribute's — which is the one the
   browser enforces: hover reaches a refused control, a press never does. A refused face
   therefore declares no ripple, the vendor's one answer to a press that would outlive both.
 - **A glyph that is a button is named, wherever it sits.** Not only a control the house draws:
@@ -306,9 +309,11 @@ breakpoint anyway. There is no second knob.
   the caller chose rather than a handler's identifier.
 - **The bubble's text is `data-ns-whisper`**, which `NsButton` and `NsLink` write from `Label`
   (and the chord where there is one) on every `As`, beside the `aria-label` that stays the bare
-  name. A control handed no `Label` declares neither, so it is a bare glyph to the pointer and
-  anonymous to a screen reader: **`NsSubmit` names itself with its CONTENT and must stay at
-  `Always`** until it is given a name it can restate.
+  name. A control handed no `Label` declares neither: a glyph-only face is a bare glyph to the
+  pointer and anonymous to a screen reader, and a boxed face with a word in its label span
+  whispers that span's words once they are cut or hidden, which still names it to the pointer
+  alone. **`NsSubmit` names itself with its CONTENT and must stay at `Always`** until it is
+  given a name it can restate.
 - The honest cost: hover is a pointer's, so on touch a collapsed button is still a bare glyph
   — **it suits universally-read icons, not obscure domain actions** (cases). **`NsChip` is the
   one exception**: a touch tap on a chip with a `Tooltip` opens its whisper at once, through the

@@ -1105,8 +1105,10 @@
     // Which controls may whisper: the ones that declared the text to say (NsButton, NsLink,
     // NsSubmit, NsClose, NsChip, NsTooltip), plus the three faces the VENDOR draws, where nothing
     // of ours can put an attribute and the accessible name is the whole of what there is to say
-    // anyway -- a menu's icon face, a lookup's end adornment and a text field's camera.
-    const WHISPER_SELECTOR = '[data-ns-whisper]:not([data-ns-whisper=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""]), .ns-camera-field .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])';
+    // anyway -- a menu's icon face, a lookup's end adornment and a text field's camera -- and any
+    // boxed face with a label span, whose word is its own text when it declared none (a filter's
+    // submit, a submit's ChildContent with no Label): only a cut one has anything to add.
+    const WHISPER_SELECTOR = '[data-ns-whisper]:not([data-ns-whisper=""]), .mud-button-root:has(> .mud-button-label > .ns-button-label), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""]), .ns-camera-field .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])';
 
     // THE TAP: a finger has no hover, so on touch a chip that declares data-ns-whisper-tap
     // (NsChip, and only it) opens its whisper on the tap itself, with no dwell, and the bubble's
@@ -1125,7 +1127,18 @@
     let pressedByTouch = false;
 
     function whisperText(el) {
-        return (el.getAttribute("data-ns-whisper") || el.getAttribute("aria-label") || "").trim();
+        const declared = el.getAttribute("data-ns-whisper") || el.getAttribute("aria-label");
+
+        if (declared)
+            return declared.trim();
+
+        const label = buttonLabel(el);
+
+        return label ? label.textContent.replace(/\s+/g, " ").trim() : "";
+    }
+
+    function buttonLabel(el) {
+        return el.querySelector(":scope > .mud-button-label > .ns-button-label");
     }
 
     // THE DOUBLE CARTEL IS DERIVED, never gated: a bubble repeating a word the control already
@@ -1133,8 +1146,15 @@
     // question about the RENDERED control. innerText answers it for a label a container query
     // hid, one the footer's emphasis ladder hid, and one that was never written, with no
     // breakpoint restated anywhere and nothing to keep in step. Case-folded because a vendor
-    // button uppercases its own label in CSS and innerText reports what is painted.
+    // button uppercases its own label in CSS and innerText reports what is painted. A label the
+    // stylesheet cut short in "…" still reports its whole text, so the control's own label span is
+    // asked whether it was cut.
     function whisperAdds(el, text) {
+        const label = buttonLabel(el);
+
+        if (label && label.scrollWidth > label.clientWidth)
+            return true;
+
         const shown = (el.innerText || "").replace(/\s+/g, " ").trim();
 
         return shown.toLocaleLowerCase() !== text.toLocaleLowerCase();

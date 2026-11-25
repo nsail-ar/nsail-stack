@@ -33,14 +33,16 @@
                    OnClick="@(() => Surface.Close())"
                    Class="@Class"
                    UserAttributes="_keys">
-            @if (ChildContent is not null)
-            {
-                @ChildContent
-            }
-            else
-            {
-                @Strings.Translate("Common.Close")
-            }
+            <span class="ns-button-label">
+                @if (ChildContent is not null)
+                {
+                    @ChildContent
+                }
+                else
+                {
+                    @Strings.Translate("Common.Close")
+                }
+            </span>
         </MudButton>
     }
 }

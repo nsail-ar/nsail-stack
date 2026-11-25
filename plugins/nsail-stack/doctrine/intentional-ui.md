@@ -128,11 +128,11 @@ por mail, compartir — and pure navigation are top icons. The test: if refusing
 need an explanation, it belongs at the bottom with a word on it; if nobody would miss it until
 they needed a paper, it is a top icon (cases). **An act that keeps its word never gives up its
 content width: the footer row GROWS A LINE**, the same answer the title row and the toolbar row
-above it give — a row that cannot wrap has only shrink left, and a shrunk worded button breaks
-its own LABEL into two lines. The seated refusal is the one child of that row that gives
-([ui/styling.md](ui/styling.md)), and a footer that grouped its own acts wraps inside the group
-too, so a group that outgrows a full line takes another rather than squeeze. **On a phone a
-footer act carrying an icon
+above it give — a row that cannot wrap has only shrink left, and a shrunk worded button cuts its
+LABEL short in `…` though a line of its own would have held it whole. The seated refusal is
+the one child of that row that gives ([ui/styling.md](ui/styling.md)), and a footer that grouped
+its own acts wraps inside the group too, so a group that outgrows a full line takes another
+rather than squeeze. **On a phone a footer act carrying an icon
 collapses to that icon alone, and the hero keeps its text**: a footer row has no width for a
 line of worded buttons at that size, so a container query on `.ns-panel-footer` takes the label
 of every secondary act that has an icon to collapse to — outranking the `Breakpoint` the page
@@ -532,9 +532,9 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
     and the page name are all it carries.
   - **Nor does a tool, so the toolbar row under it wraps too.** Where the tools do not all fit,
     **the row grows a line** and each control keeps its own content width, still at the trailing
-    edge: a row that cannot wrap has only shrink left, and a shrunk worded button wraps its own
-    LABEL instead, with the glyph parked between the two lines. The search box is still the one
-    thing on that row that gives — it declares a comfort width, not a content one
+    edge: a row that cannot wrap has only shrink left, and a shrunk worded button cuts its LABEL
+    short in `…` instead, though a line of its own would have held it whole. The search box is
+    still the one thing on that row that gives — it declares a comfort width, not a content one
     ([ui/styling.md](ui/styling.md)) — and the row takes the line once that is spent. On a phone
     **the search box is the line**, end to end, and the tools wrap under it: a comfort width on a
     line it is alone on leaves the rest to the row's spacer, and a field that stops short of the
