@@ -3,6 +3,7 @@
 
 @namespace NSail.Components
 @using Microsoft.AspNetCore.Components.Web
+@implements IHandleEvent
 
 @* Escape is how every overlay in the world is dismissed, and a routed surface had no key
    handling at all. The wrapper is focusable and takes focus once, because the click that
@@ -24,10 +25,12 @@
     [Parameter]
     public string? Class { get; set; }
 
-    /// <summary>What Escape closes where it is not the surface this wrapper stands in — the
-    /// layout's companion region, which has no route and so no <c>Surface.Close()</c> to reach.
-    /// Named, never derived: the surface around such a region is the MAIN one, and Escape on a
-    /// page is not "leave the app".</summary>
+    /// <summary>What Escape does in place of this wrapper's own <c>Surface.Close()</c>, for a host
+    /// that decides it: the layout's companion region, which has no route and so no
+    /// <c>Surface.Close()</c> to reach, and a hosted dialog, which answers the key here only while
+    /// its surface holds changes and leaves it to the vendor otherwise. Named, never derived: the
+    /// surface around the companion region is the MAIN one, and Escape on a page is not "leave the
+    /// app".</summary>
     [Parameter]
     public EventCallback Closes { get; set; }
 
@@ -35,10 +38,10 @@
     public RenderFragment? ChildContent { get; set; }
 
     /// <summary>Whether taking focus on mount is this wrapper's to do — true for a routed
-    /// surface, which a door's click always opened, and left false only by the companion
-    /// region, whose own open can equally be a silent recall. <see cref="Owns"/> still claims
-    /// Escape regardless, for whenever a click inside hands this element the focus the recall
-    /// did not take.</summary>
+    /// surface, which a door's click always opened; false for the companion region, whose own
+    /// open can equally be a silent recall, and for a hosted dialog, whose focus the vendor's
+    /// own trap places on open. <see cref="Owns"/> still claims Escape regardless, for whenever
+    /// a click or an edit inside hands this element's subtree the focus the open did not.</summary>
     [Parameter]
     public bool Focuses { get; set; } = true;
 
@@ -50,6 +53,14 @@
         {
             await _element.FocusAsync();
         }
+    }
+
+    // Every key pressed inside bubbles through here, and nothing this renders depends on one:
+    // the render ComponentBase adds after a handler would redraw the whole hosted content per
+    // keystroke — a hosted dialog's component is handed its parameters again each time.
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg)
+    {
+        return callback.InvokeAsync(arg);
     }
 
     async Task OnKeyDown(KeyboardEventArgs args)

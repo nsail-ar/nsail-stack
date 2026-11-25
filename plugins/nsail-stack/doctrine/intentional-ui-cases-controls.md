@@ -54,9 +54,17 @@ flipping `CloseOnEscapeKey` on the live dialog, and while something open inside 
 itself ([menus.md](ui/menus.md)). **Escape answers the save, not the standing
 refusal, on purpose**: the X greys for a merely `Disabled` form too, and a dialog has no backdrop
 click and no Back, so withdrawing Escape for a refusal with no end would leave no exit at all.
-Neither exit asks the unsaved-changes question: a dialog closes through its host, not a
-navigation, so both are silent about an abandoned edit. The routed surfaces' own Escape
-(`NsCloseOnEscape`) has the same gap on a surface that still has Back, and is left as is.
+The routed surfaces' own Escape (`NsCloseOnEscape`) is not withdrawn for a save, on a surface that
+still has Back, and is left as is.
+
+**Both ways out ask before they throw an edit away.** A dialog closes through its host, not a
+navigation, so no `NavigationLock` hears it: `SurfaceContext.Close()` on a hosted surface asks the
+routed guard's own question (`Common.UnsavedChanges`, the destructive confirmation) whenever the
+surface has unanswered changes, and closes only on a yes. The vendor's Escape cannot ask, so while
+the surface holds changes `NsOpenDialog` withdraws it and answers the key itself (`NsCloseOnEscape`
+around the title row and the content), through that same `Close()`. Nothing to ask about —
+nothing edited, an `Untracked` form, a save that took — and both close at once, the key the
+vendor's as before.
 
 ## Main acts and the footer
 

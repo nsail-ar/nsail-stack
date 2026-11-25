@@ -244,6 +244,169 @@ public sealed class HostDialogSurfaceTests : BunitContext, IAsyncLifetime
         Assert.Empty(host.FindAll(".dialog-escape-body"));
     }
 
+    /// <summary>A hosted close is no navigation, so the routed guard never hears it: the X over a
+    /// tracked form holding an edit asks the house's unsaved-changes question itself. Declining
+    /// keeps the dialog — the same component, the edit still in its model — and leaves the X live
+    /// for the next press, which asks again; confirming closes it.</summary>
+    [Fact]
+    public async Task TheHeaderX_OverAnEdit_AsksFirst_AndOnlyAYesCloses()
+    {
+        var model = new CheckBoxTrackingModel();
+        var host = await OpenEdited(model, tracked: true);
+        var body = host.FindComponent<DialogFormProbeBody>().Instance;
+
+        await host.InvokeAsync(() => host.Find(".mud-dialog-title button").Click());
+
+        host.WaitForAssertion(() => Assert.Single(host.FindComponents<NsConfirmDialog>()));
+        Assert.Single(host.FindAll(".dialog-form-body"));
+
+        await Answer(host, yes: false);
+
+        host.WaitForAssertion(() => Assert.Empty(host.FindComponents<NsConfirmDialog>()));
+        Assert.Same(body, host.FindComponent<DialogFormProbeBody>().Instance);
+        Assert.True(model.Flag);
+
+        await host.InvokeAsync(() => host.Find(".mud-dialog-title button").Click());
+
+        host.WaitForAssertion(() => Assert.Single(host.FindComponents<NsConfirmDialog>()));
+
+        await Answer(host, yes: true);
+
+        host.WaitForAssertion(() => Assert.Empty(host.FindAll(".dialog-form-body")));
+        Assert.Empty(host.FindComponents<NsConfirmDialog>());
+    }
+
+    /// <summary>One gesture asks once: a second press landing while the question is up opens no
+    /// second one, and the one answer closes the dialog once.</summary>
+    [Fact]
+    public async Task TheHeaderX_PressedTwiceOverAnEdit_AsksOnce()
+    {
+        var host = await OpenEdited(new CheckBoxTrackingModel(), tracked: true);
+
+        await host.InvokeAsync(() => host.Find(".mud-dialog-title button").Click());
+        await host.InvokeAsync(() => host.Find(".mud-dialog-title button").Click());
+
+        host.WaitForAssertion(() => Assert.Single(host.FindComponents<NsConfirmDialog>()));
+
+        await Answer(host, yes: true);
+
+        host.WaitForAssertion(() => Assert.Empty(host.FindAll(".dialog-form-body")));
+        Assert.Empty(host.FindComponents<NsConfirmDialog>());
+    }
+
+    /// <summary>Escape is the vendor's own key and closes the instance without asking, so while the
+    /// surface holds an edit the key is withdrawn from it and answered by the house, through the
+    /// same Surface.Close() the X takes — the same question, the same two answers. Given back to
+    /// the vendor's handler is not read here: a dialog whose edit is still there keeps it withdrawn.
+    /// The real key against the vendor's interceptor is a browser's to see.</summary>
+    [Fact]
+    public async Task Escape_OverAnEdit_AsksFirst_AndOnlyAYesCloses()
+    {
+        var model = new CheckBoxTrackingModel();
+        var host = await OpenEdited(model, tracked: true);
+
+        host.WaitForAssertion(() => Assert.False(FormEscapeCloses(host)));
+
+        await PressEscape(host);
+
+        host.WaitForAssertion(() => Assert.Single(host.FindComponents<NsConfirmDialog>()));
+
+        await Answer(host, yes: false);
+
+        host.WaitForAssertion(() => Assert.Empty(host.FindComponents<NsConfirmDialog>()));
+        Assert.Single(host.FindAll(".dialog-form-body"));
+        Assert.True(model.Flag);
+        Assert.False(FormEscapeCloses(host));
+
+        await PressEscape(host);
+
+        host.WaitForAssertion(() => Assert.Single(host.FindComponents<NsConfirmDialog>()));
+
+        await Answer(host, yes: true);
+
+        host.WaitForAssertion(() => Assert.Empty(host.FindAll(".dialog-form-body")));
+    }
+
+    /// <summary>Nothing to ask about, nothing asked: a tracked form nobody edited, and an Untracked
+    /// one that was. The X closes at once, and Escape stays the vendor's own — the house's handler
+    /// stands aside, so the key closes the dialog exactly as it always did.</summary>
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task WithNothingToAsk_TheXClosesAtOnce_AndEscapeStaysTheVendors(bool tracked, bool edited)
+    {
+        var host = edited
+            ? await OpenEdited(new CheckBoxTrackingModel(), tracked)
+            : Open(tracked);
+
+        host.WaitForAssertion(() => Assert.True(FormEscapeCloses(host)));
+
+        await PressEscape(host);
+
+        Assert.Empty(host.FindComponents<NsConfirmDialog>());
+        Assert.True(FormEscapeCloses(host));
+
+        await host.InvokeAsync(() => host.Find(".mud-dialog-title button").Click());
+
+        Assert.Empty(host.FindAll(".dialog-form-body"));
+        Assert.Empty(host.FindComponents<NsConfirmDialog>());
+    }
+
+    /// <summary>A save that took answers for the edit it saved: the dialog closes on its own and
+    /// the question never opens.</summary>
+    [Fact]
+    public async Task ASubmitThatTook_ClosesATrackedDialog_WithNoQuestion()
+    {
+        var host = await OpenEdited(new CheckBoxTrackingModel(), tracked: true);
+
+        await host.InvokeAsync(() => host.Find(".probe-submit").Click());
+
+        host.WaitForAssertion(() => Assert.Empty(host.FindAll(".dialog-form-body")));
+        Assert.Empty(host.FindComponents<NsConfirmDialog>());
+    }
+
+    IRenderedComponent<DialogHostFixture> Open(bool tracked, CheckBoxTrackingModel? model = null)
+    {
+        var host = Render<DialogHostFixture>();
+        var dialogs = Services.GetRequiredService<DialogManager>();
+
+        // Open completes when the dialog CLOSES, so awaiting it here would hang the test.
+        _ = host.InvokeAsync(() => dialogs.Open<DialogFormProbeBody>("Dialog title", Body(tracked: tracked, model: model)));
+
+        host.WaitForElement(".dialog-form-body");
+
+        return host;
+    }
+
+    // A real edit through a real DOM event, the way a person makes the surface hold one.
+    async Task<IRenderedComponent<DialogHostFixture>> OpenEdited(CheckBoxTrackingModel model, bool tracked)
+    {
+        var host = Open(tracked, model);
+
+        await host.InvokeAsync(() => host.Find(".dialog-form-body input[type=checkbox]").Change(true));
+
+        return host;
+    }
+
+    static Task PressEscape(IRenderedComponent<DialogHostFixture> host)
+    {
+        return host.Find(".dialog-form-body input[type=checkbox]")
+            .KeyDownAsync(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
+    }
+
+    // No, then Yes: the order NsConfirmDialog draws its two faces in.
+    static Task Answer(IRenderedComponent<DialogHostFixture> host, bool yes)
+    {
+        var buttons = host.FindComponent<NsConfirmDialog>().FindAll("button");
+
+        return host.InvokeAsync(() => buttons[yes ? 1 : 0].Click());
+    }
+
+    static bool FormEscapeCloses(IRenderedComponent<DialogHostFixture> host)
+    {
+        return host.FindComponent<DialogFormProbeBody>().Instance.Dialog!.Options.CloseOnEscapeKey == true;
+    }
+
     static bool EscapeCloses(IRenderedComponent<DialogHostFixture> host)
     {
         return host.FindComponent<DialogEscapeProbeBody>().Instance.Dialog!.Options.CloseOnEscapeKey == true;
@@ -252,11 +415,14 @@ public sealed class HostDialogSurfaceTests : BunitContext, IAsyncLifetime
     static Dictionary<string, object?> Body(
         bool disabled = false,
         TaskCompletionSource? gate = null,
-        bool aborts = false)
+        bool aborts = false,
+        bool tracked = false,
+        CheckBoxTrackingModel? model = null)
     {
         return new Dictionary<string, object?>
         {
-            [nameof(DialogFormProbeBody.Model)] = new CheckBoxTrackingModel(),
+            [nameof(DialogFormProbeBody.Model)] = model ?? new CheckBoxTrackingModel(),
+            [nameof(DialogFormProbeBody.Tracked)] = tracked,
             [nameof(DialogFormProbeBody.Disabled)] = disabled,
             [nameof(DialogFormProbeBody.Gate)] = gate,
             [nameof(DialogFormProbeBody.Aborts)] = aborts
@@ -288,8 +454,14 @@ public sealed class HostDialogSurfaceTests : BunitContext, IAsyncLifetime
         Assert.Contains("d-flex", dialogContent.ClassList);
         Assert.Contains("flex-column", dialogContent.ClassList);
 
-        // NsPanel's root becomes a genuine flex item of that box, so its own flex-1/min-h-0
-        // classes (dead weight before the fix) finally have something to shrink against.
+        // Between that box and NsPanel stands the content's Escape wrapper: a flex item of the
+        // box (flex-1 min-h-0) and a flex column itself, so NsPanel's root is a flex item of
+        // the wrapper and its own flex-1/min-h-0 classes have a bounded height to shrink against.
+        var wrapper = dialogContent.Children.Single();
+        Assert.Contains("flex-1", wrapper.ClassList);
+        Assert.Contains("min-h-0", wrapper.ClassList);
+        Assert.Contains("flex-column", wrapper.ClassList);
+
         var panel = dialogContent.QuerySelector(".ns-container");
         Assert.NotNull(panel);
         Assert.Contains("flex-1", panel!.ClassList);
