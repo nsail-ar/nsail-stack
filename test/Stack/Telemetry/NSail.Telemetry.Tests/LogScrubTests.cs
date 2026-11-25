@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using System.Net.Sockets;
+using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
@@ -53,67 +53,60 @@ public sealed class LogScrubTests
         Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
     }
 
-    // EF Core's execution strategy wraps a transient failure in a bare InvalidOperationException:
-    // the cause is the inner exception, so its type and frames travel ahead of the outer ones.
+    // A wrapper names its cause: Npgsql's "likely due to a transient failure" says nothing of
+    // whether the connection timed out, dropped or met a restart until its inner chain travels.
     [Fact]
-    public void A_wrapped_exception_travels_with_its_cause_chain_and_no_message_at_any_depth()
+    public void An_exceptions_inner_chain_travels_as_types_and_frames_outermost_first()
     {
-        var record = Scrubbed(logger => logger.LogError(Strategy(Document), "Background job {Job} failed", "RecurringExpenses"));
+        var outer = Thrown(() => new InvalidOperationException(
+            $"{Document} could not be saved",
+            Thrown(() => new AggregateException(
+                $"{Name} failed twice",
+                Thrown(() => new TimeoutException($"{Clinical} timed out", Thrown(() => new IOException($"{Name} dropped")))),
+                Thrown(() => new ArgumentException($"{Document} is not valid"))))));
 
-        var stack = Assert.IsType<string>(record.Tag("exception.stacktrace"));
-        var connection = stack.IndexOf($" ---> {typeof(IOException).FullName}", StringComparison.Ordinal);
-        var socket = stack.IndexOf($" ---> {typeof(SocketException).FullName}", StringComparison.Ordinal);
-        var end = stack.IndexOf("--- End of inner exception stack trace ---", StringComparison.Ordinal);
+        var record = Scrubbed(logger => logger.LogError(outer, "Unhandled exception mapped to problem {Code}", "Unhandled"));
+
+        var inner = Assert.IsType<string>(record.Tag("exception.inner.stacktrace"));
 
         Assert.Equal(typeof(InvalidOperationException).FullName, record.Tag("exception.type"));
-        Assert.True(connection >= 0 && socket > connection && end > socket, stack);
-        Assert.True(stack.IndexOf(nameof(Socket), StringComparison.Ordinal) < stack.IndexOf(nameof(Connection), StringComparison.Ordinal), stack);
-        Assert.True(stack.IndexOf(nameof(Connection), StringComparison.Ordinal) < stack.IndexOf(nameof(Strategy), StringComparison.Ordinal), stack);
+        Assert.Equal(outer.StackTrace, record.Tag("exception.stacktrace"));
+        Assert.Equal(
+            string.Join('\n', typeof(AggregateException).FullName, typeof(TimeoutException).FullName, typeof(IOException).FullName, typeof(ArgumentException).FullName),
+            record.Tag("exception.inner.type"));
+        Assert.Equal(5, inner.Split(nameof(Thrown)).Length);
         Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Clinical, record.Flattened, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Each_exception_an_aggregate_holds_travels_without_its_message()
+    public void A_database_errors_sqlstate_travels_from_anywhere_in_the_chain()
     {
-        var aggregate = Thrown(() => new AggregateException(Connection(Document), Raised(Name)));
+        var record = Scrubbed(logger => logger.LogError(
+            new InvalidOperationException(
+                "An exception has been raised that is likely due to a transient failure.",
+                new FailedRead($"terminating connection for {Name}", "57P01")),
+            "Unhandled exception mapped to problem {Code}",
+            "Unhandled"));
 
-        var record = Scrubbed(logger => logger.LogError(aggregate, "Background job {Job} failed", "RecurringExpenses"));
-
-        var stack = Assert.IsType<string>(record.Tag("exception.stacktrace"));
-
-        Assert.Equal(typeof(AggregateException).FullName, record.Tag("exception.type"));
-        Assert.Contains($" ---> {typeof(IOException).FullName}", stack, StringComparison.Ordinal);
-        Assert.Contains($" ---> (Inner Exception #1) {typeof(InvalidOperationException).FullName}", stack, StringComparison.Ordinal);
-        Assert.Contains(nameof(Socket), stack, StringComparison.Ordinal);
-        Assert.Contains(nameof(Raised), stack, StringComparison.Ordinal);
-        Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(typeof(InvalidOperationException).FullName, record.Tag("exception.type"));
+        Assert.Equal(typeof(FailedRead).FullName, record.Tag("exception.inner.type"));
+        Assert.Equal("57P01", record.Tag("db.response.status_code"));
+        Assert.DoesNotContain("transient", record.Flattened, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
     }
 
-    // With no message to leave out, what travels is ToString() itself after its first line, the
-    // outer type: the layout a reader of .NET stacks already knows. A SocketException's own
-    // ToString() adds its error code, so the chain here ends in an exception that adds nothing.
     [Fact]
-    public void The_chain_is_laid_out_as_ToString_lays_it_out()
+    public void A_sqlstate_that_is_not_a_code_does_not_travel()
     {
-        var chain = Connection(string.Empty, Connection(string.Empty, Raised(string.Empty)));
+        var record = Scrubbed(logger => logger.LogError(
+            new FailedRead("read failed", $"{Name} has no access"),
+            "Unhandled exception mapped to problem {Code}",
+            "Unhandled"));
 
-        Exception[] logged =
-        [
-            Raised(string.Empty),
-            chain,
-            Thrown(() => new AggregateException(string.Empty, chain, Raised(string.Empty))),
-            Thrown(() => new AggregateException(string.Empty, Raised(string.Empty), chain)),
-        ];
-
-        foreach (var exception in logged)
-        {
-            var record = Scrubbed(logger => logger.LogError(exception, "Background job {Job} failed", "RecurringExpenses"));
-
-            var rendered = exception.ToString();
-
-            Assert.Equal(rendered[(rendered.IndexOf(Environment.NewLine, StringComparison.Ordinal) + Environment.NewLine.Length)..], record.Tag("exception.stacktrace"));
-        }
+        Assert.Null(record.Tag("db.response.status_code"));
+        Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -213,52 +206,23 @@ public sealed class LogScrubTests
         }
     }
 
-    static Exception Strategy(string message)
-    {
-        try
-        {
-            throw new InvalidOperationException(message, Connection(message));
-        }
-        catch (InvalidOperationException thrown)
-        {
-            return thrown;
-        }
-    }
-
-    static Exception Connection(string message, Exception? cause = null)
-    {
-        try
-        {
-            throw new IOException(message, cause ?? Socket(message));
-        }
-        catch (IOException thrown)
-        {
-            return thrown;
-        }
-    }
-
-    static Exception Socket(string message)
-    {
-        try
-        {
-            throw new SocketException((int)SocketError.ConnectionRefused, message);
-        }
-        catch (SocketException thrown)
-        {
-            return thrown;
-        }
-    }
-
-    static Exception Thrown(Func<Exception> raise)
+    static T Thrown<T>(Func<T> raise)
+        where T : Exception
     {
         try
         {
             throw raise();
         }
-        catch (Exception thrown)
+        catch (T thrown)
         {
             return thrown;
         }
+    }
+
+    // What Npgsql's PostgresException is to the scrubber, without the scrubber's tests taking Npgsql.
+    sealed class FailedRead(string message, string state) : DbException(message)
+    {
+        public override string? SqlState => state;
     }
 
     // LogRecord instances are pooled and reused, so what a test keeps is what it read on the
