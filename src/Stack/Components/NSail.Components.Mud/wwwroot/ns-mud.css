@@ -764,15 +764,16 @@
 }
 
 /* THE TOUCH-TARGET FLOOR. A labelled chromed face is the vendor's medium button — 6/16 of
-   padding over .875rem text, about 36px — while the glyph beside it is 44px by construction
-   (.ns-square below, and the flat rung's own icon button: 12px around the Md step), so without
-   a floor a title bar's worded and wordless acts do not measure the same under a finger, and
+   padding over .875rem text, about 36px — while the flat rung's icon button beside it is 44px
+   by construction (12px around the Md step), and so is the square under a coarse pointer
+   (.ns-square below, which takes the worded face's height under a fine one), so without a
+   floor a title bar's worded and wordless acts do not measure the same under a finger, and
    they have to. 44px is not a pick: it is the industry's touch-target floor (Apple HIG 44pt, WCAG 2.5.5 Target Size), and 36px is a normal desktop
    control — so the floor is stated once, here, and only where the pointer is coarse. A fine
    pointer keeps the vendor's 36px, which is what every desktop measurement in the house reads.
 
-   min-height and not height: the squares and the collapsed faces already measure 44 and this
-   leaves them exactly as they are (a square whose box this grew would be a rectangle again),
+   min-height and not height: under a coarse pointer the squares and the collapsed faces
+   already measure 44 and this leaves them exactly as they are (a square whose box this grew would be a rectangle again),
    and a face whose own content is taller than the floor — a two-line label — still gets its
    height from the content.
 
@@ -2407,8 +2408,8 @@ div.mud-input-slot.mud-input-root::placeholder {
    min-width on the content box is what makes a long title give way rather than push the door
    off the card: a flex item's floor is its content, and a title has no reason to hold it.
 
-   The block padding is halved from the vendor's 16px: a header that carries a 44px square
-   would otherwise run 32px taller than its act. The padding compacts, never the square
+   The block padding is halved from the vendor's 16px: a header that carries a square would
+   otherwise run 32px taller than its act. The padding compacts, never the square
    (ui/actions.md) — the touch floor above refuses a button whose box changes with what it is
    drawn inside — and the inline padding stays, so the title keeps the content's own line. */
 .ns-card-header {
@@ -2982,13 +2983,22 @@ div.mud-input-slot.mud-input-root::placeholder {
    what varies is its rank: an icon-only button is the same button with no word to draw, and
    the vendor's own button is a RECTANGLE — 64px of min-width and 16px of side padding for a
    label that is not coming. A glyph alone in it reads as a stretched pill, which is the shape
-   this class takes away: equal padding on all four sides and no floor under the width. 12px is
-   the vendor's own icon-button padding, so the box comes out at exactly the house's ordinary
-   icon action — 12 + the Md glyph (1.25rem on the app's own icon scale above, not Material's
-   24) + 12 — and a square and the flat glyph beside it are one size without either naming a
-   number. The corner radius is the vendor's own default, already on .mud-button: a square with
-   rounded corners, not a circle — the circle belongs to the flat rung, which has no fill to
-   shape.
+   this class takes away: equal padding on all four sides and no floor under the width. The
+   corner radius is the vendor's own default, already on .mud-button: a square with rounded
+   corners, not a circle — the circle belongs to the flat rung, which has no fill to shape.
+
+   ONE HEIGHT WITH THE WORDED FACE BESIDE IT, because a toolbar mixes the two and a row of two
+   heights stands crooked (Material 3 gives a filled icon button and a common button one
+   container height for the same reason). So the square is sized off the worded face, never off
+   a number of its own. Under a fine pointer it keeps the vendor's 6px block padding on every
+   side around a glyph box one line of the button's own text tall (1lh, resolved on the glyph's
+   wrapper, which inherits the button's type): that line in that padding is exactly the box a
+   label rides in, so the two are one height whatever the theme sets the button's type to.
+   Under a coarse pointer the floor grows the worded face to 44px (THE TOUCH-TARGET FLOOR), and
+   a square that floor grew would be a rectangle again, so there it goes back to the vendor's
+   icon-button padding around the bare Md glyph — 12 + 1.25rem + 12, the floor by
+   construction — and the floor leaves it as it is. The pair is stated once, here, for the
+   square and the collapsed faces alike.
 
    flex-shrink because a toolbar is a flex row and a square is not the thing in it that gives:
    below its own min-width a flex item is squeezed by whatever else is on the row, and a
@@ -2999,14 +3009,30 @@ div.mud-input-slot.mud-input-root::placeholder {
    nobody handed over (this block), and a label the container query took away (the
    ns-collapse-* block further down, which restates only the geometry — the fill and the
    shadow are the rank's and never move). */
+:root {
+    --ns-square-padding: 6px;
+    --ns-square-glyph: 1lh;
+}
+
+@media (pointer: coarse) {
+    :root {
+        --ns-square-padding: 12px;
+        --ns-square-glyph: auto;
+    }
+}
+
 .ns-square.mud-button {
     min-width: 0;
-    padding: 12px;
+    padding: var(--ns-square-padding);
     flex-shrink: 0;
 }
 
 .ns-square .mud-button-icon-start {
     margin-inline: 0;
+    inline-size: var(--ns-square-glyph);
+    block-size: var(--ns-square-glyph);
+    align-items: center;
+    justify-content: center;
 }
 
 /* A node whose template is more than a name (NsTree stacks a fact and the row's actions
@@ -3545,48 +3571,64 @@ div.mud-input-slot.mud-input-root::placeholder {
 @container (max-width: 599.98px) {
     .ns-collapse-sm.mud-button {
         min-width: 0;
-        padding: 12px;
+        padding: var(--ns-square-padding);
         flex-shrink: 0;
     }
 
     .ns-collapse-sm .mud-button-icon-start {
         margin-inline: 0;
+        inline-size: var(--ns-square-glyph);
+        block-size: var(--ns-square-glyph);
+        align-items: center;
+        justify-content: center;
     }
 }
 
 @container (max-width: 959.98px) {
     .ns-collapse-md.mud-button {
         min-width: 0;
-        padding: 12px;
+        padding: var(--ns-square-padding);
         flex-shrink: 0;
     }
 
     .ns-collapse-md .mud-button-icon-start {
         margin-inline: 0;
+        inline-size: var(--ns-square-glyph);
+        block-size: var(--ns-square-glyph);
+        align-items: center;
+        justify-content: center;
     }
 }
 
 @container (max-width: 1279.98px) {
     .ns-collapse-lg.mud-button {
         min-width: 0;
-        padding: 12px;
+        padding: var(--ns-square-padding);
         flex-shrink: 0;
     }
 
     .ns-collapse-lg .mud-button-icon-start {
         margin-inline: 0;
+        inline-size: var(--ns-square-glyph);
+        block-size: var(--ns-square-glyph);
+        align-items: center;
+        justify-content: center;
     }
 }
 
 @container (max-width: 1919.98px) {
     .ns-collapse-xl.mud-button {
         min-width: 0;
-        padding: 12px;
+        padding: var(--ns-square-padding);
         flex-shrink: 0;
     }
 
     .ns-collapse-xl .mud-button-icon-start {
         margin-inline: 0;
+        inline-size: var(--ns-square-glyph);
+        block-size: var(--ns-square-glyph);
+        align-items: center;
+        justify-content: center;
     }
 }
 
@@ -3751,13 +3793,17 @@ div.mud-input-slot.mud-input-root::placeholder {
 
     .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error) .mud-button-icon-start {
         margin-inline: 0;
+        inline-size: var(--ns-square-glyph);
+        block-size: var(--ns-square-glyph);
+        align-items: center;
+        justify-content: center;
     }
 
     /* Same square the Breakpoint collapse takes: a footer act that gave up its
        word is a filled rank in icon-only, and there is one shape for that in the house. */
     .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error) {
         min-width: 0;
-        padding: 12px;
+        padding: var(--ns-square-padding);
     }
 
     /* A narrow footer has no leftover width beside its buttons at all, so the seated refusal

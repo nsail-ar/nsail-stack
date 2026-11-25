@@ -74,10 +74,11 @@ complaint the rule answers: a phone's title row came out three different heights
   declaration in `ns-mud.css`, reaching the worded face wherever the house draws one
   (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`, `NsMenu`'s labelled trigger) and the link a
   tapped `NsChip`'s bubble carries.
-- **The icon-only square keeps its own box at every width and under either pointer**: it is
-  already 44px by construction (12px around the Md glyph), so the floor leaves it exactly as
-  it is. It is a `min-height` for that reason — a square whose box this grew would be the
-  rectangle again.
+- **The icon-only square is the worded face's height under either pointer**
+  ([styling.md](styling.md)): under a fine one it takes the worded face's 36px, and under a
+  coarse one it is already 44px by construction (12px around the Md glyph), so the floor leaves
+  it exactly as it is. It is a `min-height` for that reason — a square whose box this grew would
+  be the rectangle again.
 - **The flat worded anchor gets its own box.** A bare `<a>` has none to grow, so `NsLink`'s
   Inline face wears `ns-link` (`ns-mud.css`) for exactly that — `inline-flex`, nothing a plain
   word needed to change — and the floor reaches it there instead of through `.mud-button`.

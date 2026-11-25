@@ -315,9 +315,15 @@ are refused by the ink they share with it.
 
 **A filled button with no visible text is a SQUARE** at the house's icon-action box
 (`ns-square`) — `min-width: 0`, equal padding, the house's corner radius, its own fill and
-shadow — never the vendor's 64px-floored rectangle. No number is written at either end: the
-padding is the vendor's own icon-button padding and the glyph is the app's own `Md` step, so the
-square and the flat glyph beside it come out the same size by construction. **Whether there is
+shadow — never the vendor's 64px-floored rectangle. **It stands one height with the worded
+face beside it**, because a toolbar mixes the two and a row of two heights stands crooked
+(Material 3 gives a filled icon button and a common button one container height). So it is
+sized off the worded face, never off a number of its own: under a fine pointer it is the
+vendor's block padding around a glyph box one line of the button's own text tall (`1lh`) — the
+box a label rides in, whatever the theme sets the button's type to — and under a coarse one the
+vendor's icon-button padding around the `Md` glyph, which is the touch floor by construction
+and stays a square the floor never grows. The pair is two custom properties beside `ns-square`
+in `ns-mud.css`, read by the square and every collapsed face alike. **Whether there is
 text at all is `Breakpoint`'s word alone** (`NsBreakpoint`: `Always`, `Xs`…`Xxl`, `Never`), never
 a second flag on the control — so the same square is reached by `Never` outright and by a
 container query taking the label away, and the `ns-collapse-*` blocks restate that geometry
