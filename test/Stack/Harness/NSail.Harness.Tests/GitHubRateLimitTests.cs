@@ -211,6 +211,50 @@ public class GitHubRateLimitTests
         Assert.Single(malformed.Sent);
     }
 
+    // What GitHub answered on dev1 to a merged-PR read, with the token the reads before and after it used.
+    static HttpResponseMessage BadCredentials()
+    {
+        return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent("""
+                {
+                  "message": "Bad credentials",
+                  "documentation_url": "https://docs.github.com/rest",
+                  "status": "401"
+                }
+                """, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    [Fact]
+    public async Task ARefusedCredentialIsSentAgainOnAReadAndNotOnAWrite()
+    {
+        var query = new Script(_ => BadCredentials(), _ => Ok("""{"data":{"a":1}}"""));
+        Assert.Equal(1, (await Client(query).Client.GraphQl("query{a}")).GetProperty("a").GetInt32());
+        Assert.Equal(2, query.Sent.Count);
+
+        var get = new Script(_ => BadCredentials(), _ => Ok());
+        await Client(get).Client.Get("x");
+        Assert.Equal(2, get.Sent.Count);
+
+        var mutation = new Script(_ => BadCredentials(), _ => Ok("""{"data":{}}"""));
+        await Assert.ThrowsAsync<GitHubException>(() => Client(mutation).Client.GraphQl("mutation{a}"));
+        Assert.Single(mutation.Sent);
+    }
+
+    [Fact]
+    public async Task ACredentialRefusedOnEveryAttemptThrowsItsAnswer()
+    {
+        var query = new Script(_ => BadCredentials());
+
+        var e = await Assert.ThrowsAsync<GitHubException>(() => Client(query).Client.GraphQl("query{a}"));
+
+        Assert.Equal(401, e.Status);
+        Assert.Null(e.RetryAfter);
+        Assert.Contains("Bad credentials", e.Message, StringComparison.Ordinal);
+        Assert.Equal(3, query.Sent.Count);
+    }
+
     [Fact]
     public async Task AMalformedGraphQlAnswerIsSentAgainAsAFiveHundredIs()
     {
