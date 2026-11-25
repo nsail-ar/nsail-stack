@@ -175,7 +175,6 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
                 if (m.Groups[1].Value == "green") return CiState.Green;
                 word = m.Groups[1].Value switch
                 {
-                    "green" => CiState.Green,
                     "red" => CiState.Red,
                     "waits" when main is null || main == m.Groups[3].Value => CiState.Pending,
                     _ => null,

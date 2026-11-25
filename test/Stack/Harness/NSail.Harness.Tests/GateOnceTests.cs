@@ -122,6 +122,26 @@ public class GateOnceTests
         Assert.Contains(log.Written, l => l.Text.Contains("a run out of time at 78369e06 dropped", StringComparison.Ordinal));
     }
 
+    // Every verdict the job writes reads the thread first: a red run at a head another harness judged says nothing.
+    [Fact]
+    public async Task ARedRunAtAHeadAnotherHarnessJudgedIsDropped()
+    {
+        foreach (var green in new[] { true, false })
+        {
+            var repo = new OneThread();
+            await repo.Comment(Pr, $"**Gate** at `78369e06`\n{Markers.Gate(green, Sha)}");
+            var (job, log) = Gate(repo, "box-c");
+
+            var outcome = await Judge(job, new ShellResult(1, "  Failed NSail.C.Tests.T.One [12 ms]\n", TimedOut: false), log);
+
+            Assert.True(outcome.Idle);
+            Assert.Null(outcome.Event);
+            Assert.Single(repo.Said);
+            Assert.Empty(repo.Statuses);
+            Assert.Contains(log.Written, l => l.Text.Contains("red at 78369e06 dropped", StringComparison.Ordinal));
+        }
+    }
+
     [Fact]
     public void AGreenAtAHeadOutlastsALaterRedAtIt()
     {
