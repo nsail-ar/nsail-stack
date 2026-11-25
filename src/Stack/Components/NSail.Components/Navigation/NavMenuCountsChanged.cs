@@ -6,8 +6,8 @@ using NSail.Messaging;
 namespace NSail.Components;
 
 /// <summary>Something happened that the numbers beside the menu entries may disagree with, so
-/// every <see cref="INavMenuCount"/> is asked again. A UI event and not an <c>[Http]</c>
-/// message: it never leaves the client.
+/// every <see cref="INavMenuCount"/> whose entry the drawer draws is asked again. A UI event
+/// and not an <c>[Http]</c> message: it never leaves the client.
 ///
 /// <para>It carries nothing, and that is the whole of its design. The Stack owns no count — a
 /// number belongs to whichever module contributed it — so an event naming one entry, one module

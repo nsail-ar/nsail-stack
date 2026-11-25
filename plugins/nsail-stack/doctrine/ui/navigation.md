@@ -290,9 +290,10 @@ module's by being mounted early.
   else planted, and an app that mounted the door may still not want the number on it. **A count
   whose entry the session is not drawn is never asked**, with nothing on either side needing to
   know: `NsNavMenu` hands `NavMenu.GetCounts(drawn)` the names of the page entries its gate and
-  `Visible` left, and the prerender's handoff asks the same set. A door refused, hidden or under
-  a group that went is a server that would refuse the ask, and a number drawn nowhere — so the
-  drawer owns the decision and a contributor never guards its own permission.
+  `Visible` left, and the prerender's handoff asks the last set it was handed — so a second
+  caller asking for fewer doors narrows what the prerender hands over. A door refused, hidden or
+  under a group that went is a server that would refuse the ask, and a number drawn nowhere — so
+  the drawer owns the decision and a contributor never guards its own permission.
   **It is apart from `INavMenuContributor` because the two answer at different rates**: the tree
   is a function of the session and `NavMenu` asks it once for one, while a number is the point of
   being a number — `NavMenu.GetCounts` remembers nothing, `NsNavMenu` asks it when the drawer
@@ -310,14 +311,15 @@ module's by being mounted early.
 - **`NavMenuCountsChanged` is the third moment, and it is how work that ARRIVES reaches the
   drawer.** A number asked only on a navigation cannot see an act taken in another seat, or a
   message landing while somebody sits on one screen — so anything that knows the work moved
-  publishes this UI event and `NsNavMenu` recounts every contributor. It carries **nothing**:
-  the Stack owns no count, so an event naming an entry, a module or an id would be the drawer
-  learning what a kit counts, and "ask again" is the only reaction honest for every contributor
-  at once (the bargain `BooksPosted` and `StockChanged` make, messaging.md). It needs no
-  composition — a UI event is published through the Mediator every client already has — and the
-  drawer hand-rolls what `NsPartial.Subscribe` would have given it, because the drawer is a plain
-  component. Channels' `ConversationWatch` is the first publisher, woken by the server's push
-  (messaging.md, Pushed to clients) — the drawer never learns a socket exists.
+  publishes this UI event and `NsNavMenu` recounts every contributor whose entry it draws. It
+  carries **nothing**: the Stack owns no count, so an event naming an entry, a module or an id
+  would be the drawer learning what a kit counts, and "ask again" is the only reaction honest
+  for every contributor at once (the bargain `BooksPosted` and `StockChanged` make,
+  messaging.md). It needs no composition — a UI event is published through the Mediator every
+  client already has — and the drawer hand-rolls what `NsPartial.Subscribe` would have given
+  it, because the drawer is a plain component. Channels' `ConversationWatch` is the first
+  publisher, woken by the server's push (messaging.md, Pushed to clients) — the drawer never
+  learns a socket exists.
 - **What the box finds BESIDES the map is a third contribution, and a third rate.** The menu is
   the list of where a session may go; `INavMenuSearch` is the seam for what it is looking FOR —
   a record a module can name and open — registered with `AddNavMenuSearch<T>()` and asked for a
@@ -419,8 +421,8 @@ other end, the surface this session was on would be gone and no route brings it 
   alone, so a `Url` leaf never claims the drawer's highlight and never stands in for a title
   bar's glyph — there is no address for either to match.
 - **It carries no count.** `ns-nav-count` rides only the `PageType` branch; an `INavMenuCount`
-  registered against a `Url` leaf's `Name` is never drawn, with nothing on either side needing
-  to know.
+  registered against a `Url` leaf's `Name` is never asked, because only a page entry enters the
+  drawn set, with nothing on either side needing to know.
 - **The render always forces a new window** (`Target="_blank"`, the one case `NsNavMenu` sets it
   without being told): a kit offering a `Url` writes no `Target` of its own, and nothing in the
   model carries one — a destination the router resolves nothing for already decided it, the

@@ -126,7 +126,9 @@ public sealed class NavMenu : IDisposable
     /// <para>Only the entries in <paramref name="drawn"/> are asked: a count belongs to the door
     /// it is drawn beside, and a door the session is not drawn — refused, hidden, or under a
     /// group that went — has nothing to ask, nor a server that owes the session an answer. The
-    /// set is the drawer's, so the persist callback asks for the same doors.</para></summary>
+    /// set is the drawer's, so the persist callback asks for the same doors: the last set
+    /// handed in is the one it asks, and a caller asking for fewer narrows the
+    /// handoff.</para></summary>
     public Task<IReadOnlyDictionary<string, int>> GetCounts(IReadOnlySet<string> drawn)
     {
         _drawn = drawn;
