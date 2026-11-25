@@ -171,7 +171,7 @@ the files it leaves.
     last one read. A Watch groups the error lines by service, logger, message
     template and exception type, and files a story per new group in Analyze (`telemetry`, the service's
     area — a product of that name, or its `Areas` entry — and `bug` when a cell outside `NotProd` logged
-    it), at most `MaxStories` a pass; an open one gets the count, once a day; one closed and logged
+    it), at most `MaxStories` a pass; an open one gets the count, once a day, with the newest stack when its body does not show that one; one closed and logged
     again after is filed anew naming it (it broke twice); one closed as not planned mutes its error. A
     seat's `PromptFile` beside the harness's configuration (`prompts/`) is the harness's, for every
     repository; any other is the repository's. A pass: the UpdateBoard keepers, every story worker over

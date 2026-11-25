@@ -286,7 +286,10 @@ seam:
   `bool`, an enum, a date or a duration. Every string is dropped, a code included — a
   Problem's Code and a patient's name are the same type, so the Code rides the span and the
   `traceId` joins the two.
-- An exception travels as `exception.type` and its **frames**; the message does not.
+- An exception travels as `exception.type` (the outer type, which the telemetry watch's
+  fingerprint keys on) and its **frames**, cause chain included: each inner exception's type and
+  frames, laid out as `Exception.ToString()` lays them out — so an `InvalidOperationException`
+  that wraps a transient failure names it. No message travels, at any depth.
 - The cut is at the exporter, behind every other logging provider, so the console and the
   file a developer reads keep the whole line.
 
