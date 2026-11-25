@@ -37,10 +37,10 @@ public class GitHubRateLimitTests
         return response;
     }
 
-    static (GitHubClient Client, List<TimeSpan> Waits) Client(Script script)
+    static (GitHubClient Client, List<TimeSpan> Waits) Client(Script script, GitHubToken? token = null)
     {
         var waits = new List<TimeSpan>();
-        var client = new GitHubClient(new HttpClient(script) { BaseAddress = new Uri("https://api.github.com/") })
+        var client = new GitHubClient(new HttpClient(script) { BaseAddress = new Uri("https://api.github.com/") }, token)
         {
             Delay = (span, _) => { waits.Add(span); return Task.CompletedTask; },
         };
@@ -226,33 +226,97 @@ public class GitHubRateLimitTests
         };
     }
 
-    [Fact]
-    public async Task ARefusedCredentialIsSentAgainOnAReadAndNotOnAWrite()
+    public static TheoryData<string> Calls => ["GET", "DELETE", "query", "mutation"];
+
+    static Task Call(GitHubClient client, string call)
     {
-        var query = new Script(_ => BadCredentials(), _ => Ok("""{"data":{"a":1}}"""));
-        Assert.Equal(1, (await Client(query).Client.GraphQl("query{a}")).GetProperty("a").GetInt32());
-        Assert.Equal(2, query.Sent.Count);
+        return call switch
+        {
+            "GET" => client.Get("x"),
+            "DELETE" => client.Send(HttpMethod.Delete, "x"),
+            "query" => client.GraphQl("query{a}"),
+            _ => client.GraphQl("mutation{a}"),
+        };
+    }
 
-        var get = new Script(_ => BadCredentials(), _ => Ok());
-        await Client(get).Client.Get("x");
-        Assert.Equal(2, get.Sent.Count);
+    [Theory]
+    [MemberData(nameof(Calls))]
+    public async Task ARefusedCredentialIsSentOnceMoreAfterAShortWait(string call)
+    {
+        var script = new Script(_ => BadCredentials(), _ => Ok("""{"data":{"a":1}}"""));
+        var (client, waits) = Client(script);
 
-        var mutation = new Script(_ => BadCredentials(), _ => Ok("""{"data":{}}"""));
-        await Assert.ThrowsAsync<GitHubException>(() => Client(mutation).Client.GraphQl("mutation{a}"));
-        Assert.Single(mutation.Sent);
+        await Call(client, call);
+
+        Assert.Equal(2, script.Sent.Count);
+        Assert.InRange(Assert.Single(waits).TotalSeconds, 0.1, 5);
+    }
+
+    [Theory]
+    [MemberData(nameof(Calls))]
+    public async Task ACredentialRefusedTwiceThrowsOnceNamingWhereTheTokenCameFrom(string call)
+    {
+        var script = new Script(_ => BadCredentials());
+        var (client, _) = Client(script, new GitHubToken("github_pat_secret", "GH_TOKEN"));
+
+        var e = await Assert.ThrowsAsync<GitHubException>(() => Call(client, call));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, e.HttpStatus);
+        Assert.Null(e.RetryAfter);
+        Assert.Equal(2, script.Sent.Count);
+        Assert.Contains("Bad credentials", e.Message, StringComparison.Ordinal);
+        Assert.EndsWith("the harness's GitHub token (GH_TOKEN) was refused twice", e.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("github_pat_secret", e.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ACredentialRefusedOnEveryAttemptThrowsItsAnswer()
+    public void ATokenNamesItsSourceAndNeverItsValue()
     {
-        var query = new Script(_ => BadCredentials());
+        var token = new GitHubToken("github_pat_secret", "GitHub:TokenFile /etc/harness/token");
 
-        var e = await Assert.ThrowsAsync<GitHubException>(() => Client(query).Client.GraphQl("query{a}"));
+        Assert.Equal("GitHub:TokenFile /etc/harness/token", token.ToString());
+    }
 
-        Assert.Equal(401, e.Status);
-        Assert.Null(e.RetryAfter);
-        Assert.Contains("Bad credentials", e.Message, StringComparison.Ordinal);
-        Assert.Equal(3, query.Sent.Count);
+    [Fact]
+    public async Task ATokenIsReadFromTheFirstSettingThatHoldsOne()
+    {
+        var file = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllTextAsync(file, " from-file\n");
+
+            Assert.Equal(new GitHubToken("inline", "GitHub:Token"), new GitHubOptions { Token = "inline", TokenFile = file }.ResolveToken());
+            Assert.Equal(new GitHubToken("from-file", $"GitHub:TokenFile {file}"), new GitHubOptions { TokenFile = file }.ResolveToken());
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.UnprocessableContent)]
+    public async Task AnyOtherRefusalIsSentOnce(HttpStatusCode status)
+    {
+        var get = new Script(_ => new HttpResponseMessage(status) { Content = new StringContent("{}") }, _ => Ok());
+        var e = await Assert.ThrowsAsync<GitHubException>(() => Client(get).Client.Get("x"));
+        Assert.Equal(status, e.HttpStatus);
+        Assert.Single(get.Sent);
+        Assert.DoesNotContain("refused", e.Message, StringComparison.Ordinal);
+
+        var delete = new Script(_ => new HttpResponseMessage(status) { Content = new StringContent("{}") }, _ => Ok());
+        await Assert.ThrowsAsync<GitHubException>(() => Client(delete).Client.Send(HttpMethod.Delete, "x"));
+        Assert.Single(delete.Sent);
+    }
+
+    [Fact]
+    public async Task AFiveHundredReadIsStillSentThreeTimes()
+    {
+        var get = new Script(_ => new HttpResponseMessage(HttpStatusCode.BadGateway) { Content = new StringContent("") });
+        await Assert.ThrowsAsync<GitHubException>(() => Client(get).Client.Get("x"));
+        Assert.Equal(3, get.Sent.Count);
     }
 
     [Fact]

@@ -108,6 +108,18 @@ public class PassFailureTests
     }
 
     [Fact]
+    public async Task APassWhoseMergedReadIsRefusedOnceReadsOnPastIt()
+    {
+        var hub = new FakeGitHub { Locked = [1], MergedRefused = 1 };
+        using var harness = new FakeGitHub.Harness(hub);
+
+        var pass = await harness.Start();
+
+        Assert.Null(pass.Error);
+        Assert.Equal(2, hub.Calls.Count(c => c.Call == "POST /graphql Merged"));
+    }
+
+    [Fact]
     public async Task OutsideALimitAWakeRunsTheNextPassAtOnce()
     {
         var hub = new FakeGitHub();

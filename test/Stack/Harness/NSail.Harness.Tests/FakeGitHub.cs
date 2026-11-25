@@ -43,6 +43,9 @@ sealed class FakeGitHub : HttpMessageHandler
     // When set, every REST read answers 403 with no calls left and the quota's reset this far ahead.
     public TimeSpan? RestLimitedFor { get; set; }
 
+    // How many merged-PR reads answer 401 Bad credentials, as GitHub refuses a valid token now and then.
+    public int MergedRefused { get; set; }
+
     public IReadOnlyList<(string Call, bool Billed)> Calls
     {
         get { lock (_gate) return _calls.ToList(); }
@@ -63,6 +66,11 @@ sealed class FakeGitHub : HttpMessageHandler
         {
             var query = await request.Content!.ReadAsStringAsync(ct);
             Record($"POST /graphql {Name(query)}", true);
+            if (Name(query) == "Merged" && MergedRefused > 0)
+            {
+                MergedRefused--;
+                return Json(request, HttpStatusCode.Unauthorized, """{"message":"Bad credentials","status":"401"}""");
+            }
             return Json(request, HttpStatusCode.OK, Graph(query));
         }
         if (RestLimitedFor is { } wait)

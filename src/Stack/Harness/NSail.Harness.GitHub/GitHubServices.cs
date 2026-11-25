@@ -16,7 +16,7 @@ public static class GitHubServices
     public static IServiceCollection AddGitHub(this IServiceCollection services, IConfiguration configuration)
     {
         var options = configuration.GetSection(GitHubOptions.Section).Get<GitHubOptions>() ?? new GitHubOptions();
-        var token = new GitHubToken(options.ResolveToken());
+        var token = options.ResolveToken();
         // The harness's own git (clone, fetch, push) reaches GitHub through `gh auth git-credential`,
         // which reads GH_TOKEN: it pushes as the harness's token, never as whoever is logged in to gh
         // on the machine (and a machine with no login at all works the same). Only git gets it, not
