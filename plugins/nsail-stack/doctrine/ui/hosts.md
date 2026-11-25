@@ -128,9 +128,9 @@ a word.
 
 **`Whole` on `NsTh`** keeps a column's values on one line — no break at a hyphen or a space, for a
 code such as `ARM-TEST-01` — also when an aside narrows the list. Declared once, on the header; the
-cells follow through the column's key (`ns-col-whole`); the heading itself still wraps (also as a
-stacked card's label), so a long heading buys no width. A computed column has no key to follow:
-its `NsTd` says `Whole` itself.
+cells follow through the column's key (`ns-col-whole`); the heading itself still wraps (a pressable
+one too, also as a stacked card's label), so a long heading buys no width. A computed column has no
+key to follow: its `NsTd` says `Whole` itself.
 
 A table holding a `Whole` column **reserves it before it hides**: the `Breakpoint` rungs measure
 the container and a `Whole` column cannot shrink, so when the row still does not fit, `ns.js`

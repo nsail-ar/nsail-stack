@@ -179,9 +179,9 @@ already on screen. **That is what makes the double cartel unrepresentable**, and
 a label a container query hid, one the footer's emphasis ladder hid and one that was never written
 are all the same empty `innerText`, so no breakpoint is restated in CSS and nothing is kept in step
 by hand between the two languages. A label the stylesheet cut short in `…` is the one word on
-screen `innerText` reports whole, so the span is asked first: one wider than its box whispers. A control the caller pinned with `Breakpoint="Always"` declares
-the same text as one that collapses — the markup says what there WOULD be to say, and nothing
-about when.
+screen `innerText` reports whole, so the control's own label span is asked first: one wider than
+its box whispers. A control the caller pinned with `Breakpoint="Always"` declares the same text as
+one that collapses — the markup says what there WOULD be to say, and nothing about when.
 
 **A refused control whispers too**, and the stylesheet owes it one line: the vendor drops hit
 testing on a disabled button and on a disabled chip (`pointer-events: none`), so the pointer never

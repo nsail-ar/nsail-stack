@@ -261,7 +261,9 @@ breakpoint anyway. There is no second knob.
   a control's own answer and a footer at that width has no room for a line of worded buttons
   ([intentional-ui.md](../intentional-ui.md), important acts sit at the bottom with text).
   **Above that breakpoint nothing takes a word**: where the acts outgrow the row the row grows
-  a line instead, so an act that still carries a word on a laptop is read whole or not at all.
+  a line instead, so an act that still carries a word on a laptop is read whole or not at all —
+  save one whose word alone is wider than the row: that one holds its line and ends in `…`, and
+  the whisper gives back the whole word ([styling.md](styling.md)).
 - **The one exception: `NsLink`'s bare-anchor `Inline` face (`Icon` and `Label` together, no
   box) reads no `Breakpoint` at all.** That face sets no `aria-label` of its own — the word
   inside the anchor IS its whole accessible name — so collapsing it away at a container width
