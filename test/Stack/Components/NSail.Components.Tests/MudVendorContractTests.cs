@@ -102,4 +102,17 @@ public sealed class MudVendorContractTests
         Assert.NotNull(field);
         Assert.Equal(typeof(bool), field.FieldType);
     }
+
+    [Theory]
+    [InlineData("_menuItems", typeof(List<object>))]
+    [InlineData("_registeredItems", typeof(HashSet<object>))]
+    [InlineData("_focusedIndex", typeof(int))]
+    [InlineData("_menuItemActivator", typeof(MudMenuItem))]
+    public void MudMenu_still_has_the_row_count_a_departing_row_leaves(string name, Type type)
+    {
+        var field = typeof(MudMenu).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(field);
+        Assert.Equal(type, field.FieldType);
+    }
 }
