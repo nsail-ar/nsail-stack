@@ -3682,8 +3682,8 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 /* A FOOTER ACT NEVER GIVES UP ITS CONTENT WIDTH — the row WRAPS, the same answer the title row
    and the toolbar row above it give (NsTitleBar, NsToolbar). A row that cannot wrap has only
-   flex-shrink left when the acts outgrow the width, and a shrunk worded button breaks its own
-   LABEL into two lines with the glyph parked between them. Stated once here, outside the phone
+   flex-shrink left when the acts outgrow the width, and a shrunk worded button cuts its LABEL
+   short in «…» (.ns-button-label) though a line of its own would have held it whole. Stated once here, outside the phone
    container query below, because one declaration is the whole behaviour at every width.
 
    The seated refusal is the one child that gives, the way .ns-toolbar-search's own flex is on

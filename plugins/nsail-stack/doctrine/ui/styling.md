@@ -324,7 +324,7 @@ container query taking the label away, and the `ns-collapse-*` blocks restate th
 rather than inventing a second one. It carries `flex-shrink: 0`: a squeezed square is a
 rectangle again, and a toolbar's search box is the thing on that row that gives — a comfort
 width (`.ns-toolbar-search`), not a content one, and once it is spent the row wraps rather than
-squeezing a worded button into two lines ([intentional-ui.md](../intentional-ui.md), the page
+squeezing a worded button's label into `…` ([intentional-ui.md](../intentional-ui.md), the page
 name never gives way). The flat rung has no fill to shape, so its wordless face stays the bare
 glyph. **The one number a chromed face does carry is the touch floor** — 44px under a coarse
 pointer, which this box already measures and a worded one grows to ([actions.md](actions.md),
@@ -458,7 +458,7 @@ any other — the disclosure's sentence included. The one face handed back is a 
 heading (`NsTh`'s `ns-th-order`): it reads as the plain heading beside it, so it wraps and buys no
 width ([hosts.md](hosts.md)). The whole word stays the accessible name and the whisper, and the
 whisper opens over a cut label: `innerText` reports it whole, so `ns.js` asks the control's label
-span whether it was cut.
+span whether it was cut, and reads its words off that span where the face declared none.
 
 **Colour goes on the datum, never on the container.** A card is never tinted as a whole — a
 permanently coloured tile is an alarm nobody sees by Thursday — so what carries the tone is the
