@@ -39,7 +39,7 @@ public sealed class NavMenuHandoffTests : BunitContext
         // round trip behind it costs exactly the render the handoff exists to save.
         Assert.True(items.IsCompletedSuccessfully);
 
-        var counted = menu.GetCounts();
+        var counted = menu.GetCounts(Drawn("Parties", "Tickets"));
 
         Assert.True(counted.IsCompletedSuccessfully);
 
@@ -66,8 +66,8 @@ public sealed class NavMenuHandoffTests : BunitContext
 
         _ = menu.GetItems(null);
 
-        Assert.Equal(4, (await menu.GetCounts())["Tickets"]);
-        Assert.Equal(9, (await menu.GetCounts())["Tickets"]);
+        Assert.Equal(4, (await menu.GetCounts(Drawn("Tickets")))["Tickets"]);
+        Assert.Equal(9, (await menu.GetCounts(Drawn("Tickets")))["Tickets"]);
         Assert.Equal(1, counts.Calls);
     }
 
@@ -85,12 +85,50 @@ public sealed class NavMenuHandoffTests : BunitContext
         var menu = new NavMenu([_contributor], [counts], arrangements: [arrangements], handoff: handoff.State);
 
         await menu.GetItems(null);
+        await menu.GetCounts(Drawn("Parties", "Tickets"));
         await handoff.Manager.PersistStateAsync(handoff, Renderer);
 
         var persisted = handoff.Read<NavMenuHandoff>(HandoffKey);
 
         Assert.Equal(90, persisted?.Arrangements.Single().Entries.Single().Order);
         Assert.Equal(4, persisted?.Counts["Tickets"]);
+    }
+
+    // nsail#4331: the prerender's drawer was not drawn Tickets, so the persist callback asks
+    // only the doors that drawer draws — the session's refused ask never happens server-side
+    // either.
+    [Fact]
+    public async Task ThePrerenderPersistsNoCountForAnEntryItsDrawerHid()
+    {
+        var handoff = await Handoff.Empty();
+
+        var counts = new CountingCount("Tickets", 4);
+
+        var menu = new NavMenu([_contributor], [counts], arrangements: [], handoff: handoff.State);
+
+        await menu.GetItems(null);
+        await menu.GetCounts(Drawn("Parties"));
+        await handoff.Manager.PersistStateAsync(handoff, Renderer);
+
+        var persisted = handoff.Read<NavMenuHandoff>(HandoffKey);
+
+        Assert.Empty(persisted!.Counts);
+        Assert.Equal(0, counts.Calls);
+    }
+
+    [Fact]
+    public async Task AHandedCountForAnEntryTheClientHidIsNotDrawn()
+    {
+        var handoff = await Handoff.Carrying(HandoffKey, new NavMenuHandoff
+        {
+            Counts = new Dictionary<string, int> { ["Tickets"] = 4 }
+        });
+
+        var menu = new NavMenu([_contributor], [], arrangements: [], handoff: handoff.State);
+
+        _ = menu.GetItems(null);
+
+        Assert.Empty(await menu.GetCounts(Drawn("Parties")));
     }
 
     // An install's rows are an authorized read, so the session that was denied them and the
@@ -108,6 +146,11 @@ public sealed class NavMenuHandoffTests : BunitContext
         await menu.GetItems(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(new System.Security.Claims.ClaimsPrincipal())));
 
         Assert.Equal(2, arrangements.Calls);
+    }
+
+    static IReadOnlySet<string> Drawn(params string[] names)
+    {
+        return names.ToHashSet(StringComparer.Ordinal);
     }
 
     static NavMenuArrangement Placed(string name, int order)

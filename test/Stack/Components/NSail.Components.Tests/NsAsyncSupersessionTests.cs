@@ -146,7 +146,7 @@ public sealed class NsAsyncSupersessionTests : BunitContext, IAsyncLifetime
     {
         var menu = new NavMenu([], [new ThrowingCount("Tickets")], log: new Logger<NavMenu>(_log));
 
-        Assert.Empty(await menu.GetCounts());
+        Assert.Empty(await menu.GetCounts(new HashSet<string> { "Tickets" }));
         Assert.Contains(_log.Messages, message => message.Contains("Tickets", StringComparison.Ordinal));
     }
 
