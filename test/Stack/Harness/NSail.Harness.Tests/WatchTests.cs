@@ -318,6 +318,24 @@ public class WatchTests
         Assert.Null(line.ProviderStatus);
     }
 
+    // A wrapper's cause travels in its own column; the watch reads it ahead of the outer frames.
+    [Fact]
+    public void AnErrorLinesStackOpensWithItsCauseChain()
+    {
+        var answer = JsonDocument.Parse("""
+            {"hits":[{"_timestamp":1793942052263069,"body":"Background job {Job} failed","service_name":"ops","instrumentation_library_name":"NSail.Background.BackgroundJobRunner",
+              "exception_type":"System.InvalidOperationException","exception_stacktrace":"   at Strategy.Execute()",
+              "exception_inner_type":"Npgsql.NpgsqlException\nSystem.Net.Sockets.SocketException",
+              "exception_inner_stacktrace":" ---> Npgsql.NpgsqlException\n   at Connector.Open()\n ---> System.Net.Sockets.SocketException\n   at Socket.Connect()",
+              "nsail_tenant":"ops-test","severity":"Error"}]}
+            """).RootElement;
+
+        var line = Assert.Single(OpenObserveLogSource.Rows(answer, "https://logs.example", new OpenObserveOptions()));
+
+        Assert.Equal("System.InvalidOperationException", line.ExceptionType);
+        Assert.Equal(" ---> Npgsql.NpgsqlException\n   at Connector.Open()\n ---> System.Net.Sockets.SocketException\n   at Socket.Connect()\n   --- End of inner exception stack trace ---\n   at Strategy.Execute()", line.StackTrace);
+    }
+
     // A failed pass's record carries what the provider answered; the story filed for it names it,
     // so a revoked token reads apart from a 5xx and a rate limit.
     [Fact]
