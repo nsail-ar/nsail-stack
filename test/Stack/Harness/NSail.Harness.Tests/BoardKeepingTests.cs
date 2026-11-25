@@ -76,7 +76,7 @@ public class BoardKeepingTests
     }
 
     [Fact]
-    public void TheGatesVerdictIsTheLastMarkAtThatHead()
+    public void TheGatesVerdictAtAHeadIsItsGreenElseItsLastMark()
     {
         var bodies = new[]
         {

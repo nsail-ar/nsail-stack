@@ -161,18 +161,20 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
         return text;
     }
 
-    // The gate's verdict at a head, the last one written. A head waiting on main reads pending while main is still the head it waited on (none known: still).
+    // The gate's verdict at a head: a green once written, else the last one written. A head judges once,
+    // so a later red at a green head (another harness's run that read the thread before the green) is no
+    // verdict. A head waiting on main reads pending while main is still the head it waited on (none known: still).
     public static CiState? GateAt(IEnumerable<string> bodies, string sha, string? main = null)
     {
         CiState? word = null;
         foreach (var body in bodies)
         {
-            foreach (Match m in Regex.Matches(body, @"^<!-- harness:gate:(green|red|waits):([0-9a-f]+)(?::([0-9a-f]+))? -->[ \t]*\r?$", RegexOptions.Multiline))
+            foreach (Match m in GateMatches(body))
             {
                 if (m.Groups[2].Value != sha) continue;
+                if (m.Groups[1].Value == "green") return CiState.Green;
                 word = m.Groups[1].Value switch
                 {
-                    "green" => CiState.Green,
                     "red" => CiState.Red,
                     "waits" when main is null || main == m.Groups[3].Value => CiState.Pending,
                     _ => null,
@@ -180,6 +182,27 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
             }
         }
         return word;
+    }
+
+    // The green or red a head already carries, waiting on main aside: a gate that finds one stands down.
+    public static CiState? VerdictAt(IEnumerable<string> bodies, string sha)
+    {
+        CiState? word = null;
+        foreach (var body in bodies)
+        {
+            foreach (Match m in GateMatches(body))
+            {
+                if (m.Groups[2].Value != sha || m.Groups[1].Value == "waits") continue;
+                if (m.Groups[1].Value == "green") return CiState.Green;
+                word = CiState.Red;
+            }
+        }
+        return word;
+    }
+
+    static MatchCollection GateMatches(string body)
+    {
+        return Regex.Matches(body, @"^<!-- harness:gate:(green|red|waits):([0-9a-f]+)(?::([0-9a-f]+))? -->[ \t]*\r?$", RegexOptions.Multiline);
     }
 
     // The reviewer's last word at a head (clean, approved: clean from a reviewer that does not merge,

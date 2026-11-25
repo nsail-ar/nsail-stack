@@ -32,6 +32,12 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         var pr = await ctx.Repo.Pr(prNumber, ct);
         if (!pr.Open) return new JobOutcome($"PR #{prNumber} is not open", Idle: true);
         var sha = pr.HeadSha;
+        // The plan read the thread before this job held the story: another harness may have judged the head since.
+        if (Markers.VerdictAt(await Bodies(prNumber, ct), sha) is { } said)
+        {
+            log.LogInformation("PR #{Pr}: {Said} at {Sha} already — no gate", prNumber, said, sha[..8]);
+            return new JobOutcome($"{said.ToString().ToLowerInvariant()} at {sha[..8]} already — no gate", Idle: true);
+        }
 
         try
         {
@@ -40,8 +46,8 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         catch (Exception e) when (!ct.IsCancellationRequested && IsOwnRed(e))
         {
             var unreadable = InCheckout(e.Message, ctx.Workspace.SlotPath(slot));
-            await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", ctx.Texts.GateUnreadable)), unreadable, log);
-            return new JobOutcome($"red — {unreadable}", Failed: true);
+            return await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", ctx.Texts.GateUnreadable)), unreadable,
+                "red", new JobOutcome($"red — {unreadable}", Failed: true), log, ct);
         }
         // A workspace the machine cannot prepare is said in the machine's log alone (HarnessLoop.Sail).
         catch (Exception e) when (!ct.IsCancellationRequested && e is not (WorkspaceFault or SharedStepException or MachineSaturated))
@@ -51,6 +57,11 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             await Broke(prNumber, sha, e.Message, log);
             throw;
         }
+    }
+
+    async Task<IReadOnlyList<string>> Bodies(int prNumber, CancellationToken ct)
+    {
+        return [.. ctx.Markers.Bodies(await ctx.Repo.Thread(prNumber, ct), await ctx.Repo.Login(ct))];
     }
 
     // A message as the checkout would say it: the slot's own path is the machine's, never the PR's to read.
@@ -83,8 +94,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         if (merge.ExitCode != 0)
         {
             await Shell.Run("git", ["merge", "--abort"], dir);
-            await Verdict(prNumber, sha, green: false, ctx.Texts.GateConflict, null, log);
-            return new JobOutcome("red — conflicts with main", Failed: true);
+            return await Verdict(prNumber, sha, green: false, ctx.Texts.GateConflict, null, "red", new JobOutcome("red — conflicts with main", Failed: true), log, ct);
         }
 
         // The gate takes its build turn before its clock starts: time waiting in line is not the build's.
@@ -116,38 +126,36 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
     internal async Task<JobOutcome> Judge(int prNumber, string sha, string main, string dir, ShellResult result, ILogger log, CancellationToken ct)
     {
         if (result.TimedOut && ctx.Options.Pressure.Saturated(ctx.Pressure.Read()) is { } reading
-            && !Markers.SaturatedAt(ctx.Markers.Bodies(await ctx.Repo.Thread(prNumber, ct), await ctx.Repo.Login(ct)), sha))
+            && await Bodies(prNumber, ct) is var bodies && !Markers.SaturatedAt(bodies, sha))
         {
+            if (Dropped(bodies, prNumber, sha, "a run out of time", log) is { } dropped) return dropped;
             var error = HarnessTexts.Fill(ctx.Texts.GateSaturated, ("minutes", Step.Minutes), ("reading", reading));
             await Broke(prNumber, sha, error, log, Markers.GateSaturated(sha));
             throw new MachineSaturated(error);
         }
         if (result.ExitCode == 0)
         {
-            await Verdict(prNumber, sha, green: true, ctx.Texts.GateGreen, null, log);
-            return new JobOutcome("green");
+            return await Verdict(prNumber, sha, green: true, ctx.Texts.GateGreen, null, "green", new JobOutcome("green"), log, ct);
         }
         var failures = FailureSet(result.Output, dir);
-        if (result.TimedOut && failures.Count == 0) return await OutOfTime(prNumber, sha, result.Output, log);
+        if (result.TimedOut && failures.Count == 0) return await OutOfTime(prNumber, sha, result.Output, log, ct);
         // A red that is all main's own is not the PR's round: it waits for main to move.
         if (MainGateJob.RedAt(main) is { } mains && failures.Count > 0 && failures.IsSubsetOf(mains))
         {
-            await Waits(prNumber, sha, main, log);
-            return new JobOutcome($"red only where main is red at {main[..8]} — gated again once main moves", Idle: true);
+            return await Waits(prNumber, sha, main, log, ct);
         }
         var why = ctx.Texts.GateRedTests;
-        await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", why)), Failures(result.Output), log);
-        return new JobOutcome($"red — {why}", Failed: true);
+        return await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", why)), Failures(result.Output),
+            "red", new JobOutcome($"red — {why}", Failed: true), log, ct);
     }
 
     // Red by time alone: the clock ran out with nothing red. The verdict says what was green and fires
     // OutOfTime (the type's default calls a hand) instead of a round: no builder can fix a clock.
-    async Task<JobOutcome> OutOfTime(int prNumber, string sha, string output, ILogger log)
+    async Task<JobOutcome> OutOfTime(int prNumber, string sha, string output, ILogger log, CancellationToken ct)
     {
         var late = HarnessTexts.Fill(ctx.Texts.GateTimedOut, ("minutes", Step.Minutes));
         var text = HarnessTexts.Fill(ctx.Texts.GateOutOfTime, ("late", late), ("green", GreenOf(output, ctx.Texts)));
-        await Verdict(prNumber, sha, green: false, text, null, log);
-        return new JobOutcome($"red — {late}", Event: OutOfTimeEvent, Failed: true);
+        return await Verdict(prNumber, sha, green: false, text, null, "a run out of time", new JobOutcome($"red — {late}", Event: OutOfTimeEvent, Failed: true), log, ct);
     }
 
     // The Verify event a head red by time alone fires.
@@ -162,8 +170,19 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         return lines.Any(l => BuildSucceeded().IsMatch(l)) ? texts.GateBuildGreen : texts.GateNothingGreen;
     }
 
-    async Task Verdict(int pr, string sha, bool green, string text, string? detail, ILogger log)
+    // A head judged while this run built (another harness's verdict) keeps that verdict: this run's word is
+    // dropped, said in the log alone — no comment, no status, no event. Every marker this job writes reads the thread first.
+    static JobOutcome? Dropped(IEnumerable<string> bodies, int pr, string sha, string word, ILogger log)
     {
+        if (Markers.VerdictAt(bodies, sha) is not { } said) return null;
+        log.LogWarning("PR #{Pr}: {Word} at {Sha} dropped — the head already reads {Said}", pr, word, sha[..8], said);
+        return new JobOutcome($"{word} dropped — {said.ToString().ToLowerInvariant()} at {sha[..8]} already", Idle: true);
+    }
+
+    // The verdict, unless the head already carries one: then the run's outcome is the drop.
+    async Task<JobOutcome> Verdict(int pr, string sha, bool green, string text, string? detail, string word, JobOutcome outcome, ILogger log, CancellationToken ct)
+    {
+        if (Dropped(await Bodies(pr, ct), pr, sha, word, log) is { } dropped) return dropped;
         var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", green ? "green" : "red"), ("sha", sha[..8]), ("text", text))
             + (detail is null ? "" : $"\n\n```\n{detail}\n```")
             + $"\n\n{ctx.Texts.Signature}\n{Markers.Gate(green, sha)}";
@@ -177,6 +196,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             // The comment is the verdict; the status is a courtesy the token may not be allowed.
             log.LogDebug("no gate status on {Sha}: {Error}", sha[..8], e.Message);
         }
+        return outcome;
     }
 
     async Task Broke(int pr, string sha, string error, ILogger log, string? marker = null)
@@ -193,8 +213,9 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         }
     }
 
-    async Task Waits(int pr, string sha, string main, ILogger log)
+    async Task<JobOutcome> Waits(int pr, string sha, string main, ILogger log, CancellationToken ct)
     {
+        if (Dropped(await Bodies(pr, ct), pr, sha, "red only where main is red", log) is { } dropped) return dropped;
         var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", "red"), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateWaits, ("main", main[..8]))))
             + $"\n\n{ctx.Texts.Signature}\n{Markers.GateWaits(sha, main)}";
         await ctx.Repo.Comment(pr, body);
@@ -206,6 +227,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         {
             log.LogDebug("no gate status on {Sha}: {Error}", sha[..8], e.Message);
         }
+        return new JobOutcome($"red only where main is red at {main[..8]} — gated again once main moves", Idle: true);
     }
 
     // What failed, comparable across slots and runs: the failed tests by name, else the build errors,

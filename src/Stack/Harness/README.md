@@ -43,7 +43,10 @@ the files it leaves.
     `Solution` itself, when its change only adds projects — their entries, configurations, nesting and new solution
     folders, `DotNetBuilder.AddedOnly` — seeds those projects instead of building it all, so a new kit builds itself and
     what references it; a PR
-    red only where main's own gate is red waits for main to move: no round owes it; a gate that broke on infrastructure — git, the provider, the disk — writes
+    red only where main's own gate is red waits for main to move: no round owes it; a head carries one verdict, whichever
+    harness gates it: a gate re-reads the PR's thread when it starts and again before it writes, and when another harness
+    judged the head meanwhile (green or red; waiting on main is none) it stands down with no comment, no status and no
+    event, a line in its log alone, and a green at a head outlasts any later red there (`Markers.GateAt`); a gate that broke on infrastructure — git, the provider, the disk — writes
     no verdict and no status, only an unmarked comment, and the head is gated again after the backoff,
     and so does the first gate at a head that runs out its clock while the machine is saturated (its
     comment carries `harness:gate:saturated:<sha>`, which is no verdict); any other run that passed its `Minutes` with
