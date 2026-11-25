@@ -40,7 +40,7 @@ public class S3StorageProvider : IStorageProvider
 
     public string DisplayName
     {
-        get { return "S3-compatible"; }
+        get { return "S3-compatible bucket"; }
     }
 
     public bool IsRemote

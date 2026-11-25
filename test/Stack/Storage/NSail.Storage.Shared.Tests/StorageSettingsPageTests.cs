@@ -18,8 +18,9 @@ using NSail.Storage.Settings.Models;
 namespace NSail.Storage.Tests;
 
 // The screen lists one row per declared store name, in the order the server answers, the
-// default under its own words and every other name as its kit declared it; a store's form opens
-// in the aside, and its save reaches the list underneath through the real Mediator.
+// default under its own words, a kit's name under the words its kit supplies or as declared, and
+// each provider in the install's language; a store's form opens in the aside, and its save
+// reaches the list underneath through the real Mediator.
 public sealed class StorageSettingsPageTests : BunitContext, IAsyncLifetime
 {
     readonly StoresServer _server = new();
@@ -32,6 +33,9 @@ public sealed class StorageSettingsPageTests : BunitContext, IAsyncLifetime
         Services.AddMessaging();
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddStringsFromAssembly(typeof(StorageSettingsPage).Assembly);
+
+        // A kit's strings, composed after the screen's: they word the store "reports" and no other.
+        Services.AddStringsFromAssembly(typeof(StorageSettingsPageTests).Assembly);
         Services.AddSingleton<MetadataProvider>();
         Services.AddSingleton<ISender<ListStorageStores, List<StorageStoreRow>>>(_server);
         Services.AddSingleton<ISender<LookupStorageProviders, List<StorageProviderRef>>>(_server);
@@ -73,11 +77,81 @@ public sealed class StorageSettingsPageTests : BunitContext, IAsyncLifetime
         var rows = app.FindAll("tbody tr").Select(row => row.TextContent).ToList();
 
         Assert.Contains("Por defecto", rows[0]);
-        Assert.Contains("Local folder", rows[0]);
-        Assert.Contains("reports", rows[1]);
-        Assert.Contains("S3-compatible", rows[1]);
+        Assert.Contains("Carpeta del servidor", rows[0]);
+        Assert.Contains("Reportes", rows[1]);
+        Assert.Contains("Bucket compatible con S3", rows[1]);
         Assert.Contains("backups", rows[2]);
+        Assert.Contains("Carpeta del servidor", rows[2]);
         Assert.Contains("✓", rows[2]);
+    }
+
+    [Fact]
+    public void ReadsTheProvidersInEnglish()
+    {
+        var app = RenderApp();
+
+        app.WaitForAssertion(() => Assert.Equal(3, app.FindAll("tbody tr").Count));
+
+        var rows = app.FindAll("tbody tr").Select(row => row.TextContent).ToList();
+
+        Assert.Contains("Default", rows[0]);
+        Assert.Contains("Server folder", rows[0]);
+        Assert.Contains("Reports", rows[1]);
+        Assert.Contains("S3-compatible bucket", rows[1]);
+    }
+
+    [Theory]
+    [InlineData("es", "Editar Almacén")]
+    [InlineData("en", "Edit Store")]
+    public void ThePencilNamesItsAct(string language, string name)
+    {
+        Services.GetRequiredService<LanguageProvider>().Current = language;
+
+        var app = RenderApp();
+
+        app.WaitForAssertion(() => Assert.Equal(3, app.FindAll("tbody tr").Count));
+
+        var pencil = app.FindAll("tbody tr")[0].QuerySelector("a[href*='aside=']")!;
+
+        Assert.Equal(name, pencil.GetAttribute("aria-label"));
+        Assert.Equal(name, pencil.GetAttribute("data-ns-whisper"));
+    }
+
+    [Fact]
+    public void TheFormNamesItsActAndItsStore()
+    {
+        Services.GetRequiredService<LanguageProvider>().Current = "es";
+
+        var app = RenderApp();
+
+        app.WaitForAssertion(() => Assert.Equal(3, app.FindAll("tbody tr").Count));
+
+        Navigation.NavigateTo("/settings/storage?aside=settings%2Fstorage%2Fdefault");
+        app.WaitForAssertion(() => Assert.Contains("Editar Almacén: Por defecto", app.Markup));
+
+        Navigation.NavigateTo("/settings/storage?aside=settings%2Fstorage%2Freports");
+        app.WaitForAssertion(() => Assert.Contains("Editar Almacén: Reportes", app.Markup));
+    }
+
+    // The options read in the install's language, in its order; what is chosen is still the type.
+    [Fact]
+    public void TheProviderPickerOffersTheInstallsWords()
+    {
+        Services.GetRequiredService<LanguageProvider>().Current = "es";
+
+        var app = RenderApp();
+
+        app.WaitForAssertion(() => Assert.Equal(3, app.FindAll("tbody tr").Count));
+
+        Navigation.NavigateTo("/settings/storage?aside=settings%2Fstorage%2Fdefault");
+        app.WaitForAssertion(() => Assert.Equal("/data/storage", Field(app, "Contenedor").GetAttribute("value")));
+
+        var picker = app.FindComponent<NsSelect<StorageProviderRef, string?>>();
+
+        Assert.Equal("Carpeta del servidor", picker.Instance.ItemText!(picker.Instance.Items!.Single(provider => provider.Type == "file")));
+        Assert.Equal(
+            ["Bucket compatible con S3", "Carpeta del servidor", "Repositorio git"],
+            picker.Instance.Items!.Select(picker.Instance.ItemText!).ToArray());
     }
 
     // The whole circuit: the store's form opens in the aside without tearing the list down, its

@@ -6,8 +6,11 @@
   "Guide.Storage": "Almacenamiento",
 
   "Storage.StorageSettingsPage.Title": "Almacenamiento",
-  "Storage.StorageStorePage.Title": "Almacenamiento",
+  "Storage.StorageStorePage.Title": "Editar Almacén",
   "Storage.DefaultStore": "Por defecto",
+  "Storage.Providers.file": "Carpeta del servidor",
+  "Storage.Providers.s3": "Bucket compatible con S3",
+  "Storage.Providers.git": "Repositorio git",
   "Storage.StorageStorePage.ContainerFolderHint": "La carpeta de este servidor donde se escriben los objetos.",
   "Storage.StorageStorePage.ContainerBucketHint": "El bucket donde se escriben los objetos.",
   "Storage.StorageStorePage.EndpointHint": "La dirección del servicio compatible con S3, sin el bucket.",

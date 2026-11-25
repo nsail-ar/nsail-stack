@@ -9,7 +9,8 @@ public static class StorageNames
 {
     public const string Default = "default";
 
-    // The default store is the one name with words of its own; a kit's name is its constant.
+    // The default store under its words and any other name as declared. The settings screen
+    // also reads a kit's own words for its name (Storage.Stores.{name}).
     public static string Display(string name, string defaultStore)
     {
         return name == Default ? defaultStore : name;

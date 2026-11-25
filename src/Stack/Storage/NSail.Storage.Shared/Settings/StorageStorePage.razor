@@ -13,7 +13,7 @@
 
 <NsPanel>
     <Header>
-        <NsTitleBar Title="@($"{GetTitle()}: {StorageNames.Display(Name, Translate("Storage.DefaultStore"))}")" />
+        <NsTitleBar Title="@($"{GetTitle()}: {StorageWords.Store(Strings, Name)}")" />
     </Header>
     <Content>
         <NsForm @key="Name" TModel="SaveStorageSettings" OnLoad="Load" OnSubmit="OnSubmit">
@@ -23,7 +23,7 @@
                               @bind-Value="context.Provider"
                               Items="_providers"
                               ItemValue="provider => provider.Type"
-                              ItemText="provider => provider.DisplayName"
+                              ItemText="provider => StorageWords.Provider(Strings, provider)"
                               Clearable />
                 </NsItem>
                 <NsItem Grow>
@@ -81,7 +81,11 @@
 
     protected override async Task OnCreatedAsync()
     {
-        _providers = await Send(new LookupStorageProviders(), CancellationToken);
+        var providers = await Send(new LookupStorageProviders(), CancellationToken);
+
+        _providers = providers
+            .OrderBy(provider => StorageWords.Provider(Strings, provider), StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
     }
 
     async Task Load(LoadEventArgs<SaveStorageSettings> args)

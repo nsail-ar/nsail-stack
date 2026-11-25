@@ -24,6 +24,15 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="strings*.json" />
+        <EmbeddedResource Update="strings.*.json">
+            <DependentUpon>strings.json</DependentUpon>
+            <LogicalName>$(RootNamespace).%(Filename)%(Extension)</LogicalName>
+            <WithCulture>false</WithCulture>
+        </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
         <Using Include="Xunit" />
     </ItemGroup>
 

@@ -47,6 +47,10 @@ services.AddStore(AccountingStores.Reports,
     builder.Configuration.Load<StorageOptions>("Storage:reports"));            // the host, optional
 ```
 
+The settings screen reads the store under the words its kit supplies as `Storage.Stores.{name}`
+in the kit's client strings (`"Storage.Stores.reports": "Reportes"` in `strings.es.json`), and
+under the declared name when it supplies none.
+
 On each client composition root that shows the settings screen:
 
 ```csharp
@@ -108,7 +112,7 @@ probe's own verdicts keep their own.
 | Call | Meaning |
 |---|---|
 | `AddStorageWebApi(install, guard)` | The default store's `StorageManager` (unkeyed, and keyed `StorageNames.Default`), the endpoints, in-process clients and permissions, and `AddSettings()`. Registers no provider and no `KeyProtector`: the host registers the key that seals the stored secrets. |
-| `AddStore(name, install)` | Declares a store: a keyed `StorageManager` under `name`, and a row on the settings screen. `install` is optional; declared again with one, the last target wins. |
+| `AddStore(name, install)` | Declares a store: a keyed `StorageManager` under `name`, and a row on the settings screen, worded by `Storage.Stores.{name}`. `install` is optional; declared again with one, the last target wins. |
 | `AddFileSystemStorage()` | The `file` provider. |
 | `AddS3Storage()` | The `s3` provider and its `HttpClient`, with no wall-clock timeout; the caller's `CancellationToken` is the deadline. |
 | `AddGitStorage()` | The `git` provider. |

@@ -33,7 +33,7 @@ public class FileSystemStorageProvider : IStorageProvider
 
     public string DisplayName
     {
-        get { return "Local folder"; }
+        get { return "Server folder"; }
     }
 
     public bool IsRemote
