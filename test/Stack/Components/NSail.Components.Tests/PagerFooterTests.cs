@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
@@ -118,6 +119,50 @@ public sealed class PagerFooterTests : BunitContext, IAsyncLifetime
 
         Assert.Equal(4, arrows.Length);
         Assert.NotNull(toolbar.QuerySelector(".mud-table-pagination-display .mud-table-pagination-caption"));
+    }
+
+    /// <summary>The arrows are icon-only vendor buttons, so the whisper reaches them by a selector
+    /// of their shape (ns.js's WHISPER_SELECTOR) and says their accessible name: pinned here so a
+    /// vendor upgrade that moves them out of that shape reddens CI rather than taking the bubble
+    /// away in silence. On page 1 of two, first and previous are disabled — the vendor drops their
+    /// hit testing and Tab skips them, so they open nothing — and next and last are live.</summary>
+    [Fact]
+    public void TheArrowsAreTheNamedFaceTheWhisperIsKeyedOn()
+    {
+        var cut = Render<PagerFooterHost>();
+
+        var arrows = cut.FindAll(PagerArrow);
+
+        Assert.Equal(4, arrows.Count);
+        Assert.All(arrows, arrow => Assert.Equal("BUTTON", arrow.NodeName));
+        Assert.All(arrows, arrow => Assert.False(string.IsNullOrWhiteSpace(arrow.GetAttribute("aria-label"))));
+        Assert.Equal([true, true, false, false], arrows.Select(arrow => arrow.HasAttribute("disabled")));
+
+        var script = File.ReadAllText(Path.Combine(
+            RepoRoot(),
+            "src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js"));
+
+        var selector = Regex.Match(script, @"const WHISPER_SELECTOR = '(?<list>[^']*)';").Groups["list"].Value;
+        Assert.Contains(PagerArrow, selector.Split(", "));
+    }
+
+    const string PagerArrow = ".ns-table .mud-table-pagination-actions .mud-icon-button[aria-label]:not([aria-label=\"\"])";
+
+    static string RepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException($"NSail.sln was not found above {AppContext.BaseDirectory}.");
     }
 
     /// <summary>A window query would compact the phone's pager and leave an aside's wrapping on a

@@ -174,7 +174,9 @@ looks up its own. No `<NsColumn>`, no `<NsTr>`.
   the first/last arrows and keeps the select, the row counter and previous/next, so the row stays
   one line on a phone and in an aside alike. The vendor's row is one shrink-proof width, and a
   window query cannot see an aside's box; a stacked list with room for the label keeps it — the
-  line is the width, not the stack (cases).
+  line is the width, not the stack (cases). Its arrows are icon-only and the vendor's, so the
+  whisper reaches them by selector and names them off `aria-label`
+  ([intentional-ui-cases-shell.md](../intentional-ui-cases-shell.md)).
 
 ### Order (`NsTh Sortable`)
 
