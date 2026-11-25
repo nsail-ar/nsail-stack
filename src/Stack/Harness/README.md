@@ -58,8 +58,10 @@ the files it leaves.
     a release holds that repository's merges when the version its tag pins does, and a story merged
     there has landed on the default branch at the oldest commit whose pin names a version holding
     that merge (`RepositorySet.LandingOf`): until then a red fix is not cut, QA does not walk it,
-    main's gate has not judged it, and a story it blocks stays held (`SnapshotReader.ReadAwaitingPin`):
-    a builder sent before the pin moves compiles against the version without the change.
+    main's gate has not judged it. A story it blocks is held only until a release of that repository
+    holds the merge (the newest tag named like the pin's ref, `SnapshotReader.ReadAwaitingRelease`),
+    not until the pin does: the dependent is often the adaptation the pin cannot move without, so its
+    PR moves the pin.
     A story's merged PRs are read off the repository's own list of merged PRs, whole once and then
     only what changed since (never the search index, whose budget every job on the token shares).
     A PR no gate judges (another repository's, or any with no Verify worker) whose red CI failed only

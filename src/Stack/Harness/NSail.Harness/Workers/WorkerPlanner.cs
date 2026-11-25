@@ -40,7 +40,7 @@ public static class WorkerPlanner
                 ? $"release andon ({a.Product}): it stands still, so the line runs behind it — waits for {a.Waits}"
                 : $"release andon ({a.Product}): nothing but the release starts until its cut ships — waits for {a.Waits}");
         }
-        var lookup = new StoryLookup(issues, board.Prs, board.MergedStories, board.AwaitingPin);
+        var lookup = new StoryLookup(issues, board.Prs, board.MergedStories, board.AwaitingRelease);
         var flight = board.Flight;
         var prsByStory = board.Prs.GroupBy(p => p.Story).ToDictionary(g => g.Key, g => g.OrderBy(p => p.Number).ToList());
 

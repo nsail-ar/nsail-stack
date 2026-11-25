@@ -102,6 +102,26 @@ public sealed class RepositorySet(IReadOnlyList<(IRepository Repository, Reposit
         return false;
     }
 
+    // A merge of the story in a pinned repository that no release of it holds yet: the newest tag
+    // named like the pin's ref does not hold it. What depends on it can move the pin once one does.
+    // False with no merge in one — nothing waits.
+    public async Task<bool> AwaitsRelease(int story, CancellationToken ct = default)
+    {
+        foreach (var (repository, options) in repositories)
+        {
+            if (options.Label is null || options.Pin is not { } pin) continue;
+            if (await repository.MergeOf(story, ct) is not { } merge) continue;
+            if (_released.ContainsKey((repository.Name, merge.Sha))) continue;
+            var prefix = pin.Ref.Split("{version}")[0];
+            if (await repository.NewestTag(prefix, ct) is not { } tag || !await repository.Holds(tag, merge.Sha, ct)) return true;
+            _released[(repository.Name, merge.Sha)] = tag;
+        }
+        return false;
+    }
+
+    // A release that holds a merge holds it for good.
+    readonly ConcurrentDictionary<(string Repo, string Sha), string> _released = new();
+
     async Task<Merge?> Pinned(IRepository repository, PinOptions pin, Merge merge, CancellationToken ct)
     {
         if (_landed.TryGetValue((repository.Name, merge.Sha), out var found)) return found;

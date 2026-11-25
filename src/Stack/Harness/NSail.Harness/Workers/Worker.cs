@@ -201,7 +201,7 @@ public sealed class Worker
 }
 
 // What a filter asks of the board beyond the story itself: its PRs, its blockers, its children.
-public sealed class StoryLookup(IReadOnlyList<Issue> issues, IReadOnlyList<StoryPr> prs, IReadOnlySet<int>? merged = null, IReadOnlySet<int>? awaitingPin = null)
+public sealed class StoryLookup(IReadOnlyList<Issue> issues, IReadOnlyList<StoryPr> prs, IReadOnlySet<int>? merged = null, IReadOnlySet<int>? awaitingRelease = null)
 {
     readonly Dictionary<int, Issue> _byNumber = issues.ToDictionary(i => i.Number);
     readonly HashSet<int> _withPr = prs.Select(p => p.Story).ToHashSet();
@@ -217,10 +217,11 @@ public sealed class StoryLookup(IReadOnlyList<Issue> issues, IReadOnlyList<Story
     }
 
     // A blocker unblocks at Merged, not at its close: the code a dependent needs is on main. One
-    // merged in a pinned repository is there only once the pin holds it (BoardSnapshot.AwaitingPin).
+    // merged in a pinned repository is there once a release of it holds the merge, which the dependent
+    // moves the pin to when main's does not yet (BoardSnapshot.AwaitingRelease).
     public bool Unblocked(Issue i)
     {
-        return i.OpenBlockers.All(b => _byNumber.TryGetValue(b, out var blocker) && Stages.Landed.Contains(blocker.Stage) && awaitingPin?.Contains(b) != true);
+        return i.OpenBlockers.All(b => _byNumber.TryGetValue(b, out var blocker) && Stages.Landed.Contains(blocker.Stage) && awaitingRelease?.Contains(b) != true);
     }
 
     public bool EpicStarted(Issue epic)

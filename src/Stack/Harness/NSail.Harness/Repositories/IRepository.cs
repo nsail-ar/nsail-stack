@@ -84,6 +84,9 @@ public interface IRepository
     // The published releases, newest first: a tag pushed by a cut that died before publishing is not one.
     Task<IReadOnlyList<Release>> Releases(CancellationToken ct = default);
 
+    // The newest tag whose name starts with the prefix, by its commit's date; null with none.
+    Task<string?> NewestTag(string prefix, CancellationToken ct = default);
+
     // Whether the history of the reference (a tag, a branch, a commit) holds the commit.
     Task<bool> Holds(string reference, string sha, CancellationToken ct = default);
 

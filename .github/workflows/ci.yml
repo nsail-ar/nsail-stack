@@ -216,9 +216,10 @@ jobs:
       # nobody bumping anything. The monorepo is restored and compiled at the new version
       # first, so a bump never turns its main red. A restore that fails is the feed's or its
       # token's, and reds this run. A compile that fails is the code's: the bump is not pushed,
-      # and the story that released it is told, whose monorepo PR moves the pin together with
-      # the adaptation. Only forward: a slower run, or a PR that moved the pin already, is left
-      # alone.
+      # and the monorepo story that owns the adaptation is told, whose PR moves the pin together
+      # with it. Never the Stack story alone: nobody builds there for the monorepo, and every
+      # later release would pile up behind a comment. Only forward: a slower run, or a PR that
+      # moved the pin already, is left alone.
       - name: Bump the monorepo
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
@@ -250,9 +251,31 @@ jobs:
             [ -n "$FAILED" ] || FAILED=$(tail -20 ../mono-build.log)
             echo "::warning::the monorepo does not compile at v$VERSION - the bump is not pushed"
             echo "$FAILED"
+            printf 'Stack `v%s` is released, but the monorepo does not compile at it, so the bump was not pushed. This story owns the adaptation: its PR moves `NSailStackVersion` to this version or a newer one together with it.\n\n```\n%s\n```\n' "$VERSION" "$FAILED" > ../bump-red.md
+            # The owner: the open monorepo stories the releasing story blocks; else the one an
+            # earlier red bump named, still open; else a new story, first in Ready.
+            OWNERS=""
             if [ -n "$STORY" ]; then
-              printf 'Stack `v%s` is released, but the monorepo does not compile at it, so the bump was not pushed. The monorepo PR of this story (or of the earlier release that broke it) moves `NSailStackVersion` to this version together with the adaptation:\n\n```\n%s\n```\n' "$VERSION" "$FAILED" > ../bump-red.md
-              gh issue comment "$STORY" -R nsail-ar/nsail --body-file ../bump-red.md
+              OWNERS=$(gh api "repos/nsail-ar/nsail/issues/$STORY/dependencies/blocking" \
+                --jq '.[] | select(.state == "open") | select([.labels[].name] | index("area:stack") | not) | .number' || true)
+            fi
+            if [ -z "$OWNERS" ]; then
+              OWNERS=$(gh issue list -R nsail-ar/nsail --state open --limit 5 --json number,labels \
+                --search '"so the bump was not pushed. This story owns the adaptation" in:comments' \
+                --jq '.[] | select([.labels[].name] | index("area:stack") | not) | .number' || true)
+            fi
+            if [ -n "$OWNERS" ]; then
+              for owner in $OWNERS; do gh issue comment "$owner" -R nsail-ar/nsail --body-file ../bump-red.md; done
+            else
+              URL=$(gh issue create -R nsail-ar/nsail --label p1 \
+                --title "fix: the monorepo compiles at the Stack v$VERSION" --body "Every Stack release waits on this one: the first comment says what does not compile.")
+              ITEM=$(gh project item-add 1 --owner nsail-ar --url "$URL" --format json --jq .id)
+              PROJECT=$(gh project view 1 --owner nsail-ar --format json --jq .id)
+              FIELD=$(gh project field-list 1 --owner nsail-ar --format json --jq '.fields[] | select(.name == "Status")')
+              gh project item-edit --project-id "$PROJECT" --id "$ITEM" --field-id "$(jq -r .id <<< "$FIELD")" \
+                --single-select-option-id "$(jq -r '.options[] | select(.name == "Ready") | .id' <<< "$FIELD")"
+              gh issue comment "$URL" --body-file ../bump-red.md
+              echo "::warning::opened $URL"
             fi
             exit 0
           fi
