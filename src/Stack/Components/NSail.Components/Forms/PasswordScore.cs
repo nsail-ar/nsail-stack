@@ -11,7 +11,7 @@ public static class PasswordScore
     const int LongLength = 12;
 
     /// <summary>The bucket a password falls in, or null when there is nothing to score yet —
-    /// an empty field earns no verdict, so the bar stays off screen until the first keystroke.</summary>
+    /// an empty field earns no verdict.</summary>
     public static PasswordStrength? Measure(string? password)
     {
         if (string.IsNullOrEmpty(password))

@@ -79,7 +79,7 @@ public sealed class HelpSeatTests : BunitContext, IAsyncLifetime
     }
 
     // What the house draws in a field's under-field zone is a sibling in the row, between the
-    // field and the ?: the hint while clean, the refusal's described twin while refused, a typed
+    // field and the ?: the hint while clean, the refusal's described twin while refused, a
     // password's strength bar ahead of its hint, an empty picker's door. The seat reaches past
     // each.
     [Fact]
