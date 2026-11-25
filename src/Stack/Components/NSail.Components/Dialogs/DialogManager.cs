@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.AspNetCore.Components;
+using NSail.Icons;
 
 namespace NSail.Components;
 
@@ -41,4 +42,16 @@ public abstract class DialogManager
         string? title = null,
         IReadOnlyDictionary<string, object?>? parameters = null)
         where TComponent : IComponent;
+
+    /// <summary>The same dialog with a glyph drawn before its title, in the title icon slot a
+    /// page's bar draws its own in. Virtual and not abstract: a manager that draws no title row
+    /// owes only the dialog, which is what this one opens.</summary>
+    public virtual Task Open<TComponent>(
+        string? title,
+        IReadOnlyDictionary<string, object?>? parameters,
+        Glyph icon)
+        where TComponent : IComponent
+    {
+        return Open<TComponent>(title, parameters);
+    }
 }

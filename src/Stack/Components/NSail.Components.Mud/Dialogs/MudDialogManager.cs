@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using NSail.Icons;
 using NSail.Localization;
 
 namespace NSail.Components;
@@ -105,19 +106,30 @@ internal sealed class MudDialogManager(IDialogService dialogs, ISnackbar snackba
         string? title = null,
         IReadOnlyDictionary<string, object?>? parameters = null)
     {
-        var reference = await ShowOpenDialog(typeof(TComponent), title, parameters);
+        var reference = await ShowOpenDialog(typeof(TComponent), title, parameters, icon: null);
+        await reference.Result;
+    }
+
+    public override async Task Open<TComponent>(
+        string? title,
+        IReadOnlyDictionary<string, object?>? parameters,
+        Glyph icon)
+    {
+        var reference = await ShowOpenDialog(typeof(TComponent), title, parameters, icon);
         await reference.Result;
     }
 
     Task<IDialogReference> ShowOpenDialog(
         Type componentType,
         string? title,
-        IReadOnlyDictionary<string, object?>? parameters)
+        IReadOnlyDictionary<string, object?>? parameters,
+        Glyph? icon)
     {
         var dialogParameters = new DialogParameters<NsOpenDialog>
         {
             { x => x.ComponentType, componentType },
             { x => x.Title, title },
+            { x => x.Icon, icon },
             { x => x.ComponentParameters, parameters }
         };
 

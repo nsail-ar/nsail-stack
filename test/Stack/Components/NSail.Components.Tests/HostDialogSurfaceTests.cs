@@ -75,6 +75,44 @@ public sealed class HostDialogSurfaceTests : BunitContext, IAsyncLifetime
         Assert.NotNull(closeButton);
     }
 
+    /// <summary>The opener's glyph stands in the title icon slot a page's bar draws its own in,
+    /// before the title; the X still closes.</summary>
+    [Fact]
+    public async Task TheOpenersGlyph_StandsInTheTitleIconSlot_BeforeTheTitle()
+    {
+        var host = Render<DialogHostFixture>();
+        var dialogs = Services.GetRequiredService<DialogManager>();
+
+        // Open completes when the dialog CLOSES, so awaiting it here would hang the test.
+        _ = host.InvokeAsync(() => dialogs.Open<DialogProbeBody>("Turno", null, NsIcons.Schedule));
+
+        var slot = host.WaitForElement(".mud-dialog-title .ns-title-icon-slot");
+        Assert.Single(host.FindAll(".mud-dialog-title .ns-title-icon-slot"));
+        Assert.Contains(NsIcons.Schedule.Markup, slot.InnerHtml);
+
+        Assert.True(slot.ParentElement!.FirstElementChild!.ClassList.Contains("ns-title-icon-slot"));
+        Assert.Equal("Turno", slot.ParentElement.TextContent.Trim());
+
+        await host.InvokeAsync(() => host.Find(".mud-dialog-title button").Click());
+
+        Assert.Empty(host.FindAll(".dialog-probe-body"));
+    }
+
+    /// <summary>A dialog opened with no glyph draws the title and the X, and no empty slot.</summary>
+    [Fact]
+    public void ADialogOpenedWithNoGlyph_DrawsNoTitleIconSlot()
+    {
+        var host = Render<DialogHostFixture>();
+        var dialogs = Services.GetRequiredService<DialogManager>();
+
+        // Open completes when the dialog CLOSES, so awaiting it here would hang the test.
+        _ = host.InvokeAsync(() => dialogs.Open<DialogProbeBody>("Dialog title"));
+
+        host.WaitForElement(".mud-dialog-title button");
+        Assert.Contains("Dialog title", host.Find(".mud-dialog-title").TextContent);
+        Assert.Empty(host.FindAll(".mud-dialog-title .ns-title-icon-slot"));
+    }
+
     [Fact]
     public async Task ClickingTheTitleClose_ClosesTheDialog()
     {
