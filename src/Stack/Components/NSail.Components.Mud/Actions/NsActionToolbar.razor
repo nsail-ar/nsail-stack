@@ -33,8 +33,8 @@
             }
             else if (item.PageType is not null && !item.Disabled && !item.Running)
             {
-                <NsLink As="@NsAs.Inline"
-                        Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)"
+                <NsLink As="@GetAs(item)"
+                        Breakpoint="@GetBreakpoint()"
                         Icon="@item.Icon"
                         Content="@item.Content"
                         Size="@(Size ?? NsSize.Md)"
@@ -47,8 +47,8 @@
                 @* An address opens in a new browser tab whatever Target says: no surface of this
                    app can hold it (ActionItem.Url). One no door may open never gets here: it
                    fell out with the gate below, on the row and in the kebab alike. *@
-                <NsLink As="@NsAs.Inline"
-                        Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)"
+                <NsLink As="@GetAs(item)"
+                        Breakpoint="@GetBreakpoint()"
                         Icon="@item.Icon"
                         Content="@item.Content"
                         Size="@(Size ?? NsSize.Md)"
@@ -61,16 +61,17 @@
                 @* The same size as the link branch above: one toolbar mixing a command and a
                    link would otherwise render two different icon boxes, and a slot that is not
                    one width is not a slot. *@
-                <NsAction Action="@item" Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)" Size="@(Size ?? NsSize.Md)" />
+                <NsAction Action="@item" As="@GetAs(item)" Breakpoint="@GetBreakpoint()" Size="@(Size ?? NsSize.Md)" />
             }
         </text>;
 
     @* A verb that reports a STATE wears that state's tone, in the status channel's own
        vocabulary and never a palette of the toolbar's (NsStatusText, NsStatusDot). It is a
-       WRAPPER and not a class on the control: both chromes below paint themselves with the
+       WRAPPER and not a class on the control: both flat chromes below paint themselves with the
        vendor's inherit colour, which resolves to whatever the box around them computed, so a
        class fighting the vendor's own selector for specificity is a fight nothing has to
-       have. *@
+       have. A filled face under Buttons sets its own ink; ns-mud.css restates the tone on the
+       neutral fill's glyph. *@
     RenderFragment<ActionItem> icon = item =>
         @<text>
             @{
@@ -100,7 +101,7 @@
    row whose contributors offered nothing must still hold that reserve or its neighbours'
    icons move. Outside a cell the reserve does not apply, so an empty toolbar is an empty
    box, exactly as it always rendered. *@
-<span class="ns-action-toolbar d-inline-flex align-center gap-1"
+<span class="ns-action-toolbar d-inline-flex align-center @(Buttons ? "gap-2" : "gap-1")"
       style="--ns-action-slots: @Slots"
       @onclick:stopPropagation>
     @foreach (var item in Visible())
@@ -205,11 +206,20 @@
     public NsSize? Size { get; set; }
 
     /// <summary>Overrides the label breakpoint for every action this toolbar renders. Unset is
-    /// Never — the icon-only row this toolbar was built for — so a host wording its own verbs
-    /// (a dialog's labelled home for a contributed act, ui/actions.md) writes Always rather than
-    /// a kit reaching past the presenter to draw a worded link of its own.</summary>
+    /// Never — the icon-only row this toolbar was built for — or Always under Buttons, so a host
+    /// wording its own verbs (a dialog's labelled home for a contributed act, ui/actions.md)
+    /// writes Always or Buttons rather than a kit reaching past the presenter to draw a worded
+    /// link of its own.</summary>
     [Parameter]
     public NsBreakpoint? Breakpoint { get; set; }
+
+    /// <summary>Draws every page act and command as the filled button of the row it stands in
+    /// — worded at every width unless Breakpoint says otherwise, at the item's own As, spaced
+    /// like NsButtons in a horizontal NsStack at Gap Sm — so a dialog whose own acts are buttons
+    /// reads as one row. Off is the icon row, and a host that only words its acts keeps the
+    /// flat rung.</summary>
+    [Parameter]
+    public bool Buttons { get; set; }
 
     /// <summary>What the action column reserves: the cap, the overflow beside it, and the
     /// door when the row carries one — the whole cell, since the whole cell is this one
@@ -307,6 +317,7 @@
             Running = item.Running,
             Writes = item.Writes,
             Severity = item.Severity,
+            As = item.As,
         };
     }
 
@@ -318,6 +329,18 @@
     static bool IsDestructive(ActionItem item)
     {
         return item.Icon == NsIcons.Delete;
+    }
+
+    // The item's intention is read only where the host asked for buttons: on the icon row and
+    // on a worded flat row every act is the flat rung, whatever its contributor named.
+    NsAs GetAs(ActionItem item)
+    {
+        return Buttons ? item.As : NsAs.Inline;
+    }
+
+    NsBreakpoint GetBreakpoint()
+    {
+        return Breakpoint ?? (Buttons ? NsBreakpoint.Always : NsBreakpoint.Never);
     }
 
     IEnumerable<ActionItem> Visible()

@@ -672,7 +672,7 @@
     font-size: 1.5rem;
 }
 
-/* The one verb that destroys never sits at the toolbar's own gap-1 from its neighbour — a
+/* The one verb that destroys never sits at the toolbar's own gap from its neighbour — a
    mis-tap there deletes instead of editing. only-child is excluded on purpose: a row whose
    only visible act is Delete has nothing beside it to separate from, and the extra room would
    only widen that row's slot past the others' (NsActionToolbar.razor, IsDestructive — read off
@@ -2674,6 +2674,16 @@ div.mud-input-slot.mud-input-root::placeholder {
    at one class of specificity, and a tone that only wins on file order is a tone a vendor bump
    moves in silence. */
 .mud-icon-root.ns-status-text {
+    color: var(--ns-status-color, inherit);
+}
+
+/* The same channel on a FILLED face (NsActionToolbar Buttons): the vendor's fill sets its own
+   ink, so the wrapper's colour never reaches the act and is restated on the face's GLYPH, where
+   the tone sits on the icon row too. Not on the word: light Warning reads 4.2:1 as text on the
+   neutral fill under the pointer, under the body floor, while a glyph owes the graphical 3:1
+   (BrandThemeContrastTests). The neutral fill alone: an accent, danger or Important fill is its
+   rank, and its ink is that fill's pair. A refused face keeps the refused ink. */
+.ns-status-text .mud-button-filled-default:not(.ns-important):not(:disabled) .mud-button-icon-start {
     color: var(--ns-status-color, inherit);
 }
 

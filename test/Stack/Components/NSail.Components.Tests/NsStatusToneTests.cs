@@ -109,6 +109,21 @@ public sealed class NsStatusToneTests : BunitContext
             ReadStylesheet());
     }
 
+    /// <summary>A toned act drawn as a filled button stands in the same wrapper, but the
+    /// vendor's fill sets its own ink, so the tone is restated on the face's glyph — on the
+    /// neutral fill alone, the one BrandThemeContrastTests grades it on.</summary>
+    [Fact]
+    public void AToneReachesTheGlyphOfTheNeutralFilledFaceAndNoOther()
+    {
+        Assert.Contains(
+            """
+            .ns-status-text .mud-button-filled-default:not(.ns-important):not(:disabled) .mud-button-icon-start {
+                color: var(--ns-status-color, inherit);
+            }
+            """,
+            ReadStylesheet());
+    }
+
     /// <summary>The neutral is a live state at the MUTED rank, and the ink a refused control
     /// wears is the one thing it may not be: that ink is held under 3:1 on purpose
     /// (BrandThemeContrastTests), so a status word painted in it reads as a control nobody may

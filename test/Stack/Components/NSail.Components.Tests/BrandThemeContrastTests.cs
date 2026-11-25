@@ -2,7 +2,10 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Globalization;
+using System.Text.RegularExpressions;
+using Bunit;
 using MudBlazor;
+using MudBlazor.Services;
 using MudBlazor.Utilities;
 using NSail.Components;
 using NSail.Tones;
@@ -264,6 +267,33 @@ public sealed class BrandThemeContrastTests
             foreach (var ground in grounds)
             {
                 Clears(word, ground, BodyFloor, scheme);
+            }
+        }
+    }
+
+    // A toned act drawn as a FILLED button (NsActionToolbar Buttons) carries its tone on its
+    // glyph, read on the neutral fill: the vendor's action-default-hover over the rung the button
+    // stands on, deepened to its action-disabled-background under the pointer. ns-mud.css
+    // restates the tone there and on no other fill. A glyph is a graphical object and owes the
+    // large floor; the word keeps the fill's own ink because light Warning, as text, does not
+    // clear the body floor under the pointer. Read off the variables the vendor emits, since it
+    // derives the first one from no palette slot.
+    [Theory]
+    [MemberData(nameof(Schemes))]
+    public void EveryStatusToneOnAGlyphClearsTheLargeFloorOnTheNeutralFilledFace(string scheme, BrandTheme theme)
+    {
+        var fills = new[] { Emitted(theme, "action-default-hover"), Emitted(theme, "action-disabled-background") };
+
+        foreach (var severity in new[] { theme.Error, theme.Warning, theme.Success, theme.Info })
+        {
+            var tone = BrandTone.Mix(theme.TextPrimary, severity, BrandTone.ToneLean);
+
+            foreach (var rung in new[] { theme.Background, theme.Surface, theme.SurfaceRaised })
+            {
+                foreach (var fill in fills)
+                {
+                    Clears(tone, Overlaid(rung, fill), LargeFloor, scheme);
+                }
             }
         }
     }
@@ -575,9 +605,42 @@ public sealed class BrandThemeContrastTests
         // row's ground at full strength and grade every word against the wrong floor.
         Assert.True(tint.Length == 8, $"RowHover {theme.RowHover} carries no alpha pair");
 
-        var alpha = int.Parse(tint[6..], NumberStyles.HexNumber, CultureInfo.InvariantCulture) / 255d;
+        return Overlaid(theme.Surface, theme.RowHover);
+    }
 
-        return BrandTone.Mix(theme.Surface, $"#{tint[..6]}", alpha);
+    // A palette variable as MudThemeProvider writes it for the scheme, rgba(r,g,b,a) turned
+    // into #rrggbbaa.
+    static string Emitted(BrandTheme theme, string variable)
+    {
+        using var context = new BunitContext();
+        context.Services.AddMudServices();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var mud = BrandMudTheme.From(new Brand { Dark = theme, Light = theme });
+        var cut = context.Render<MudThemeProvider>(p => p
+            .Add(x => x.Theme, mud)
+            .Add(x => x.IsDarkMode, theme.IsDark));
+
+        var match = Regex.Match(
+            cut.Markup,
+            $@"--mud-palette-{variable}:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)");
+
+        Assert.True(match.Success, $"--mud-palette-{variable} is not emitted as rgba");
+
+        var channels = Enumerable.Range(1, 3)
+            .Select(group => int.Parse(match.Groups[group].Value, CultureInfo.InvariantCulture).ToString("x2", CultureInfo.InvariantCulture));
+        var alpha = (int)Math.Round(double.Parse(match.Groups[4].Value, CultureInfo.InvariantCulture) * 255);
+
+        return $"#{string.Concat(channels)}{alpha.ToString("x2", CultureInfo.InvariantCulture)}";
+    }
+
+    // A translucent tint laid over the ground it stands on, which is what the eye is given.
+    static string Overlaid(string ground, string tint)
+    {
+        var digits = tint.AsSpan().TrimStart('#');
+        var alpha = int.Parse(digits[6..], NumberStyles.HexNumber, CultureInfo.InvariantCulture) / 255d;
+
+        return BrandTone.Mix(ground, $"#{digits[..6]}", alpha);
     }
 
     // The scheme as the vendor receives it, which is where an unset slot becomes a colour
