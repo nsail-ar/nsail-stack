@@ -73,7 +73,8 @@
     /// is ChildContent by default, a RenderFragment and not a string, so unless <see
     /// cref="Label"/> gives the word as text, it writes no aria-label — the attribute the
     /// collapsed control's accessible name reads once its own text goes display:none. A
-    /// collapsed submit would say nothing.</para></summary>
+    /// collapsed submit would be nameless to a screen reader; only the pointer's whisper reads
+    /// the hidden span.</para></summary>
     [Parameter]
     public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Always;
 

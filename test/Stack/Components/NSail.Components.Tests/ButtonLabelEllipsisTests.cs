@@ -3,6 +3,7 @@
 
 using System.Text.RegularExpressions;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
@@ -137,10 +138,20 @@ public sealed class ButtonLabelEllipsisTests : BunitContext, IAsyncLifetime
             .Add(x => x.Label, Long)
             .Add(x => x.Icon, NsIcons.Till));
         var submit = Render<NsSubmit>();
+        var surface = new SurfaceContext(
+            Surfaces.Dialog,
+            Services.GetRequiredService<NavigationManager>(),
+            Services.GetRequiredService<RouteTable>(),
+            JSInterop.JSRuntime,
+            new SurfaceHistory());
+        var close = Render<NsClose>(p => p
+            .AddCascadingValue(surface)
+            .AddChildContent(Long));
 
         Assert.Equal(Long, button.Find(".mud-button-root > .mud-button-label > .ns-button-label").TextContent);
         Assert.Equal(Long, link.Find(".mud-button-root > .mud-button-label > .ns-button-label").TextContent);
         Assert.NotEmpty(submit.Find(".mud-button-root > .mud-button-label > .ns-button-label").TextContent.Trim());
+        Assert.Equal(Long, close.Find(".mud-button-root > .mud-button-label > .ns-button-label").TextContent.Trim());
     }
 
     /// <summary>AC2: a long label is still whole in the accessible name and the whisper's
@@ -208,6 +219,21 @@ public sealed class ButtonLabelEllipsisTests : BunitContext, IAsyncLifetime
         var text = Function(script, "whisperText(el)");
         Assert.Contains("const label = buttonLabel(el);", text);
         Assert.Contains("label.textContent", text);
+    }
+
+    /// <summary>AC2, refused: a tracked form's submit with no Label arrives disabled, and the
+    /// vendor drops hit testing on a disabled button, so the stylesheet hands it back to the
+    /// boxed face as it does to a declared whisper.</summary>
+    [Fact]
+    public void ARefusedFaceWithNoDeclaredWordKeepsItsHitTesting()
+    {
+        var css = Uncommented(HouseStylesheet.Read()).ReplaceLineEndings("\n");
+
+        var rule = Regex.Match(css, @"(?:^|\})\s*(?<selectors>[^{}]*\[data-ns-whisper\]:disabled[^{}]*)\{(?<body>[^}]*)\}");
+
+        Assert.True(rule.Success);
+        Assert.Contains(".mud-button-root:has(> .mud-button-label > .ns-button-label):disabled", rule.Groups["selectors"].Value.Split(',').Select(x => x.Trim()));
+        Assert.Matches(@"pointer-events:\s*auto;", rule.Groups["body"].Value);
     }
 
     static string Function(string script, string signature)

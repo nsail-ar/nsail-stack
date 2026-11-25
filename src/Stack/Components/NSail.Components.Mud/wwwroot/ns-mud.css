@@ -1456,7 +1456,7 @@
 /* A button's label holds one line and ends in an ellipsis, as a chip's does: the vendor
    breaks a long one onto centred lines and the button grows into a block. The clip is the
    label's own span (ns-button-label, NsResponsive's hook on every NsButton, NsSubmit and
-   NsLink face); .mud-button-label keeps the vendor's inline-flex that sets icon and text on
+   NsLink face, and NsClose's worded one); .mud-button-label keeps the vendor's inline-flex that sets icon and text on
    the button's centre line, and only gives up the min-content floor that would refuse to
    shrink it. The root is held to its container, or a shrink-to-fit button would take the
    whole line's width and push past the box. Nothing here sizes, cases or moves a label
@@ -3602,10 +3602,11 @@ div.mud-input-slot.mud-input-root::placeholder {
    every panel on the page.
 
    WHAT IT SAYS AND WHEN are ns.js's, both derived rather than declared: the text is
-   data-ns-whisper (the full name, the key included) or the plain accessible name, and it opens
-   only where that text is not already the control's own rendered text — so the double cartel is
-   unrepresentable rather than gated at each breakpoint, and no container query is restated in
-   two languages. The look is the vendor tooltip's own, read from its variables rather than
+   data-ns-whisper (the full name, the key included), the plain accessible name, or, on a boxed
+   face that declared neither, the words of its own label span; and it opens only where that
+   text is not already the control's own rendered text, or where that span was cut short in «…»
+   — so the double cartel is unrepresentable rather than gated at each breakpoint, and no
+   container query is restated in two languages. The look is the vendor tooltip's own, read from its variables rather than
    invented. */
 .ns-whisper {
     display: none;
@@ -3674,7 +3675,12 @@ div.mud-input-slot.mud-input-root::placeholder {
    Chromium on this markup: with hit testing back, a disabled control receives pointerenter
    and pointerleave and NOT mousedown, mouseup, click or focus, and neither its hover nor its
    active paint moves. The press the vendor was covering is the ripple, which reads the class
-   it is given: a refused face declares none (NsButton, NsLink, NsSubmit, NsClose). */
+   it is given: a refused face declares none (NsButton, NsLink, NsSubmit, NsClose).
+
+   A boxed face with a label span is a trigger whether or not it declared a word (ns.js's
+   WHISPER_SELECTOR): a tracked form's submit with no Label arrives refused, and its cut word
+   is still the bubble's. */
+.mud-button-root:has(> .mud-button-label > .ns-button-label):disabled,
 [data-ns-whisper]:disabled,
 [data-ns-whisper].mud-disabled {
     pointer-events: auto;
@@ -3683,8 +3689,9 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* A FOOTER ACT NEVER GIVES UP ITS CONTENT WIDTH — the row WRAPS, the same answer the title row
    and the toolbar row above it give (NsTitleBar, NsToolbar). A row that cannot wrap has only
    flex-shrink left when the acts outgrow the width, and a shrunk worded button cuts its LABEL
-   short in «…» (.ns-button-label) though a line of its own would have held it whole. Stated once here, outside the phone
-   container query below, because one declaration is the whole behaviour at every width.
+   short in «…» (.ns-button-label) though a line of its own would have held it whole. Stated
+   once here, outside the phone container query below, because one declaration is the whole
+   behaviour at every width.
 
    The seated refusal is the one child that gives, the way .ns-toolbar-search's own flex is on
    the toolbar row: its flex basis is zero rather than its sentence, so it takes the width left
