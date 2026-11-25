@@ -451,10 +451,13 @@
    64px floor, a box of padding, its own type scale and a centred word, which would make one
    column's heading taller and wider than its neighbours' and move the word off the column it
    names. Every one of those is handed back to the cell's own text, so the only visible
-   difference between a pressable heading and a plain one is the arrow. The hover tone is the
-   vendor's and stays: it is what says the word can be pressed at all. */
+   difference between a pressable heading and a plain one is the arrow. That includes the
+   button label's one-line cut: the word wraps as a plain heading's does, so a long heading buys
+   no width (NsTh's Whole). The hover tone is the vendor's and stays: it is what says the word
+   can be pressed at all. */
 .ns-table .mud-table-head .ns-th-order.mud-button-root {
     min-width: 0;
+    max-width: none;
     padding: 0;
     color: inherit;
     font: inherit;
@@ -469,6 +472,14 @@
    either way. */
 .ns-table .mud-table-head .ns-th-order .mud-button-label {
     flex-direction: row-reverse;
+    min-width: auto;
+}
+
+.ns-table .mud-table-head .ns-th-order .ns-button-label {
+    min-width: auto;
+    max-width: none;
+    overflow: visible;
+    white-space: normal;
 }
 
 /* The arrow is a mark beside a word, not an icon with a label on it: smaller than the glyph the

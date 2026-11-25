@@ -104,6 +104,24 @@ public sealed class ButtonLabelEllipsisTests : BunitContext, IAsyncLifetime
         Assert.Matches(@"text-transform:\s*none;", Body(css, @"\.ns-disclosure \.ns-button-label"));
     }
 
+    /// <summary>A pressable column heading is a button that reads as a plain heading: its word
+    /// wraps as the plain one beside it does, so a long heading buys no width (NsTh's Whole).
+    /// </summary>
+    [Fact]
+    public void APressableHeadingStillWraps()
+    {
+        var css = Uncommented(HouseStylesheet.Read());
+
+        var word = Body(css, @"\.ns-table \.mud-table-head \.ns-th-order \.ns-button-label");
+        Assert.Matches(@"white-space:\s*normal;", word);
+        Assert.Matches(@"overflow:\s*visible;", word);
+        Assert.Matches(@"min-width:\s*auto;", word);
+        Assert.Matches(@"max-width:\s*none;", word);
+
+        Assert.Matches(@"min-width:\s*auto;", Body(css, @"\.ns-table \.mud-table-head \.ns-th-order \.mud-button-label"));
+        Assert.Matches(@"max-width:\s*none;", Body(css, @"\.ns-table \.mud-table-head \.ns-th-order\.mud-button-root"));
+    }
+
     /// <summary>AC1: every face that draws a word carries the span the cut selects.</summary>
     [Fact]
     public void EveryWordedFaceCarriesTheLabelSpan()
@@ -158,7 +176,7 @@ public sealed class ButtonLabelEllipsisTests : BunitContext, IAsyncLifetime
 
         var gate = Regex.Match(script, @"function whisperAdds\(el, text\) \{(?<body>.*?)\n    \}", RegexOptions.Singleline).Groups["body"].Value;
 
-        Assert.Contains("el.querySelector(\".ns-button-label\")", gate);
+        Assert.Contains("el.querySelector(\":scope > .mud-button-label > .ns-button-label\")", gate);
         Assert.Contains("label.scrollWidth > label.clientWidth", gate);
         Assert.True(gate.IndexOf("scrollWidth", StringComparison.Ordinal) < gate.IndexOf("el.innerText", StringComparison.Ordinal));
     }
