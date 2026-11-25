@@ -307,9 +307,9 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   component of its own: the verdict has no meaning apart from the value it scores, so it rides
   the field and lands in the same under-field zone as the hint. Weak/Medium/Strong come from
   `PasswordScore.Measure` (`NSail.Components`, vendor-free and pinned by its own test); the
-  bar is hidden while the field is empty, and it moves on the keystroke because every box in
-  the family does. **It is advice and never a gate** — NSail has no password policy,
-  and giving it one reaches `SetPassword`, the invitation flow and every seeded account.
+  bar is always drawn, empty and quiet while the field is empty, so the box never changes size
+  as the first character goes in or the last comes out. **It is advice and never a gate** —
+  NSail has no password policy, and giving it one reaches `SetPassword`, the invitation flow and every seeded account.
 - **`NsPasswordField` says a secret is on file behind `IsStored`, inside the box.** A write-only
   credential never travels back, so the box opens empty on every visit and "nothing is stored"
   looks exactly like "the secret is stored and not shown". While the flag is on and the box is

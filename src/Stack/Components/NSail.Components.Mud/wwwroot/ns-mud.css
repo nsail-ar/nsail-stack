@@ -2472,10 +2472,10 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* NsPasswordField's strength bar: the same under-field zone the hint and the refusal use, in
-   normal flow, so it costs its own height honestly like both of them. It only exists while
-   something is typed, which is why nothing is reserved for it. Theme
-   severity colors only, like the row semaphore below — a bar with a palette of its own would
-   be the one place in the app inventing colour. */
+   normal flow, so it costs its own height honestly like both of them. Unlike them it is always
+   drawn and its word line is reserved (height and width), so the first keystroke moves
+   nothing. Theme severity colors only, like the row semaphore below — a bar with a palette of
+   its own would be the one place in the app inventing colour. */
 /* The door under a picker whose set is empty (NsNoOptions): the same under-field zone the hint
    and the refusal use, in normal flow, so it costs its own height honestly like both of them.
    It only exists while there is genuinely nothing to pick, which is why nothing is reserved
@@ -2489,6 +2489,11 @@ div.mud-input-slot.mud-input-root::placeholder {
     align-items: center;
     gap: 8px;
     margin-top: 3px;
+}
+
+.ns-password-strength-word {
+    min-height: 1.66em;
+    min-width: 4.5em;
 }
 
 .ns-password-strength-track {
