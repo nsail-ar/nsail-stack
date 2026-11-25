@@ -20,6 +20,10 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         query($o:String!,$n:String!,$d:Int!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history(first:$d){nodes{oid status{contexts{context state createdAt}}}}}}}}}
         """;
 
+    const string TagsQuery = """
+        query($o:String!,$n:String!,$q:String!){repository(owner:$o,name:$n){refs(refPrefix:"refs/tags/",query:$q,first:20,orderBy:{field:TAG_COMMIT_DATE,direction:DESC}){nodes{name}}}}
+        """;
+
     const string MergedQuery = """
         query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){pullRequests(first:100,states:MERGED,orderBy:{field:UPDATED_AT,direction:DESC},after:$c){pageInfo{hasNextPage endCursor} nodes{number title headRefName mergedAt updatedAt mergeCommit{oid} headRepository{nameWithOwner} author{login}}}}}
         """;
@@ -484,6 +488,15 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             .Where(r => !r.GetProperty("draft").GetBoolean() && r.TryGetProperty("published_at", out var p) && p.ValueKind == JsonValueKind.String)
             .Select(r => new Release(r.GetProperty("tag_name").GetString() ?? "", r.GetProperty("published_at").GetDateTimeOffset()))
             .OrderByDescending(r => r.PublishedAt).ToList();
+    }
+
+    public async Task<string?> NewestTag(string prefix, CancellationToken ct = default)
+    {
+        // The query matches anywhere in the name: the prefix is checked here.
+        var data = await gh.GraphQl(TagsQuery, new { o = Owner, n = repo.Split('/')[1], q = prefix }, ct);
+        return data.GetProperty("repository").GetProperty("refs").GetProperty("nodes").EnumerateArray()
+            .Select(t => t.GetProperty("name").GetString() ?? "")
+            .FirstOrDefault(name => name.StartsWith(prefix, StringComparison.Ordinal));
     }
 
     public async Task<bool> Holds(string reference, string sha, CancellationToken ct = default)

@@ -21,7 +21,7 @@ sealed class Fixture
     DateTimeOffset? _lastQa;
     DateTimeOffset? _lastCut;
     readonly HashSet<int> _merged = [];
-    readonly HashSet<int> _awaitingPin = [];
+    readonly HashSet<int> _awaitingRelease = [];
     readonly HashSet<int> _shippedFixes = [];
     readonly Dictionary<string, string> _unshipped = [];
     readonly DateTimeOffset _now = DateTimeOffset.UtcNow;
@@ -105,9 +105,9 @@ sealed class Fixture
         return this;
     }
 
-    public Fixture AwaitingPin(int story)
+    public Fixture AwaitingRelease(int story)
     {
-        _awaitingPin.Add(story);
+        _awaitingRelease.Add(story);
         return this;
     }
 
@@ -125,7 +125,7 @@ sealed class Fixture
             LockHolders = _holders,
             DueReleases = _due,
             MergedStories = _merged,
-            AwaitingPin = _awaitingPin,
+            AwaitingRelease = _awaitingRelease,
             Unshipped = _unshipped,
             ShippedFixes = _shippedFixes,
         };

@@ -47,7 +47,7 @@ public static partial class WrittenBlockers
 
     // Links every blocker the text names that the board does not link yet, and holds the story
     // (`blocked`) while any named blocker has not landed — for one merged in a pinned repository,
-    // while the pin does not hold it (`repos`). Answers the blockers still open.
+    // while no release of it holds the merge (`repos`). Answers the blockers still open.
     public static async Task<IReadOnlyList<int>> Link(IBoard board, int story, string text, string key, CancellationToken ct = default, RepositorySet? repos = null)
     {
         var named = Named(text, key).Where(n => n != story).ToList();
@@ -75,7 +75,7 @@ public static partial class WrittenBlockers
         {
             foreach (var n in merged)
             {
-                if (await repos.AwaitsPin(n, ct)) open.Add(n);
+                if (await repos.AwaitsRelease(n, ct)) open.Add(n);
             }
         }
         if (open.Count > 0) await board.AddLabels(story, Labels.Blocked);

@@ -179,6 +179,11 @@ public class DevJobRunTests : IDisposable
             throw new NotSupportedException();
         }
 
+        public Task<string?> NewestTag(string prefix, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public async Task<bool> Holds(string reference, string sha, CancellationToken ct = default)
         {
             return (await Shell.Run("git", ["merge-base", "--is-ancestor", sha, reference], remote)).ExitCode == 0;

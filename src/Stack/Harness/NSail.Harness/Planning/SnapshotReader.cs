@@ -33,7 +33,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
             LockHolders = await locks.Holders(ct),
             MainSha = main,
             MergedStories = await ReadMerged(issues, prs, flight, ct),
-            AwaitingPin = await ReadAwaitingPin(issues, ct),
+            AwaitingRelease = await ReadAwaitingRelease(issues, ct),
             Unshipped = await ReadUnshipped(releases, ct),
             ShippedFixes = shipped,
         };
@@ -79,22 +79,23 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return merged;
     }
 
-    // A pin that took a merge keeps it: a blocker found held is not asked again while it stays Merged.
-    readonly HashSet<int> _pinHeld = [];
+    // A release that took a merge keeps it: a blocker found released is not asked again while it stays Merged.
+    readonly HashSet<int> _released = [];
 
-    // A blocker merged in a pinned repository lands for what waits on it once the default branch's pin
-    // holds the merge; a release that carries it means the pin did. Only the Merged blockers some
+    // A blocker merged in a pinned repository lands for what waits on it once a release of that
+    // repository holds the merge, not once the default branch's pin does: the dependent is often the
+    // adaptation the pin cannot move without, and its PR moves the pin. Only the Merged blockers some
     // story still names, routed to a pinned repository, are asked — a call or two each, and there are few.
-    internal async Task<HashSet<int>> ReadAwaitingPin(IReadOnlyList<Issue> issues, CancellationToken ct = default)
+    internal async Task<HashSet<int>> ReadAwaitingRelease(IReadOnlyList<Issue> issues, CancellationToken ct = default)
     {
         var merged = issues.Where(i => i.Stage == Stages.Merged && repos.IsPinned(i.Labels)).Select(i => i.Number).ToHashSet();
-        _pinHeld.IntersectWith(merged);
+        _released.IntersectWith(merged);
         var awaiting = new HashSet<int>();
         foreach (var blocker in issues.SelectMany(i => i.OpenBlockers).Distinct())
         {
-            if (!merged.Contains(blocker) || _pinHeld.Contains(blocker)) continue;
-            if (await repos.AwaitsPin(blocker, ct)) awaiting.Add(blocker);
-            else _pinHeld.Add(blocker);
+            if (!merged.Contains(blocker) || _released.Contains(blocker)) continue;
+            if (await repos.AwaitsRelease(blocker, ct)) awaiting.Add(blocker);
+            else _released.Add(blocker);
         }
         return awaiting;
     }
