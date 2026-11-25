@@ -12,13 +12,15 @@ namespace NSail.Harness.GitHub;
 
 // REST and GraphQL over one HttpClient. Every read either answers whole or throws:
 // a half read must never reach the planner as an empty queue.
-public sealed partial class GitHubClient(HttpClient http)
+public sealed partial class GitHubClient(HttpClient http, GitHubToken? token = null)
 {
     // A limit's wait is honoured up to this; a longer one is thrown to the caller, whose pass backs off.
     static readonly TimeSpan MaxWait = TimeSpan.FromSeconds(60);
     const int Attempts = 3;
+    static readonly TimeSpan RefusedWait = TimeSpan.FromSeconds(1);
 
     internal Func<TimeSpan, CancellationToken, Task> Delay { get; init; } = (span, ct) => Task.Delay(span, ct);
+    internal GitHubToken? Token => token;
 
     public static void Configure(HttpClient http, string token)
     {
@@ -42,7 +44,7 @@ public sealed partial class GitHubClient(HttpClient http)
         var text = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} GET {path}: {Truncate(text)}", RateLimitRemaining(response));
+            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} GET {path}: {Truncate(text)}{Refused(response, resent: true)}", RateLimitRemaining(response));
         }
         return text;
     }
@@ -165,18 +167,20 @@ public sealed partial class GitHubClient(HttpClient http)
         using var request = new HttpRequestMessage(HttpMethod.Post, address) { Content = new StreamContent(content) };
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
         using var response = await SendOnce(request, ct);
-        return await Read(response, ct);
+        return await Read(response, ct, resent: false);
     }
 
     // A rate-limited answer (403/429 with a wait) is waited out once and sent again: the limit is shared
-    // with every job and lane on the token, so a second refusal is thrown. A 5xx is sent again, a few
-    // times, only when the call reads (a GET, a GraphQL query), and so is a 2xx whose body `malformed`
-    // refuses, a connection lost before the answer arrived whole, and a 401: GitHub answers "Bad
-    // credentials" now and then to the token every call before and after it is served with, and a token
-    // truly revoked is refused on every attempt. What still fails is returned for its caller to throw.
+    // with every job and lane on the token, so a second refusal is thrown. A 401 is sent again once, a
+    // write too: GitHub answers "Bad credentials" now and then to the token every call before and after
+    // it is served with, and refuses an unauthenticated request before acting on it. A 5xx is sent again,
+    // a few times, only when the call reads (a GET, a GraphQL query), and so is a 2xx whose body
+    // `malformed` refuses and a connection lost before the answer arrived whole. What still fails is
+    // returned for its caller to throw.
     async Task<HttpResponseMessage> Dispatch(Func<HttpRequestMessage> build, bool reads, CancellationToken ct, Func<string, bool>? malformed = null)
     {
         var waitedLimit = false;
+        var resentRefused = false;
         for (var attempt = 1; ; attempt++)
         {
             using var request = build();
@@ -196,7 +200,12 @@ public sealed partial class GitHubClient(HttpClient http)
                 wait = waitedLimit ? null : LimitWait(response);
                 waitedLimit = wait is not null;
             }
-            else if (reads && attempt < Attempts && ((int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.Unauthorized
+            else if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                wait = resentRefused ? null : RefusedWait;
+                resentRefused = true;
+            }
+            else if (reads && attempt < Attempts && ((int)response.StatusCode >= 500
                 || (response.IsSuccessStatusCode && malformed is not null && malformed(await response.Content.ReadAsStringAsync(ct)))))
             {
                 wait = TimeSpan.FromSeconds(attempt);
@@ -250,12 +259,12 @@ public sealed partial class GitHubClient(HttpClient http)
         return span < TimeSpan.Zero ? TimeSpan.Zero : span;
     }
 
-    static async Task<JsonElement> Read(HttpResponseMessage response, CancellationToken ct)
+    async Task<JsonElement> Read(HttpResponseMessage response, CancellationToken ct, bool resent = true)
     {
         var text = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} {response.RequestMessage?.Method} {response.RequestMessage?.RequestUri?.PathAndQuery}: {Truncate(text)}", RateLimitRemaining(response), response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests ? LimitWait(response) : null);
+            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} {response.RequestMessage?.Method} {response.RequestMessage?.RequestUri?.PathAndQuery}: {Truncate(text)}{Refused(response, resent)}", RateLimitRemaining(response), response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests ? LimitWait(response) : null);
         }
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -263,6 +272,14 @@ public sealed partial class GitHubClient(HttpClient http)
         }
         using var doc = JsonDocument.Parse(text);
         return doc.RootElement.Clone();
+    }
+
+    // What a 401 adds to its message: the setting the token came from, never the token.
+    string Refused(HttpResponseMessage response, bool resent)
+    {
+        if (response.StatusCode != HttpStatusCode.Unauthorized) return "";
+        var source = token is null ? "" : $" ({token.Source})";
+        return $" — the harness's GitHub token{source} was refused{(resent ? " twice" : "")}";
     }
 
     static long? RateLimitRemaining(HttpResponseMessage response)

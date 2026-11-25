@@ -25,7 +25,7 @@ public class RefLockTests
 
     static RefLock Lock(Fake fake, string branch = "trunk")
     {
-        return new RefLock(new GitHubClient(new HttpClient(fake) { BaseAddress = new Uri("https://api.github.com/") }), "o/r", "app", branch);
+        return new RefLock(new GitHubClient(new HttpClient(fake) { BaseAddress = new Uri("https://api.github.com/") }) { Delay = (_, _) => Task.CompletedTask }, "o/r", "app", branch);
     }
 
     static string Tag(LockHolder h)
@@ -56,6 +56,37 @@ public class RefLockTests
         await Lock(fake).Release(7, Mine);
 
         Assert.Contains(fake.Calls, c => c.StartsWith("DELETE") && c.Contains("locks/app-7"));
+    }
+
+    [Fact]
+    public async Task ReleaseWhoseHolderReadIsRefusedOnceStillDeletesTheLock()
+    {
+        var refused = false;
+        var fake = new Fake(r =>
+        {
+            if (r.Method == HttpMethod.Delete) return (HttpStatusCode.NoContent, "");
+            if (!refused && r.RequestUri!.AbsolutePath.Contains("/git/ref/"))
+            {
+                refused = true;
+                return (HttpStatusCode.Unauthorized, """{"message":"Bad credentials","status":"401"}""");
+            }
+            return r.RequestUri!.AbsolutePath.Contains("/git/ref/") ? (HttpStatusCode.OK, """{"object":{"sha":"t5","type":"tag"}}""") : (HttpStatusCode.OK, Tag(Mine));
+        });
+
+        Assert.True(await Lock(fake).Release(7, Mine));
+
+        Assert.Equal(2, fake.Calls.Count(c => c.StartsWith("GET") && c.Contains("/git/ref/locks/app-7")));
+        Assert.Single(fake.Calls, c => c.StartsWith("DELETE") && c.Contains("locks/app-7"));
+    }
+
+    [Fact]
+    public async Task ReleaseOfALockAlreadyGoneIsFalseAfterOneRead()
+    {
+        var fake = new Fake(_ => (HttpStatusCode.NotFound, """{"message":"Not Found"}"""));
+
+        Assert.False(await Lock(fake).Release(7, Mine));
+
+        Assert.Single(fake.Calls);
     }
 
     [Fact]

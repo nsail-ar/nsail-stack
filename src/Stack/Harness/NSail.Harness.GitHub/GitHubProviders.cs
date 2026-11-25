@@ -33,5 +33,11 @@ public sealed class GitHubProviders(GitHubClient gh, GitHubToken token) : IBoard
     }
 }
 
-// The harness's GitHub token, resolved once at the start (GitHubOptions).
-public sealed record GitHubToken(string Value);
+// The harness's GitHub token, resolved once at the start (GitHubOptions), and the setting it came from.
+public sealed record GitHubToken(string Value, string Source)
+{
+    public override string ToString()
+    {
+        return Source;
+    }
+}

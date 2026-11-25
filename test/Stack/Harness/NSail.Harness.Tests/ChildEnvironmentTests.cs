@@ -278,6 +278,28 @@ public class ChildEnvironmentTests
         }
     }
 
+    [Fact]
+    public void TheHarnessClientKnowsWhereItsTokenCameFrom()
+    {
+        using var _ = Held(("GH_TOKEN", "harness-token"));
+        var before = Shell.GitEnvironment;
+        try
+        {
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Harness:Repositories:0:Name"] = "o/r"
+            }).Build();
+
+            using var services = new ServiceCollection().AddGitHub(configuration).BuildServiceProvider();
+
+            Assert.Equal("GH_TOKEN", services.GetRequiredService<GitHubClient>().Token?.Source);
+        }
+        finally
+        {
+            Shell.GitEnvironment = before;
+        }
+    }
+
     static Held Held(params (string, string)[] vars)
     {
         return new Held(vars);
