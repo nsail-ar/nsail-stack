@@ -697,7 +697,7 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   number from whenever it was picked (`ProductVariantLookup`).
 - **The end adornment is a button and carries a name** (`AdornmentAriaLabel`): the chevron that
   opens a browsed lookup's list, and the text field's copy and camera. The chevron and the camera
-  are icon-only at every width and the vendor draws them, so they are two of the three faces the
+  are icon-only at every width and the vendor draws them, so they are two of the four faces the
   whisper reaches by selector and names off `aria-label` ([actions.md](actions.md)). The copy
   button is icon-only and the vendor's too, and the whisper does not reach it yet: a known gap,
   not a rule.
