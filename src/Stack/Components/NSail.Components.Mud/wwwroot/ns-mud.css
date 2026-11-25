@@ -3827,6 +3827,20 @@ div.mud-input-slot.mud-input-root::placeholder {
     width: 100%;
 }
 
+/* NsPageFace's own box: the mark keeps .ns-brand-column's ceiling inside it, the words wrap
+   at a reading measure instead of at the mark's width, and every line of them is centered on
+   the axis the logo and the Home door share. width:100% keeps a phone's lines inside the
+   face's padding. */
+.ns-page-face {
+    max-width: 40rem;
+    width: 100%;
+}
+
+.ns-page-face-line {
+    text-align: center;
+    overflow-wrap: break-word;
+}
+
 /* NsSplash's live percentage: Blazor's own boot script writes --blazor-load-percentage-text
    as an already-quoted string ("45%") for exactly this -- content is the only place a CSS
    custom property becomes visible text without a JS poll re-reading it every frame. Before

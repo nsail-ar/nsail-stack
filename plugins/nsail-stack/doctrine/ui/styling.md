@@ -368,6 +368,9 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   The first-frame `<picture>`/`<img>` and the inlined `<svg>` are all `display:block`, so no baseline
   band sits under the mark and the swap moves nothing: the only space below it is the block's gap.
   A brand's dark mark (`DarkLogoUrl`) is the one it wears when its own painted ground is dark.
+  `.ns-brand-column`'s 320px ceiling is the mark's alone: `NsPageFace`'s words are centered on
+  the mark's axis and wrap at `.ns-page-face`'s reading measure, or a long message breaks
+  ragged-right at the logo's width.
 - **Inlined SVG passes `SvgSanitizer` (`NSail.Icons`) and no other inlined SVG reaches the DOM**:
   a `Glyph`, a fetched logo and the splash mark share its one allowlist of drawing elements and
   presentation attributes. Scripts, event handlers, `style`, `<image>`, `<a>`, `<foreignObject>`,
