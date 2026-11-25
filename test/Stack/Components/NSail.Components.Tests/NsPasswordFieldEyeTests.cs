@@ -129,4 +129,32 @@ public sealed class NsPasswordFieldEyeTests : BunitContext, IAsyncLifetime
         Assert.Equal("button", eye.LocalName);
         Assert.Equal("-1", eye.GetAttribute("tabindex"));
     }
+
+    [Fact]
+    public void TheStrengthBarIsDrawnWhileTheFieldIsEmptyAndAnnouncesNothing()
+    {
+        var cut = Render<NsPasswordField>(ps => ps.Add(p => p.Strength, true).Add(p => p.Value, ""));
+
+        var bar = cut.Find(".ns-password-strength");
+        Assert.NotNull(cut.Find(".ns-password-strength-track"));
+        Assert.Empty(cut.FindAll(".ns-password-strength-fill"));
+        Assert.Equal("", bar.TextContent.Trim());
+    }
+
+    [Fact]
+    public void AFieldWithoutStrengthDrawsNoBar()
+    {
+        var cut = Render<NsPasswordField>(ps => ps.Add(p => p.Value, ""));
+
+        Assert.Empty(cut.FindAll(".ns-password-strength"));
+    }
+
+    [Fact]
+    public void TheStrengthBarFillsOnceSomethingIsTyped()
+    {
+        var cut = Render<NsPasswordField>(ps => ps.Add(p => p.Strength, true).Add(p => p.Value, "abc"));
+
+        Assert.Single(cut.FindAll(".ns-password-strength-fill"));
+        Assert.NotEqual("", cut.Find(".ns-password-strength").TextContent.Trim());
+    }
 }
