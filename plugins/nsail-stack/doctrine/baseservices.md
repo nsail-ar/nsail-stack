@@ -222,21 +222,21 @@ The live values are the operations ledger's (nsail-ops `providers/grafana.md`).
   machine name.
 - **`SamplingRatio`** is the whole sampling story: 0 to 1, parent-based, free to differ per
   install and environment. **Never a branch on `IsDevelopment()`** (rule above).
-- **The write credential is the finished `Authorization` header**, scheme included
-  (`Basic …`), used verbatim — nothing concatenated, no instance id read to build it. It comes
-  from `NSAIL_OTLP_AUTH` in the environment, else from `Telemetry:Authorization`, which only the
-  image build writes into the published appsettings: the image exports with no hand step, and a
-  repository's appsettings never holds it. So it must be a key that can do nothing but ingest
-  (the store's ingestion passcode, which cannot search). The environment wins, so a box that
-  exports to its own collector says so without a rebuild. The read credential
-  (`NSAIL_OBSERVE_READ`) is the environment's alone: a key that reads the store back never
-  ships in an image.
+- **The write credential is `Authorization`, the finished header**, scheme included
+  (`Basic …`), used verbatim — nothing concatenated, no instance id read to build it. Both
+  credentials are keys of the section like any other: nothing in the Stack reads an environment
+  variable, and .NET's own order decides between appsettings and the environment
+  (`Telemetry__Authorization`). An image build may write the write credential into the published
+  appsettings so the image exports with no hand step — then it must be a key that can do
+  nothing but ingest (the store's ingestion passcode, which cannot search). A repository's
+  appsettings never holds either, and the read credential (`SearchAuthorization`) never ships in
+  an image: it reads the store back.
 - **With no credential nothing is collected and nothing is exported.** No exporter is
   registered, so the `ActivitySource` has no listener and costs a `HasListeners` check. A
-  dev machine and CI are silent by having no variable, never by a branch. The Mediator
+  dev machine and CI are silent by having no credential, never by a branch. The Mediator
   interceptor is registered either way — the pipeline's shape does not move with config.
 - **`SearchEndpoint`**, **`SearchOrganization`**, **`SearchStream`**, **`SearchStreamType`**
-  and **`NSAIL_OBSERVE_READ`** are the read side, below. The endpoint is not `Endpoint`:
+  and **`SearchAuthorization`** are the read side, below. The endpoint is not `Endpoint`:
   ingest is a gateway and a search is an API, and an install is routinely allowed to post
   where it may not query. The other three are the store's own words for where the spans
   landed and which signal they are — defaulted (`default`, `default`, `traces`), and set only
@@ -334,7 +334,7 @@ renaming a tag cannot leave the query reading a column nobody writes.
   answers one person about themselves pins it to the acting Session and the seam's shape only
   stops it from being forgotten.
 - **Registered only where `TelemetryOptions.CanSearch`** — a `SearchEndpoint` and a
-  `NSAIL_OBSERVE_READ` credential, independent of the exporter's. An install with neither
+  `SearchAuthorization` credential, independent of the exporter's. An install with neither
   has no `IFailureLog` at all, so **every caller resolves it as optional** and says in its
   own words that it cannot answer. A store that then refuses, times out, answers something
   that is not a search result, or answers rows of which this reader can read **none**, is one
