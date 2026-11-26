@@ -109,8 +109,8 @@ public sealed class NsAutocompleteQuickAddTests : BunitContext, IAsyncLifetime
 
     /// <summary>nsail#4381: drawn as the vendor's text button, the quick add printed its label in
     /// the button's type — «AGREGAR «ZUBIRÍA»» under «Crear Médico...». It stays a button, inside
-    /// the entry's row, wearing the hook that hands the row's type back to it (ns-mud.css), and
-    /// the term it quotes is the one typed.</summary>
+    /// the entry's row, wearing the hook that hands the row's type back to it (ns-mud.css, held
+    /// by ButtonLabelEllipsisTests), and the term it quotes is the one typed.</summary>
     [Fact]
     public async Task The_quick_add_is_a_button_of_the_entry_row_that_quotes_the_term_as_typed()
     {

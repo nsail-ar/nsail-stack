@@ -2042,9 +2042,9 @@
 }
 
 /* The quick add is pressed, so it stays a button, but it is an entry of the list and reads in
-   the entry's type: the vendor's button type scale, uppercase, floor and padding are handed back
-   to the row, as a pressable heading does (.ns-th-order). The term it quotes is what the person
-   typed, so it keeps the case it was typed in. */
+   the entry's type: the vendor's button type scale, uppercase, 64px minimum width and padding
+   are handed back to the row, as a pressable heading does (.ns-th-order). The term it quotes is
+   what the person typed, so it keeps the case it was typed in. */
 .ns-lookup-create .ns-lookup-quick-add.mud-button-root {
     min-width: 0;
     padding: 0;
