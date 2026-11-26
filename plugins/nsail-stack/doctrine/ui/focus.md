@@ -59,11 +59,14 @@ about to be typed in, so it is brought into view like any other focus.
 The actual focus happens in `ns.js` (`arrivalFocus`), for three reasons a comma selector cannot
 cover:
 
-- **An element rendered after the first paint** — a list still reading, a tab's panel — is not
-  a lost cause: not finding the marker right away starts a `MutationObserver` (bounded by a
-  timeout that falls back to the screen's name) instead of giving up on the spot, which is what
-  left a focus fired at the box's own first render (`FocusOnRender`) unable to reach it (the
-  Notes on nsail#2338: a field inside a panel not yet shown).
+- **An element rendered after the first paint** — a list still reading, a tab's panel, a form
+  whose fields wait on its `OnLoad` — is not a lost cause: not finding the marker right away
+  starts a `MutationObserver` instead of giving up on the spot, which is what left a focus fired
+  at the box's own first render (`FocusOnRender`) unable to reach it. **The fallback after a
+  second is provisional**: the screen's name takes the cursor, and a marker that renders later
+  still takes it off that heading, because no fixed wait outlasts a read on a loaded machine.
+  The watch ends at the next arrival, at a hand's move (a focus, a press, a key, a wheel), or at
+  a ceiling (`ARRIVAL_MARKER_CEILING_MS`, `ns.js`) that only keeps it from living forever.
 - **A navigation between two pages sharing a layout** (the same routed component, new
   parameters) still fires: the arrival is read off the address, not off the page type or the
   component's identity.
@@ -72,7 +75,8 @@ cover:
   as an arrival's unconditional focus does, but the moment this call starts WAITING for
   something that is not there yet, a hand that got there first keeps what it took. Asked as
   "has the cursor moved since we landed", so a tab strip, a clickable grid row or a tree node —
-  places a hand deliberately goes, none of them a control — are kept too.
+  places a hand deliberately goes, none of them a control — are kept too. The heading the
+  fallback itself landed on is not a move.
 
 ## An arrival is a change of path
 
