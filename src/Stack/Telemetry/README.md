@@ -26,7 +26,7 @@ To compose it alone, name the meters of modules telemetry does not reference:
 builder.AddTelemetry("MyModule.Meter");
 ```
 
-Turn export on with configuration and one environment variable:
+Turn export on with configuration: the endpoint and the credential are keys of the `Telemetry` section like any other, so appsettings, the environment (`Telemetry__Authorization`) or any other .NET source can hold them, in .NET's own order.
 
 ```json
 {
@@ -39,7 +39,7 @@ Turn export on with configuration and one environment variable:
 ```
 
 ```bash
-NSAIL_OTLP_AUTH="Basic ..."    # the finished Authorization header value, used verbatim
+Telemetry__Authorization="Basic ..."    # the finished Authorization header value, used verbatim
 ```
 
 With no credential nothing is exported and nothing is collected: no exporter is registered, so a
@@ -60,14 +60,8 @@ dev machine and CI are silent without any environment branch.
 | `SearchOrganization` | `default` | The store's organization. |
 | `SearchStream` | `default` | The store's stream name. |
 | `SearchStreamType` | `traces` | Which signal is searched. |
-| `Authorization` | none | The write credential an image build writes into the published section, so every install of that image exports without a hand step. Only a key that can do nothing but ingest belongs here, since it ships inside the image; never in a repository's appsettings, or a dev machine and CI would export. `NSAIL_OTLP_AUTH` wins over it. |
-
-The credentials in the environment:
-
-| Variable | Use |
-|---|---|
-| `NSAIL_OTLP_AUTH` | Write credential for the exporter; when present it wins over the section's `Authorization`, so a box that exports elsewhere (its own collector) says so without a rebuild. |
-| `NSAIL_OBSERVE_READ` | Read credential for the search; independent of the write one, and never read from the section. |
+| `Authorization` | none | The write credential, the finished header value. An image build may write it into the published appsettings so every install of the image exports with no hand step: then it must be a key that can do nothing but ingest. Never in a repository's appsettings, or a dev machine and CI would export. |
+| `SearchAuthorization` | none | The read credential for the search, independent of the write one. A key that reads the store back never ships inside an image: the install's environment holds it. |
 
 Resource attributes are the backend's filters: `service.name`, `service.namespace` (`nsail`),
 `deployment.environment`, `nsail.tenant`.
@@ -102,7 +96,7 @@ exception type). It never reads a message's members.
 **Reading failures back.** `IFailureLog.Read(FailureLogQuery(UserId, Since, Max), ct)` answers one
 person's own recent failures, newest first, as `LoggedFailure` (time, operation, problem code, rule,
 failure type, trace id). It is registered (as `OpenObserveFailureLog`) only when both
-`SearchEndpoint` and `NSAIL_OBSERVE_READ` are set, so resolve it as optional. A store that cannot be
+`SearchEndpoint` and `SearchAuthorization` are set, so resolve it as optional. A store that cannot be
 read throws `FailureLogException`.
 
 ## How it fits

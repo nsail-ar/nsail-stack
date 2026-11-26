@@ -8,23 +8,15 @@ namespace NSail.Telemetry;
 
 /// <summary>Where telemetry goes, how much of it goes there and where it can be read back
 /// from, bound from the "Telemetry"
-/// section. Endpoint, tenant and sampling are ordinary configuration and travel in
-/// appsettings — one collector serves every product and environment, and those are told
-/// apart by the resource attributes, not by a URL. The write credential arrives
-/// <b>pre-composed</b>, the whole header value including its scheme, so nothing is
-/// concatenated here: from the environment, or written into the published section by the image
-/// build, never into a repository's appsettings. An install handed none exports nothing and
-/// collects nothing — that is what keeps a dev machine and CI silent without an environment
-/// branch anywhere in the host.</summary>
+/// section like any other configuration, credentials included, so .NET's own order decides
+/// between appsettings and the environment (<c>Telemetry__Authorization</c>). One collector
+/// serves every product and environment, and those are told apart by the resource attributes,
+/// not by a URL. A credential arrives <b>pre-composed</b>, the whole header value including its
+/// scheme, so nothing is concatenated here, and never from a repository's appsettings: an
+/// install handed none exports nothing and collects nothing — that is what keeps a dev machine
+/// and CI silent without an environment branch anywhere in the host.</summary>
 public sealed class TelemetryOptions
 {
-    public const string AuthorizationVariable = "NSAIL_OTLP_AUTH";
-
-    /// <summary>The store's READ credential, pre-composed like the write one and separate
-    /// from it: what ingests telemetry is not what may query it back, and an install is
-    /// routinely handed one and not the other.</summary>
-    public const string SearchVariable = "NSAIL_OBSERVE_READ";
-
     public string? Endpoint { get; set; }
 
     /// <summary>The store's own base URL, where the spans can be read BACK — a different
@@ -60,13 +52,13 @@ public sealed class TelemetryOptions
     [Range(0d, 1d)]
     public double SamplingRatio { get; set; } = 1;
 
-    /// <summary>The write credential: <see cref="AuthorizationVariable"/> when the environment
-    /// holds it, else the section's, which only an image build writes. It must be a key that
-    /// can only ingest, since it ships inside the image.</summary>
+    /// <summary>The write credential. The image build writes it into the published section, so
+    /// it must be a key that can only ingest.</summary>
     public string? Authorization { get; set; }
 
-    /// <summary>Read from <see cref="SearchVariable"/> alone, never from the section: a
-    /// credential that reads the store back does not ship inside an image.</summary>
+    /// <summary>The READ credential, pre-composed like the write one and separate from it:
+    /// what ingests telemetry is not what may query it back, and an install is routinely handed
+    /// one and not the other. It never ships inside an image.</summary>
     public string? SearchAuthorization { get; set; }
 
     public bool IsInForce

@@ -2,8 +2,10 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Background;
+using NSail.Configuration;
 using NSail.Consulting.Patients;
 using NSail.Data;
 using NSail.Messaging.Queue;
@@ -39,26 +41,24 @@ public sealed class TelemetryHostTests
         Assert.NotNull(app.Services.GetService<TracerProvider>());
     }
 
+    // The credential is plain configuration: the environment's Telemetry__Authorization reaches
+    // it through .NET's own sources, with nothing of the Stack's reading a variable.
     [Fact]
-    public void A_host_whose_image_build_wrote_the_credential_exports_with_no_environment()
+    public void The_environment_hands_the_credential_as_plain_configuration()
     {
-        const string built = "Basic YnVpbHQ6aW5nZXN0";
+        const string key = "Telemetry__Authorization";
+        var previous = Environment.GetEnvironmentVariable(key);
+        Environment.SetEnvironmentVariable(key, Harness.Credential);
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
 
-        using var app = Harness.Host(credentialed: false, built: built);
-
-        var options = app.Services.GetRequiredService<TelemetryOptions>();
-
-        Assert.True(options.IsInForce);
-        Assert.Equal(built, options.Authorization);
-        Assert.NotNull(app.Services.GetService<TracerProvider>());
-    }
-
-    [Fact]
-    public void The_environment_wins_over_the_credential_the_build_wrote()
-    {
-        using var app = Harness.Host(credentialed: true, built: "Basic YnVpbHQ6aW5nZXN0");
-
-        Assert.Equal(Harness.Credential, app.Services.GetRequiredService<TelemetryOptions>().Authorization);
+            Assert.Equal(Harness.Credential, builder.Configuration.Load<TelemetryOptions>().Authorization);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(key, previous);
+        }
     }
 
     // The read side hangs off its own credential, and this is the branch AC4's structural half

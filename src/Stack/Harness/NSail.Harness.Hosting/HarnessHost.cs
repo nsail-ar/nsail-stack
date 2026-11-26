@@ -35,7 +35,7 @@ public static class HarnessHost
         builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddHarness(builder.Configuration);
         // Logs, traces and metrics to the configured collector once a credential exists
-        // (NSAIL_OTLP_AUTH); with none, nothing is sent. The harness's own instruments ride along.
+        // (Telemetry:Authorization); with none, nothing is sent. The harness's own instruments ride along.
         builder.AddTelemetry();
         builder.Services.ConfigureOpenTelemetryMeterProvider(m => m.AddMeter(HarnessMetrics.MeterName));
         builder.Services.AddOpenApi();
