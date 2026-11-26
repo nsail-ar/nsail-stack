@@ -51,13 +51,24 @@ static class GraphQlFailures
 
     public static IReadOnlyList<KeyValuePair<string, Enum>> Errors(JsonElement first)
     {
-        var message = first.GetProperty("message").GetString() ?? "";
         return
         [
             new(nameof(GraphQlFailure), GraphQlFailure.Errors),
             new(nameof(GraphQlErrorType), TypeOf(first)),
-            new(nameof(GraphQlMessage), TimeoutMessages.Any(t => message.StartsWith(t, StringComparison.Ordinal)) ? GraphQlMessage.Timeout : GraphQlMessage.Unrecognized),
+            new(nameof(GraphQlMessage), MessageOf(first)),
         ];
+    }
+
+    // An answer GitHub cut on time is its 502 in a 200: the read is sent again as a 5xx is.
+    public static bool CutOnTime(JsonElement answer)
+    {
+        return answer.TryGetProperty("errors", out var errors) && errors.GetArrayLength() > 0 && MessageOf(errors[0]) == GraphQlMessage.Timeout;
+    }
+
+    static GraphQlMessage MessageOf(JsonElement error)
+    {
+        var message = error.GetProperty("message").GetString() ?? "";
+        return TimeoutMessages.Any(t => message.StartsWith(t, StringComparison.Ordinal)) ? GraphQlMessage.Timeout : GraphQlMessage.Unrecognized;
     }
 
     static GraphQlErrorType TypeOf(JsonElement error)

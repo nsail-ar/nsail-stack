@@ -359,6 +359,21 @@ public class GitHubRateLimitTests
         Assert.Single(script.Sent);
     }
 
+    // A query GitHub cut on time is its 502 in a 200, sent again as one; a mutation's cut may have acted.
+    [Fact]
+    public async Task AGraphQlQueryCutOnTimeIsSentAgainAndAMutationIsNot()
+    {
+        const string cut = """{"data":null,"errors":[{"message":"We couldn't respond to your request in time. Sorry about that. Please try resubmitting your request and contact us if the problem persists."}]}""";
+        var query = new Script(_ => Ok(cut), _ => Ok("""{"data":{"a":1}}"""));
+        var mutation = new Script(_ => Ok(cut), _ => Ok("""{"data":{"a":1}}"""));
+
+        Assert.Equal(1, (await Client(query).Client.GraphQl("query{a}")).GetProperty("a").GetInt32());
+        await Assert.ThrowsAsync<GitHubException>(() => Client(mutation).Client.GraphQl("mutation{a}"));
+
+        Assert.Equal(2, query.Sent.Count);
+        Assert.Single(mutation.Sent);
+    }
+
     static GitHubRepository Repo(GitHubClient gh)
     {
         return new GitHubRepository(gh, new RepositoryOptions { Name = "o/r" }, new StoryNames("app", ["story"]), "t");

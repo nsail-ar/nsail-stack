@@ -119,6 +119,39 @@ public class PassFailureTests
         Assert.Equal(2, hub.Calls.Count(c => c.Call == "POST /graphql Merged"));
     }
 
+    const string CutOnTime = """{"data":null,"errors":[{"message":"Something went wrong while executing your query. This may be the result of a timeout, or it could be a GitHub bug. Please include `0000:0000:0000:0000:0000` when reporting this issue."}]}""";
+
+    // GitHub cuts the open-PR read on time and answers 200 with the cut in `errors`: its 502, sent again as one.
+    [Fact]
+    public async Task APassWhoseOpenPrsReadGitHubCutOnTimeReadsOnPastIt()
+    {
+        var hub = new FakeGitHub { Prs = 2, OpenPrsAnswers = new([CutOnTime]) };
+        using var harness = new FakeGitHub.Harness(hub);
+
+        var pass = await harness.Start();
+
+        Assert.Null(pass.Error);
+        Assert.NotNull(pass.Plan);
+        Assert.Equal(2, hub.Calls.Count(c => c.Call == "POST /graphql OpenPrs"));
+    }
+
+    // An `errors` answer that is not a cut, or a cut on every send, still fails the pass whole.
+    [Theory]
+    [InlineData("""{"errors":[{"type":"NOT_FOUND","message":"Could not resolve to a Repository with the name 'acme/app'."}]}""", 1)]
+    [InlineData(CutOnTime, 3)]
+    public async Task AnOpenPrsReadThatStillFailsStartsNothing(string body, int sends)
+    {
+        var hub = new FakeGitHub { Prs = 2, OpenPrsAnswers = new(Enumerable.Repeat(body, 3)) };
+        using var harness = new FakeGitHub.Harness(hub);
+
+        var pass = await harness.Start();
+
+        Assert.NotNull(pass.Error);
+        Assert.Null(pass.Plan);
+        Assert.Empty(pass.Started);
+        Assert.Equal(sends, hub.Calls.Count(c => c.Call == "POST /graphql OpenPrs"));
+    }
+
     [Fact]
     public async Task OutsideALimitAWakeRunsTheNextPassAtOnce()
     {

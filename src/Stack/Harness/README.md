@@ -216,8 +216,9 @@ the files it leaves.
     where the token was resolved from (`GitHub:Token`, `GitHub:TokenFile` and its path, `GH_TOKEN`, the `gh`
     login), never the token. A read that gets a 5xx is sent again up to twice, and so is a GraphQL
     query answered 2xx with a body that is not a GraphQL answer (empty, not a JSON object, or `errors` that
-    are not a list of objects with a `message`), or a read whose connection is lost before its answer
-    arrives whole; one still malformed throws with its status, and a write or a mutation is never sent again on
+    are not a list of objects with a `message`) or with `errors` whose first message is one of GitHub's for a
+    query it cut on time (its 502 in a 200), or a read whose connection is lost before its answer
+    arrives whole; one still failing throws with its status, any other `errors` answer throws at once, and a write or a mutation is never sent again on
     any of those. Any other refusal throws at once, and an upload is sent once whatever it is answered. A limit, on a pass or at a job's end, holds every pass after it for the wait it asked,
     at least `MinLimitBackoff` and up to `MaxLimitBackoff`, and a wake (a job's end, the API) does not end the
     hold; outside one, a wake runs the next pass at once. Every GitHub REST read is sent with the ETag of its last answer: one that has not

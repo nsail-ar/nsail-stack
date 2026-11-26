@@ -114,7 +114,7 @@ public sealed partial class GitHubClient(HttpClient http, GitHubToken? token = n
     public async Task<JsonElement> GraphQl(string query, object? variables = null, CancellationToken ct = default)
     {
         var payload = JsonSerializer.Serialize(new { query, variables });
-        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Post, "graphql") { Content = new StringContent(payload, Encoding.UTF8, "application/json") }, !query.TrimStart().StartsWith("mutation", StringComparison.Ordinal), ct, malformed: text => GraphQlAnswer(text) is null);
+        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Post, "graphql") { Content = new StringContent(payload, Encoding.UTF8, "application/json") }, !query.TrimStart().StartsWith("mutation", StringComparison.Ordinal), ct, malformed: text => GraphQlAnswer(text) is not { } answer || GraphQlFailures.CutOnTime(answer));
         if (!response.IsSuccessStatusCode)
         {
             await Read(response, ct);
