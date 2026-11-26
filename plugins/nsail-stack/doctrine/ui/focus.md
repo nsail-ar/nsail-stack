@@ -63,12 +63,13 @@ cover:
   whose fields wait on its `OnLoad` — is not a lost cause: not finding the marker right away
   starts a `MutationObserver` instead of giving up on the spot, which is what left a focus fired
   at the box's own first render (`FocusOnRender`) unable to reach it — a field inside a panel
-  not yet shown has no first render to fire at. **The fallback after a
-  second is provisional**: the screen's name takes the cursor, and a marker that renders later
-  still takes it off that heading, because no fixed wait outlasts a read on a loaded machine.
-  The watch ends at the next arrival, at a hand's move from the wait's first moment (a focus, a
-  press, a key, a wheel — a marker that scrolls into view must not undo a hand that scrolled;
-  the heading, which does not scroll, still lands), or at a ceiling (`ARRIVAL_MARKER_CEILING_MS`, `ns.js`) that only keeps it from living forever.
+  not yet shown has no first render to fire at. **The fallback after a second is
+  provisional**: the screen's name takes the cursor, and a marker that renders later still takes
+  it off that heading, because no fixed wait outlasts a read on a loaded machine. The watch ends
+  at the next arrival, at a hand's move from the wait's first moment (a focus, a press, a key, a
+  wheel — a marker that scrolls into view must not undo a hand that scrolled; the heading, which
+  does not scroll, still lands), or at a ceiling (`ARRIVAL_MARKER_CEILING_MS`, `ns.js`) that
+  only keeps it from living forever.
 - **A navigation between two pages sharing a layout** (the same routed component, new
   parameters) still fires: the arrival is read off the address, not off the page type or the
   component's identity.
