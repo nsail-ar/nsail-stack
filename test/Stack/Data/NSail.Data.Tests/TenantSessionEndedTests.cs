@@ -91,10 +91,12 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
     }
 
     // The fresh session is not opened past the first: an open that cannot be made fails before
-    // TenantSession runs, so it fails once with the server's own answer.
+    // TenantSession runs, so it fails once with the server's own answer. A missing role is refused
+    // as 28000 by a server that trusts the client and as 28P01 by one that asks for a password,
+    // so the login case asserts the SqlState's class only.
     [Theory]
     [InlineData("Database=nsail4430_missing", PostgresErrorCodes.InvalidCatalogName)]
-    [InlineData("Username=nsail4430_missing", PostgresErrorCodes.InvalidAuthorizationSpecification)]
+    [InlineData("Username=nsail4430_missing", "28")]
     public async Task An_open_no_second_session_changes_fails_once(string wrong, string sqlState)
     {
         var builder = new NpgsqlConnectionStringBuilder(_connectionString);
@@ -113,7 +115,7 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
         var failure = await Assert.ThrowsAsync<PostgresException>(
             () => scope.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.ToListAsync());
 
-        Assert.Equal(sqlState, failure.SqlState);
+        Assert.StartsWith(sqlState, failure.SqlState);
         Assert.Equal(1, opens.Opening);
         Assert.Equal(1, opens.Failed);
     }
