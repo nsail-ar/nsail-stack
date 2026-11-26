@@ -10,7 +10,7 @@
 @inject PageGate Gate
 
 @* Same one-arrival rule as NsDashboard: nothing renders until the gate has answered. *@
-@if (_resolved && _items.Count == 0)
+@if (Answered && _items.Count == 0)
 {
     @Empty
 }
@@ -35,6 +35,12 @@ else if (_items.Count > 0)
 
     bool _resolved;
 
+    TSubject? _resolvedFor;
+
+    // The gate answers for one subject: while a new one's is pending, the last one's answer
+    // must not stand in front of its cards.
+    bool Answered => _resolved && EqualityComparer<TSubject?>.Default.Equals(Subject, _resolvedFor);
+
     /// <summary>What every card on this dashboard is about. Contributors are resolved closed
     /// over its type, so a subject dashboard never collects another one's cards.</summary>
     [Parameter]
@@ -55,8 +61,11 @@ else if (_items.Count > 0)
         {
             _items = [];
             _resolved = false;
+            _resolvedFor = default;
             return;
         }
+
+        var subject = Subject;
 
         var user = await PageGate.UserOf(AuthenticationState);
 
@@ -64,10 +73,11 @@ else if (_items.Count > 0)
 
         foreach (var contributor in Contributors)
         {
-            items.AddRange(await contributor.GetItems(Subject));
+            items.AddRange(await contributor.GetItems(subject));
         }
 
         _items = await NsDashboard.Allowed(items, Gate, user);
+        _resolvedFor = subject;
         _resolved = true;
     }
 

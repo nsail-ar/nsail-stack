@@ -17,13 +17,21 @@ public sealed class NsSubjectDashboardEmptyTests : BunitContext
 {
     const string EmptyMarkup = "<p id=\"nothing-here\">portal</p>";
 
-    sealed class TestContributor(Task<IReadOnlyList<DashboardItem>> items) : IDashboardContributor<TestSubject>
+    sealed class TestContributor(Func<TestSubject, Task<IReadOnlyList<DashboardItem>>> items)
+        : IDashboardContributor<TestSubject>
     {
+        public TestContributor(Task<IReadOnlyList<DashboardItem>> items)
+            : this(_ => items)
+        {
+        }
+
         public Task<IReadOnlyList<DashboardItem>> GetItems(TestSubject subject)
         {
-            return items;
+            return items(subject);
         }
     }
+
+    static readonly RenderFragment EmptySlot = builder => builder.AddMarkupContent(0, EmptyMarkup);
 
     public NsSubjectDashboardEmptyTests()
     {
@@ -40,8 +48,7 @@ public sealed class NsSubjectDashboardEmptyTests : BunitContext
 
         return Render<NsSubjectDashboard<TestSubject>>(parameters => parameters
             .Add(dashboard => dashboard.Subject, new TestSubject { Name = "Ana" })
-            .Add(dashboard => dashboard.Empty,
-                (RenderFragment)(builder => builder.AddMarkupContent(0, EmptyMarkup))));
+            .Add(dashboard => dashboard.Empty, EmptySlot));
     }
 
     IRenderedComponent<NsSubjectDashboard<TestSubject>> Show(params DashboardItem[] items)
@@ -74,8 +81,9 @@ public sealed class NsSubjectDashboardEmptyTests : BunitContext
 
         Assert.Empty(cut.FindAll("#nothing-here"));
 
-        cut.InvokeAsync(() => pending.SetResult([]));
+        pending.SetResult([]);
 
+        // The release resumes the host's OnParametersSetAsync, which this act does not await.
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#nothing-here")));
     }
 
@@ -99,5 +107,44 @@ public sealed class NsSubjectDashboardEmptyTests : BunitContext
             dashboard => dashboard.Subject, new TestSubject { Name = "Ana" }));
 
         Assert.Empty(cut.Markup.Trim());
+    }
+
+    [Fact]
+    public void ANewSubjectsPendingGateTakesThePreviousSubjectsEmptyAway()
+    {
+        var ana = new TestSubject { Name = "Ana" };
+        var bruno = new TestSubject { Name = "Bruno" };
+        var pending = new TaskCompletionSource<IReadOnlyList<DashboardItem>>();
+
+        Services.AddSingleton<IDashboardContributor<TestSubject>>(new TestContributor(subject =>
+            subject == ana ? Task.FromResult<IReadOnlyList<DashboardItem>>([]) : pending.Task));
+
+        var cut = Render<NsSubjectDashboard<TestSubject>>(parameters => parameters
+            .Add(dashboard => dashboard.Subject, ana)
+            .Add(dashboard => dashboard.Empty, EmptySlot));
+
+        Assert.NotNull(cut.Find("#nothing-here"));
+
+        cut.Render(parameters => parameters.Add(dashboard => dashboard.Subject, bruno));
+
+        Assert.Empty(cut.FindAll("#nothing-here"));
+
+        pending.SetResult([new DashboardItem { Name = "Kept", CardType = typeof(KeptSubjectTestCard) }]);
+
+        // The release resumes the host's OnParametersSetAsync, which this act does not await.
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#kept-subject-card")));
+        Assert.Empty(cut.FindAll("#nothing-here"));
+    }
+
+    [Fact]
+    public void LosingTheSubjectTakesItsEmptyAway()
+    {
+        var cut = Show();
+
+        Assert.NotNull(cut.Find("#nothing-here"));
+
+        cut.Render(parameters => parameters.Add(dashboard => dashboard.Subject, (TestSubject?)null));
+
+        Assert.Empty(cut.FindAll("#nothing-here"));
     }
 }
