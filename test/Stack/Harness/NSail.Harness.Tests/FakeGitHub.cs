@@ -46,6 +46,9 @@ sealed class FakeGitHub : HttpMessageHandler
     // How many merged-PR reads answer 401 Bad credentials, as GitHub refuses a valid token now and then.
     public int MergedRefused { get; set; }
 
+    // The bodies the first open-PR reads answer 200 with, one a read, ahead of the open PRs.
+    public Queue<string> OpenPrsAnswers { get; init; } = new();
+
     public IReadOnlyList<(string Call, bool Billed)> Calls
     {
         get { lock (_gate) return _calls.ToList(); }
@@ -70,6 +73,10 @@ sealed class FakeGitHub : HttpMessageHandler
             {
                 MergedRefused--;
                 return Json(request, HttpStatusCode.Unauthorized, """{"message":"Bad credentials","status":"401"}""");
+            }
+            if (Name(query) == "OpenPrs" && OpenPrsAnswers.TryDequeue(out var answer))
+            {
+                return Json(request, HttpStatusCode.OK, answer);
             }
             return Json(request, HttpStatusCode.OK, Graph(query));
         }
