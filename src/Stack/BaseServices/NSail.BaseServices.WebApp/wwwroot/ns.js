@@ -1589,8 +1589,8 @@
     // reach it in the first place -- and why that one, reading no pointer and no arrival, is a
     // mechanism of its own rather than this pass. The screen's name takes the cursor after
     // ARRIVAL_FALLBACK_WAIT_MS, provisionally: a read on a loaded machine outlasts any fixed
-    // wait, so the marker is still watched for until the next arrival, a hand's move
-    // (ARRIVAL_HAND) or ARRIVAL_MARKER_CEILING_MS, and takes the cursor off that heading.
+    // wait, so the marker is watched for, and takes the cursor off that heading, until the next
+    // arrival, a hand on the page (any of ARRIVAL_HAND) or ARRIVAL_MARKER_CEILING_MS.
     const ARRIVAL_MARK = '[data-ns-arrival-focus]:not([disabled]):not([aria-readonly="true"])';
     const ARRIVAL_FALLBACK_WAIT_MS = 1000;
     const ARRIVAL_MARKER_CEILING_MS = 10000;
@@ -1628,8 +1628,10 @@
         // that renders after it.
         let fallback = null;
         let observer = null;
+        let waited = false;
 
         const timer = setTimeout(function () {
+            waited = true;
             if (taken()) {
                 stopArrival();
                 return;
@@ -1639,17 +1641,10 @@
             if (fallback)
                 land(fallback, false);
 
-            // Nothing left to wait for where the marker is not wanted. Where it is, the wait
-            // goes on, but from here a hand on the page ends it even where it moved no focus
-            // -- a scroll, a press on bare page -- since a box taking the cursor a few seconds
-            // in also scrolls to it.
-            if (!marked) {
+            // Nothing left to wait for where the marker is not wanted, or where a hand already
+            // ended the watch.
+            if (!observer)
                 stopArrival();
-                return;
-            }
-
-            for (const type of ARRIVAL_HAND)
-                document.addEventListener(type, stopArrival, { capture: true, passive: true });
         }, ARRIVAL_FALLBACK_WAIT_MS);
 
         const ceiling = setTimeout(stopArrival, ARRIVAL_MARKER_CEILING_MS);
@@ -1669,6 +1664,13 @@
                     land(late, true);
             });
             observer.observe(document.body, { childList: true, subtree: true });
+
+            // A hand on the page ends the watch from the first moment of the wait, even where
+            // it moved no focus -- a scroll, a press on bare page: taken() sees neither, and a
+            // box taking the cursor seconds later scrolls to it. Inside the first second the
+            // heading still lands; the marker no longer can.
+            for (const type of ARRIVAL_HAND)
+                document.addEventListener(type, hand, { capture: true, passive: true });
         }
 
         // A second navigation landing inside the wait stops this one before it starts its own
@@ -1676,14 +1678,27 @@
         // from whatever the newer arrival placed it on.
         arrivalStop = function () {
             clearTimeout(timer);
+            unwatch();
+        };
+
+        function hand() {
+            if (waited)
+                stopArrival();
+            else
+                unwatch();
+        }
+
+        function unwatch() {
             clearTimeout(ceiling);
 
-            if (observer)
+            if (observer) {
                 observer.disconnect();
+                observer = null;
+            }
 
             for (const type of ARRIVAL_HAND)
-                document.removeEventListener(type, stopArrival, { capture: true });
-        };
+                document.removeEventListener(type, hand, { capture: true });
+        }
 
         // Asked as "has the cursor MOVED since we landed", not as reached()'s list of shapes a
         // click can focus: inside this window a tab strip's div, a clickable grid row or a
@@ -1713,7 +1728,8 @@
     // full second after the arrival (ARRIVAL_FALLBACK_WAIT_MS), and taken() does not see a wheel:
     // whatever the view moved to in that second -- the guide scrolling to the section a cold
     // /guide/{chapter}#{slug} names, a notch down a dashboard taller than the window -- is a
-    // person's or a screen's own doing, and a scrolling focus would take it back to the top.
+    // person's or a screen's own doing, and a scrolling focus would take it back to the top. A
+    // late marker, which does scroll, never lands after such a hand: ARRIVAL_HAND ends its watch.
     function land(el, isMarker) {
         el.focus({ preventScroll: !isMarker });
     }
