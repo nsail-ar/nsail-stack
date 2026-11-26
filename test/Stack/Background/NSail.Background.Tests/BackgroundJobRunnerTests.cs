@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using NSail.Data;
 
 namespace NSail.Background.Tests;
@@ -99,6 +101,27 @@ sealed class ProbingJob : IBackgroundJob
     }
 }
 
+sealed class UnreachableJob : IBackgroundJob
+{
+    readonly Signal _signal;
+
+    public UnreachableJob(Signal signal)
+    {
+        _signal = signal;
+    }
+
+    public TimeSpan Interval => TimeSpan.FromHours(1);
+
+    public TenancyScope Tenancy => TenancyScope.Tenant;
+
+    public Task Run(CancellationToken cancellationToken)
+    {
+        _signal.Record();
+
+        return Task.CompletedTask;
+    }
+}
+
 public sealed class BackgroundJobRunnerTests
 {
     [Fact]
@@ -189,5 +212,43 @@ public sealed class BackgroundJobRunnerTests
 
         Assert.True(seen.Ids.Count >= 2, $"only {seen.Ids.Count} run(s) were observed.");
         Assert.Equal(seen.Ids.Count, seen.Ids.Distinct().Count());
+    }
+
+    // The lock asks again only of a session the server ended: a database that is not there is
+    // the server's answer, so the pass fails once, at Error, and the job never runs.
+    [Fact]
+    public async Task A_pass_whose_database_does_not_exist_fails_once_at_error()
+    {
+        using var meters = new Meters();
+        var signal = new Signal();
+        var logs = new LogRecorder();
+        var options = new DbContextOptionsBuilder<StateDbContext>()
+            .UseNpgsql(ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=nsail4429_" + Guid.NewGuid().ToString("N")[..12]))
+            .Options;
+
+        await using var provider = Harness.Build(
+            services =>
+            {
+                var tenancy = new TenancyOptions { Mode = TenancyMode.SingleDb, Tenants = "alfa" };
+
+                services.AddSingleton(tenancy);
+                services.AddSingleton(new TenantRoster(tenancy));
+                services.AddScoped<ResolvedTenancyProvider>();
+                services.AddScoped<TenancyProvider>(provider => provider.GetRequiredService<ResolvedTenancyProvider>());
+                services.AddScoped<DbContext>(_ => new StateDbContext(options));
+                services.AddSingleton(signal);
+                services.AddBackgroundJob<UnreachableJob>();
+            },
+            logs);
+
+        await Harness.Run(provider, logs.Awaits(entry => entry.Level == LogLevel.Error));
+
+        meters.Poll();
+
+        var error = Assert.Single(logs.Entries, entry => entry.Level == LogLevel.Error);
+
+        Assert.Equal(PostgresErrorCodes.InvalidCatalogName, Assert.IsType<PostgresException>(error.Exception).SqlState);
+        Assert.Equal(1, meters.Passes(nameof(UnreachableJob), BackgroundJobMetrics.Failed));
+        Assert.Equal(0, signal.Count);
     }
 }
