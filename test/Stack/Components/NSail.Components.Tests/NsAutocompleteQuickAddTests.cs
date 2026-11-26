@@ -25,7 +25,10 @@ public sealed class NsAutocompleteQuickAddTests : BunitContext, IAsyncLifetime
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
-        Services.AddSingleton(new StringCatalog([]));
+        Services.AddSingleton(new StringCatalog([new FixedStrings(new Dictionary<string, string>
+        {
+            ["Common.QuickAdd"] = "Agregar «{0}»",
+        })]));
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();
         Services.AddSingleton<StringManager>();
@@ -102,6 +105,21 @@ public sealed class NsAutocompleteQuickAddTests : BunitContext, IAsyncLifetime
         cut.WaitForAssertion(() => Assert.Contains("Gómez", cut.FindAll(".mud-list-item").Select(item => item.TextContent.Trim())), TimeSpan.FromSeconds(5));
 
         Assert.Empty(Entries(cut));
+    }
+
+    /// <summary>nsail#4381: drawn as the vendor's text button, the quick add printed its label in
+    /// the button's type — «AGREGAR «ZUBIRÍA»» under «Crear Médico...». It stays a button, inside
+    /// the entry's row, wearing the hook that hands the row's type back to it (ns-mud.css), and
+    /// the term it quotes is the one typed.</summary>
+    [Fact]
+    public async Task The_quick_add_is_a_button_of_the_entry_row_that_quotes_the_term_as_typed()
+    {
+        var cut = await Walkable("Zubiría");
+
+        var button = Assert.Single(Entries(cut));
+
+        Assert.Contains("ns-lookup-quick-add", button.ClassList);
+        Assert.Equal("Agregar «Zubiría»", button.QuerySelector(".ns-button-label")!.TextContent.Trim());
     }
 
     // The keyboard's own way to the quick add: it is a row of the list, reached past the matches

@@ -966,6 +966,9 @@ with partial matches, on empty results).
 - Its label is composed (`Common.CreateNew` + the concept), never written per entity.
 - Header fields and line-editor rows alike, zero per-row chrome.
 - **It is never smaller than the rows it follows** (cases).
+- **The `QuickAdd` entry reads in the list's type.** It stays a button, but the button's case,
+  size and weight are handed back to the row, and the term it quotes keeps the case it was typed
+  in (`.ns-lookup-quick-add`).
 - **A lookup adopts the save it asked for, and no other.** The entry's href carries a token the
   lookup minted (`source=`); the create page holds it from its query and every event it
   publishes wears it (messaging.md, Headers), so two fields of one concept on one screen never
