@@ -148,7 +148,11 @@ refused rather than stored.
   connection nor its scope — and because both of those rest on the connection string, the seam
   **refuses the two tuning switches that would break them**: multiplexing, which hands one
   physical connection to several scopes in turn, and `No Reset On Close`, which returns a pooled
-  connection still carrying the setting.
+  connection still carrying the setting. The write is the first statement a pooled connection
+  runs, so it is where a session that ended in the pool (a server restart, a terminated backend)
+  is found: the connection is **opened once more** and written there, since nothing of the
+  caller's has run. A second failure is the caller's, and nothing after the open is retried —
+  EF's retrying execution strategy stays off, because it refuses the caller's own transactions.
 - **The chain is the install's own work and its connection says so.** `ApplyMigrations` writes
   the install's key onto the connection it opens and runs the whole chain on it: a startup scope
   resolves no tenant, and a data migration's INSERT into a tenant-scoped table would otherwise
