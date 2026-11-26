@@ -524,6 +524,10 @@ contract stays vendor-free (`IDashboardContributor`, `DashboardItem`). **A card 
 nothing takes its cell with it** — no card opts in. **`Empty` is what `NsDashboard` shows when
 the gate left it no card at all**, rendered only after the gate has answered — an empty state
 shown in front of cards that were about to arrive is the one-arrival rule broken.
+`NsSubjectDashboard` has `Empty` too — the host that decides the subject's cards are all denied
+is the one that says so, so a portal never stands blank under its title. Its gate answers for one
+subject: with no subject it asks nothing and draws no `Empty`, and a new subject's pending gate
+takes the last one's `Empty` away.
 
 **`Silent` is what it shows when the gate left it cards and every one of them drew nothing** —
 the host's own sentence for a page that would otherwise stand blank under its title, kept apart
@@ -535,8 +539,8 @@ a cascaded `DashboardReads` — and the stylesheet hides it while **any** card h
 asking the same slot the collapse asks (`ns-mud.css`, `.ns-dashboard-silent`). A read counts from
 the moment it starts, so a card reads in `OnInitializedAsync` or `NsLoad`'s `OnLoad` before any
 other await, or its silence is taken for an answer. A host that gives no `Silent` renders exactly
-what it rendered before. `NsSubjectDashboard` has neither slot: its cards draw no collapsing cell
-to be silent in.
+what it rendered before. `NsSubjectDashboard` has no `Silent`: its cards draw no collapsing
+cell to be silent in.
 
 **The per-card gate is two checks, not one.** `DashboardItem.CardType`'s own authorize
 attributes answer "may this session ever send this card's message" — coarse, because it cannot
