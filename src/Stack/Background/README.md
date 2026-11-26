@@ -92,7 +92,9 @@ The runners read three things from the host:
   `{product}_{cell}_` prefix and the job's full name, so neighbouring cells and products do not
   fence each other. A host with no Npgsql `DbContext` takes no lock. The durable queue's drain is
   a job like any other, so a tenant's drain runs on one replica at a time and a sibling yields its
-  pass.
+  pass. A pooled session the server already ended (a restart, a terminate) does not cost the pass:
+  the lock clears that pool and asks once more on a fresh session. Any other failure, or a second
+  one, fails the pass at Error.
 
 **Deferred work** (`DeferredWork`):
 

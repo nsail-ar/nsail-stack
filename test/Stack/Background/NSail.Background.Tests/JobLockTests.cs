@@ -37,6 +37,31 @@ sealed class LockedJob : IBackgroundJob
     }
 }
 
+// A per-tenant pass that does work of its own on the store, so a pass that ends ok ran both its
+// lock and its rows on a live connection.
+sealed class StoreJob : IBackgroundJob
+{
+    readonly DbContext _db;
+    readonly Signal _signal;
+
+    public StoreJob(DbContext db, Signal signal)
+    {
+        _db = db;
+        _signal = signal;
+    }
+
+    public TimeSpan Interval => TimeSpan.FromHours(1);
+
+    public TenancyScope Tenancy => TenancyScope.Tenant;
+
+    public async Task Run(CancellationToken cancellationToken)
+    {
+        await _db.Database.ExecuteSqlRawAsync("SELECT 1", cancellationToken);
+
+        _signal.Record();
+    }
+}
+
 /// <summary>Two replicas over one database: the pass one holds is not run by the other, and the
 /// lock is free again once the pass ends. Over a real Postgres, because the advisory lock is
 /// Postgres's own.</summary>
@@ -239,6 +264,66 @@ public sealed class JobLockTests : IAsyncLifetime
             await runnerTwin.StopAsync(CancellationToken.None);
             await runnerNeighbour.StopAsync(CancellationToken.None);
         }
+    }
+
+    // A restart, or an administrator's terminate: the server ends every session the pool holds
+    // idle, and the pool still hands them out.
+    [Fact]
+    public async Task A_pass_after_the_server_ended_the_pooled_sessions_runs_on_a_live_connection()
+    {
+        using var meters = new Meters();
+
+        await using (var warm = BuildStore(new Signal()))
+        {
+            await Harness.Run(warm, warm.GetRequiredService<Signal>().Reached);
+        }
+
+        await Harness.Execute("postgres", $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{_database}'");
+        await Ended();
+
+        var logs = new LogRecorder();
+        var signal = new Signal();
+
+        await using var provider = BuildStore(signal, logs);
+
+        await Harness.Run(provider, signal.Reached);
+
+        meters.Poll();
+
+        Assert.Equal(2, meters.Passes(nameof(StoreJob), BackgroundJobMetrics.Succeeded));
+        Assert.Equal(0, meters.Passes(nameof(StoreJob), BackgroundJobMetrics.Failed));
+        Assert.DoesNotContain(logs.Entries, entry => entry.Level >= LogLevel.Error);
+    }
+
+    // pg_terminate_backend signals and returns: the sessions are gone once the server lists none.
+    async Task Ended()
+    {
+        await using var admin = new NpgsqlConnection(ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres;Pooling=false"));
+
+        await admin.OpenAsync();
+
+        await using var command = new NpgsqlCommand($"SELECT count(*) FROM pg_stat_activity WHERE datname = '{_database}'", admin);
+
+        for (var attempt = 0; attempt < 100 && (long)(await command.ExecuteScalarAsync())! > 0; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(20));
+        }
+    }
+
+    ServiceProvider BuildStore(Signal signal, LogRecorder? logs = null)
+    {
+        return Harness.Build(services =>
+        {
+            var tenancy = new TenancyOptions { Mode = TenancyMode.SingleDb, Tenants = "alfa" };
+
+            services.AddSingleton(tenancy);
+            services.AddSingleton(new TenantRoster(tenancy));
+            services.AddScoped<ResolvedTenancyProvider>();
+            services.AddScoped<TenancyProvider>(provider => provider.GetRequiredService<ResolvedTenancyProvider>());
+            services.AddScoped<DbContext>(_ => new StateDbContext(_options));
+            services.AddSingleton(signal);
+            services.AddBackgroundJob<StoreJob>();
+        }, logs);
     }
 
     ServiceProvider BuildPerTenant(string cell, Gate gate, Signal signal, LogRecorder? logs = null)

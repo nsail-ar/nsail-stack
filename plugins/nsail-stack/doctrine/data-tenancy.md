@@ -792,7 +792,11 @@ reads nothing and cannot write at all.
   database, so it locks on the cluster's maintenance database, the one the roster is read from,
   under a key of the cell's `{product}_{cell}_` prefix and the job's full name: a neighbouring
   cell or product on the server is not a sibling. The durable queue's drain is a job like any
-  other: a tenant's drain runs on one replica at a time.
+  other: a tenant's drain runs on one replica at a time. A restart or an administrator's terminate
+  ends the sessions the pool holds idle and the pool still hands them out, so when the lock's
+  first command learns its session was ended (`57P01`, `57P02`, a closed socket) the lock clears
+  that pool — the job's EF work draws from it too — and asks once more on a fresh session. Once:
+  any other failure, or a second one, is the server's answer and fails the pass at Error.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead
