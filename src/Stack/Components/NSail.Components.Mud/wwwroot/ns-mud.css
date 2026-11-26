@@ -2041,6 +2041,18 @@
     line-height: var(--mud-typography-body1-lineheight);
 }
 
+/* The quick add is pressed, so it stays a button, but it is an entry of the list and reads in
+   the entry's type: the vendor's button type scale, uppercase, 64px minimum width and padding
+   are handed back to the row, as a pressable heading does (.ns-th-order). The term it quotes is
+   what the person typed, so it keeps the case it was typed in. */
+.ns-lookup-create .ns-lookup-quick-add.mud-button-root {
+    min-width: 0;
+    padding: 0;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: none;
+}
+
 /* The line under a list that holds more answers than it shows (NsAutocomplete.MoreContent):
    status about the list, not a row of it, so it reads in the secondary ink at caption size, on
    the rows' own 16px gutter. */

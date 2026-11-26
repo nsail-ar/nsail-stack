@@ -103,6 +103,14 @@ public sealed class ButtonLabelEllipsisTests : BunitContext, IAsyncLifetime
         Assert.Matches(@"text-transform:\s*none;", tile);
 
         Assert.Matches(@"text-transform:\s*none;", Body(css, @"\.ns-disclosure \.ns-button-label"));
+
+        var quickAdd = Body(css, @"\.ns-lookup-create \.ns-lookup-quick-add\.mud-button-root");
+        Assert.Matches(@"text-transform:\s*none;", quickAdd);
+        Assert.Matches(@"font:\s*inherit;", quickAdd);
+        Assert.Matches(@"letter-spacing:\s*inherit;", quickAdd);
+        Assert.Matches(@"padding:\s*0;", quickAdd);
+        Assert.Matches(@"min-width:\s*0;", quickAdd);
+        Assert.DoesNotMatch(@"height", quickAdd);
     }
 
     /// <summary>A pressable column heading is a button that reads as a plain heading: its word
