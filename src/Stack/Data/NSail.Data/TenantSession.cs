@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Data;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -23,6 +24,13 @@ namespace NSail.Data;
 // multiplexing would hand one physical connection to two scopes, and No Reset On Close would
 // return it to the pool still carrying this setting. Where the rows are a tenant's, the seam
 // refuses either (Setup.AddDataAccess).
+//
+// The write is the first statement a pooled connection runs, so it is also the first to find
+// that the Postgres session behind it ended while it sat in the pool (a server restart, a
+// terminated backend). Nothing of the caller's has run yet, so the connection is opened once
+// more on a fresh session and the write is made there; a second failure is the caller's. A
+// failure that leaves the connection open is not a dead session and is not retried, and an open
+// that fails never reaches this hook.
 sealed class TenantSession : DbConnectionInterceptor
 {
     const string Write = "SELECT set_config(@setting, @tenant, false)";
@@ -40,9 +48,16 @@ sealed class TenantSession : DbConnectionInterceptor
     {
         ArgumentNullException.ThrowIfNull(connection);
 
-        await using var command = Command(connection, tenant);
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        try
+        {
+            await Execute(connection, tenant, cancellationToken);
+        }
+        catch (DbException) when (connection.State != ConnectionState.Open)
+        {
+            await connection.CloseAsync();
+            await connection.OpenAsync(cancellationToken);
+            await Execute(connection, tenant, cancellationToken);
+        }
     }
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
@@ -52,9 +67,16 @@ sealed class TenantSession : DbConnectionInterceptor
             return;
         }
 
-        using var command = Command(connection, tenant);
-
-        command.ExecuteNonQuery();
+        try
+        {
+            Execute(connection, tenant);
+        }
+        catch (DbException) when (connection.State != ConnectionState.Open)
+        {
+            connection.Close();
+            connection.Open();
+            Execute(connection, tenant);
+        }
     }
 
     public override async Task ConnectionOpenedAsync(
@@ -68,6 +90,20 @@ sealed class TenantSession : DbConnectionInterceptor
         }
 
         await Enter(connection, tenant, cancellationToken);
+    }
+
+    static async Task Execute(DbConnection connection, Guid tenant, CancellationToken cancellationToken)
+    {
+        await using var command = Command(connection, tenant);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    static void Execute(DbConnection connection, Guid tenant)
+    {
+        using var command = Command(connection, tenant);
+
+        command.ExecuteNonQuery();
     }
 
     // set_config and not SET: the setting's value is a parameter here, and SET takes none. A
