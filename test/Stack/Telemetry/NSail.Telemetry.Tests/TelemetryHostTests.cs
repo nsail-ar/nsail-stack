@@ -39,6 +39,28 @@ public sealed class TelemetryHostTests
         Assert.NotNull(app.Services.GetService<TracerProvider>());
     }
 
+    [Fact]
+    public void A_host_whose_image_build_wrote_the_credential_exports_with_no_environment()
+    {
+        const string built = "Basic YnVpbHQ6aW5nZXN0";
+
+        using var app = Harness.Host(credentialed: false, built: built);
+
+        var options = app.Services.GetRequiredService<TelemetryOptions>();
+
+        Assert.True(options.IsInForce);
+        Assert.Equal(built, options.Authorization);
+        Assert.NotNull(app.Services.GetService<TracerProvider>());
+    }
+
+    [Fact]
+    public void The_environment_wins_over_the_credential_the_build_wrote()
+    {
+        using var app = Harness.Host(credentialed: true, built: "Basic YnVpbHQ6aW5nZXN0");
+
+        Assert.Equal(Harness.Credential, app.Services.GetRequiredService<TelemetryOptions>().Authorization);
+    }
+
     // The read side hangs off its own credential, and this is the branch AC4's structural half
     // stands on: an install handed none resolves NO reader, so the door that would have used
     // one says it cannot answer. Registered instead, its SearchUri() would throw

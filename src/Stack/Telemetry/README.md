@@ -60,14 +60,14 @@ dev machine and CI are silent without any environment branch.
 | `SearchOrganization` | `default` | The store's organization. |
 | `SearchStream` | `default` | The store's stream name. |
 | `SearchStreamType` | `traces` | Which signal is searched. |
+| `Authorization` | none | The write credential an image build writes into the published section, so every install of that image exports without a hand step. Only a key that can do nothing but ingest belongs here, since it ships inside the image; never in a repository's appsettings, or a dev machine and CI would export. `NSAIL_OTLP_AUTH` wins over it. |
 
-Credentials never come from the section; the setup overwrites `Authorization` and
-`SearchAuthorization` from the environment:
+The credentials in the environment:
 
 | Variable | Use |
 |---|---|
-| `NSAIL_OTLP_AUTH` | Write credential for the exporter. |
-| `NSAIL_OBSERVE_READ` | Read credential for the search; independent of the write one. |
+| `NSAIL_OTLP_AUTH` | Write credential for the exporter; when present it wins over the section's `Authorization`, so a box that exports elsewhere (its own collector) says so without a rebuild. |
+| `NSAIL_OBSERVE_READ` | Read credential for the search; independent of the write one, and never read from the section. |
 
 Resource attributes are the backend's filters: `service.name`, `service.namespace` (`nsail`),
 `deployment.environment`, `nsail.tenant`.

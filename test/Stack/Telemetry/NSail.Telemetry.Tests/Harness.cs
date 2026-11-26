@@ -71,13 +71,15 @@ public static class Harness
     public static WebApplication Host(
         bool credentialed,
         Action<IServiceCollection>? compose = null,
-        Action<OpenTelemetryLoggerOptions>? logging = null)
+        Action<OpenTelemetryLoggerOptions>? logging = null,
+        string? built = null)
     {
         var builder = WebApplication.CreateBuilder();
 
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Telemetry:Endpoint"] = Endpoint,
+            ["Telemetry:Authorization"] = built,
         });
 
         var previous = Environment.GetEnvironmentVariable(TelemetryOptions.AuthorizationVariable);

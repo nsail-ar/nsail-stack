@@ -222,9 +222,15 @@ The live values are the operations ledger's (nsail-ops `providers/grafana.md`).
   machine name.
 - **`SamplingRatio`** is the whole sampling story: 0 to 1, parent-based, free to differ per
   install and environment. **Never a branch on `IsDevelopment()`** (rule above).
-- **`NSAIL_OTLP_AUTH`, in the environment, holds the finished `Authorization` header**,
-  scheme included (`Basic …`), used verbatim — nothing concatenated, no instance id read to
-  build it. Same seam as `DefaultSmtp` and `ConnectionStrings`.
+- **The write credential is the finished `Authorization` header**, scheme included
+  (`Basic …`), used verbatim — nothing concatenated, no instance id read to build it. It comes
+  from `NSAIL_OTLP_AUTH` in the environment, else from `Telemetry:Authorization`, which only the
+  image build writes into the published appsettings: the image exports with no hand step, and a
+  repository's appsettings never holds it. So it must be a key that can do nothing but ingest
+  (the store's ingestion passcode, which cannot search). The environment wins, so a box that
+  exports to its own collector says so without a rebuild. The read credential
+  (`NSAIL_OBSERVE_READ`) is the environment's alone: a key that reads the store back never
+  ships in an image.
 - **With no credential nothing is collected and nothing is exported.** No exporter is
   registered, so the `ActivitySource` has no listener and costs a `HasListeners` check. A
   dev machine and CI are silent by having no variable, never by a branch. The Mediator
