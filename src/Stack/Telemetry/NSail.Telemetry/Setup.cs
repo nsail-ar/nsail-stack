@@ -50,7 +50,10 @@ public static class Setup
 
         var options = builder.Configuration.Load<TelemetryOptions>();
 
-        options.Authorization = Environment.GetEnvironmentVariable(TelemetryOptions.AuthorizationVariable);
+        // The environment wins over a credential the build wrote into the section: a box that
+        // exports elsewhere (its own collector) says so without a rebuild.
+        var written = Environment.GetEnvironmentVariable(TelemetryOptions.AuthorizationVariable);
+        options.Authorization = string.IsNullOrWhiteSpace(written) ? options.Authorization : written;
         options.SearchAuthorization = Environment.GetEnvironmentVariable(TelemetryOptions.SearchVariable);
 
         builder.Services.AddMetadata();
