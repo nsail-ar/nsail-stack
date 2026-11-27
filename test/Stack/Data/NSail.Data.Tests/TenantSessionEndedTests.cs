@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using NSail.Messaging;
+using NSail.Messaging.Runtime.Sending;
 
 namespace NSail.Data.Tests;
 
@@ -151,6 +153,131 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
         Assert.Equal(1, connection.Writes);
     }
 
+    // A scope that resolved no tenant still writes its (empty) setting first, so a session that
+    // ended in the pool is found by that write and not by the caller's query.
+    [Fact]
+    public async Task A_scope_that_resolved_no_tenant_reads_nothing_when_its_pooled_session_ended()
+    {
+        await using var provider = Host(_connectionString);
+
+        await Session(provider, Lumina);
+        await TerminateAll();
+
+        await using var scope = provider.CreateAsyncScope();
+
+        Assert.Empty(await scope.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.ToListAsync());
+    }
+
+    // A session that ends inside an open unit of work is not the tenant write's to recover: the
+    // handler has run, so the send rolls back and the caller is told, and the handler is not run
+    // again behind it. Through either type a handler may inject, since both are the one context
+    // the unit of work enlists.
+    [Theory]
+    [InlineData(typeof(DbContext))]
+    [InlineData(typeof(SessionDbContext))]
+    public async Task A_session_that_ends_inside_a_send_fails_it_once_and_leaves_nothing(Type injected)
+    {
+        await using var provider = Host(_connectionString);
+        await using var caller = provider.CreateAsyncScope();
+
+        Enter(caller, Lumina);
+
+        var sender = new InProcessSender<Noted>(provider, provider.GetRequiredService<IServiceScopeFactory>());
+        var runs = 0;
+        var terminated = false;
+
+        await Assert.ThrowsAnyAsync<DbException>(() => sender.Run(
+            async (services, cancellationToken) =>
+            {
+                runs++;
+
+                var db = (DbContext)services.GetRequiredService(injected);
+
+                db.Add(new SessionNote { Id = Guid.NewGuid(), Text = "uncommitted" });
+
+                await db.SaveChangesAsync(cancellationToken);
+
+                terminated = await Terminated(await db.Database.SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"").SingleAsync(cancellationToken));
+            },
+            CancellationToken.None));
+
+        Assert.True(terminated);
+        Assert.Equal(1, runs);
+
+        await using var check = provider.CreateAsyncScope();
+
+        Enter(check, Lumina);
+
+        Assert.Equal(["lumina's"], await check.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.Select(note => note.Text).ToListAsync());
+    }
+
+    // The injected context is the one the send's transaction is open on, so a handler that needs
+    // a transaction of its own opens it on a context of its own, which commits where it is written
+    // and stands when the send rolls back.
+    [Fact]
+    public async Task A_handler_opens_a_transaction_of_its_own_on_a_context_of_its_own()
+    {
+        await using var provider = Host(_connectionString);
+        await using var caller = provider.CreateAsyncScope();
+
+        Enter(caller, Lumina);
+
+        var sender = new InProcessSender<Noted>(provider, provider.GetRequiredService<IServiceScopeFactory>());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => sender.Run(
+            async (services, cancellationToken) =>
+            {
+                var injected = services.GetRequiredService<SessionDbContext>();
+
+                Assert.Same(injected, services.GetRequiredService<DbContext>());
+                await Assert.ThrowsAsync<InvalidOperationException>(() => injected.Database.BeginTransactionAsync(cancellationToken));
+
+                injected.Add(new SessionNote { Id = Guid.NewGuid(), Text = "rolled back" });
+
+                await injected.SaveChangesAsync(cancellationToken);
+
+                await using var own = await services.GetRequiredService<IDbContextFactory<SessionDbContext>>().CreateDbContextAsync(cancellationToken);
+                await using var transaction = await own.Database.BeginTransactionAsync(cancellationToken);
+
+                own.Add(new SessionNote { Id = Guid.NewGuid(), Text = "its own" });
+
+                await own.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                throw new OperationCanceledException();
+            },
+            CancellationToken.None));
+
+        await using var check = provider.CreateAsyncScope();
+
+        Enter(check, Lumina);
+
+        Assert.Equal(["its own", "lumina's"], await check.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.Select(note => note.Text).OrderBy(text => text).ToListAsync());
+    }
+
+    // A statement the server refuses on a live session is the caller's at once, as Postgres said
+    // it: the insert is sent once and the failure is not wrapped as transient.
+    [Fact]
+    public async Task A_unique_violation_is_sent_once_and_surfaces_as_itself()
+    {
+        var inserts = new InsertCounter();
+
+        await using var provider = Host(_connectionString, inserts);
+        await using var scope = provider.CreateAsyncScope();
+
+        Enter(scope, Lumina);
+
+        var db = scope.ServiceProvider.GetRequiredService<SessionDbContext>();
+        var taken = await db.Notes.AsNoTracking().Select(note => note.Id).FirstAsync();
+
+        db.Notes.Add(new SessionNote { Id = taken, Text = "again" });
+
+        var refusal = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        Assert.Equal(PostgresErrorCodes.UniqueViolation, Assert.IsType<PostgresException>(refusal.InnerException).SqlState);
+        Assert.Equal(1, inserts.Sent);
+    }
+
     static Task EnterSession(EndingConnection connection)
     {
         connection.Open();
@@ -208,6 +335,11 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
     // connection is certain to be holding a dead session when the next scope takes it.
     static async Task Terminate(int pid)
     {
+        Assert.True(await Terminated(pid));
+    }
+
+    static async Task<bool> Terminated(int pid)
+    {
         await using var connection = new NpgsqlConnection(ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres;Pooling=false"));
 
         await connection.OpenAsync();
@@ -216,7 +348,24 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
 
         terminate.Parameters.AddWithValue("pid", pid);
 
-        Assert.Equal(true, await terminate.ExecuteScalarAsync());
+        return await terminate.ExecuteScalarAsync() is true;
+    }
+
+    // Every session on the test's database, as a server restart would end them, so whichever one
+    // the pool hands the next scope is dead.
+    async Task TerminateAll()
+    {
+        await using var connection = new NpgsqlConnection(ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres;Pooling=false"));
+
+        await connection.OpenAsync();
+
+        await using var terminate = new NpgsqlCommand(
+            "SELECT count(*) FILTER (WHERE pg_terminate_backend(pid, 5000)) FROM pg_stat_activity WHERE datname = @database AND pid <> pg_backend_pid()",
+            connection);
+
+        terminate.Parameters.AddWithValue("database", _database);
+
+        Assert.True((long)(await terminate.ExecuteScalarAsync())! > 0);
     }
 
     static async Task Admin(string sql)
@@ -263,6 +412,39 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
             Failed++;
 
             return Task.CompletedTask;
+        }
+    }
+
+    sealed class InsertCounter : DbCommandInterceptor
+    {
+        public int Sent { get; private set; }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("INSERT", StringComparison.Ordinal))
+            {
+                Sent++;
+            }
+
+            return ValueTask.FromResult(result);
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("INSERT", StringComparison.Ordinal))
+            {
+                Sent++;
+            }
+
+            return ValueTask.FromResult(result);
         }
     }
 
@@ -389,6 +571,10 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
             throw new NotSupportedException();
         }
     }
+}
+
+public sealed class Noted : IMessage
+{
 }
 
 [CollectionDefinition(nameof(TenantSessionEndedTests), DisableParallelization = true)]

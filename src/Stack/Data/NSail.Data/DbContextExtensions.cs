@@ -265,7 +265,9 @@ public static class DbContextExtensions
     public static IServiceCollection SetDefaultDbContext<TDbContext>(this IServiceCollection services)
         where TDbContext : DbContext
     {
-        services.AddScoped<DbContext, TDbContext>();
+        // The scope's one TDbContext, not a second instance: the unit of work enlists DbContext,
+        // and a handler that injects the concrete type has to save inside that same transaction.
+        services.AddScoped<DbContext>(provider => provider.GetRequiredService<TDbContext>());
         services.AddUnitOfWork();
         services.TryAddScoped<EntityMapper>();
 
@@ -350,7 +352,7 @@ public static class DbContextExtensions
 
         // The chain is the INSTALL's own work and its seed writes the install's own rows, so the
         // connection says so. A startup scope resolves no tenant, and where the rows are a
-        // tenant's that leaves the session setting unwritten — the right answer for a background
+        // tenant's that leaves the session setting empty — the right answer for a background
         // job and the wrong one here: the forced row policies would refuse the seed's INSERTs and
         // the install would never come up (TenantPolicies). The connection is opened explicitly
         // so the setting outlives the statement that wrote it and the whole chain runs on it.

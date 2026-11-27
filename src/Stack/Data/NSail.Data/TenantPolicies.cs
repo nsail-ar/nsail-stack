@@ -18,8 +18,8 @@ namespace NSail.Data;
 public static class TenantPolicies
 {
     /// <summary>The session setting the policy compares against, written on connection open
-    /// from <see cref="TenancyProvider.RowKey"/>. A connection that carries nothing compares
-    /// against NULL, which no row equals — the SQL half of "an unresolved scope reads
+    /// from <see cref="TenancyProvider.RowKey"/>. A scope with no key writes it empty, which the
+    /// policy reads as NULL and no row equals — the SQL half of "an unresolved scope reads
     /// nothing".</summary>
     public const string Setting = "nsail.tenant";
 
@@ -86,9 +86,10 @@ public static class TenantPolicies
             """;
     }
 
-    // nullif before the cast, because a setting the session never wrote reads as NULL and one
-    // RESET on a pooled connection's return reads as the empty string: casting '' to uuid is an
-    // error, not a comparison that matches nothing.
+    // nullif before the cast, because a setting the session never wrote reads as NULL, and one
+    // RESET on a pooled connection's return or written for a scope in no tenant (TenantSession)
+    // reads as the empty string: casting '' to uuid is an error, not a comparison that matches
+    // nothing.
     static string Predicate
     {
         get { return $"\"{TenantColumn.Name}\" = nullif(current_setting('{Setting}', true), '')::uuid"; }
