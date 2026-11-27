@@ -151,7 +151,9 @@ refused rather than stored.
   connection still carrying the setting. The write is the first statement a pooled connection
   runs, a scope in no tenant included, so it is where a session that ended in the pool (a
   server restart, a terminated backend) is found: the connection is **opened once more** and
-  written there, since nothing of the caller's has run. A second failure is the caller's, and
+  written there, since nothing of the caller's has run. Once is enough: Npgsql empties the pool
+  when a session breaks, so a restart that ended every pooled session still hands the second
+  open a fresh one. A second failure is the caller's, and
   nothing after the open is retried — EF's retrying execution strategy stays off, because it
   refuses the caller's own transactions.
 - **The chain is the install's own work and its connection says so.** `ApplyMigrations` writes
