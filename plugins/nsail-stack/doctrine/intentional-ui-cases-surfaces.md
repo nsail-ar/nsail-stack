@@ -293,6 +293,15 @@ The price is timing, and it is the right one: the alert re-evaluated the rule on
 the refusal answers Save. That is the contract of every other form-level refusal, and a rule that
 changes its mind while the user is still typing the value it judges is noise, not help.
 
+## The past start still refused after it moved to tomorrow
+
+Nuevo Turno refused a start already gone with «Este horario ya pasó.» under the start field, and
+the message stayed there after the person moved the start to tomorrow, until the next Save — a
+verdict about a value no longer on screen, which reads as the new value refused. Re-checking as
+the person types would make the server answer every keystroke, so the edit only lifts the message
+under the field it changed; the next Save re-checks it. The other messages stay: they judge values
+nobody touched, and lifting them would hide a refusal still true.
+
 ## Nothing reserves, and what arrives is read in full
 
 **No reservation.** A padding sized for one message on every control box was spent whether or

@@ -448,9 +448,9 @@ if it is cancelled, so a host wiring only the two templates still adds and still
 the issue names, as one strip on the row's last line for anything the row renders no field for,
 never a toast (intentional-ui.md, Refusal placement). The row's fields announce themselves to the
 list the way they announce themselves to a form, so a screen wires none of it — a page sets
-`args.Problem` and nothing else. The next Confirmar lifts it, and so does the submit of the
-document the list stands in — which **settles the row left open before it validates**, exactly as
-it settles the table's (Inline editing, above): `OnCommit` runs again on the values on screen, so
+`args.Problem` and nothing else. An edit of the field it stands under lifts it, the next
+Confirmar lifts it, and so does the submit of the document the list stands in — which **settles
+the row left open before it validates**, exactly as it settles the table's (Inline editing, above): `OnCommit` runs again on the values on screen, so
 Guardar confirms a row nothing refuses (the editor closes, the document saves in one tap) and is
 refused by a bad one in the row's own words, under the field they name (intentional-ui.md). A
 page writes nothing for that either. **Once the fields have stacked, the commit pair reads

@@ -114,10 +114,10 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
     }
 
     // The next attempt on the context re-answers it, so the answer standing on it is lifted
-    // first: "a refusal is handed to the form on submit, which places it and clears it on the
-    // NEXT submit" (intentional-ui.md, Refusal placement) is the rule, and a validation request
-    // is that moment for every placement on the context — the host that owns it and the open
-    // row inside it alike. Without this the row's own store is the one nobody can lift: the
+    // first: an anchored refusal stands "until its field is edited or the next attempt"
+    // (intentional-ui.md, Refusal placement), and a validation request is that attempt for
+    // every placement on the context — the host that owns it and the open row inside it alike.
+    // Without this the row's own store is the one nobody can lift: the
     // form clears its own and then validates, the row's messages still count, Validate() answers
     // false and the submit returns having drawn nothing — a Guardar that goes mute.
     // Nothing is lost by lifting it: what still refuses re-posts in the same pass (every field's

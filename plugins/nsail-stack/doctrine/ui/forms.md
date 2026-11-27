@@ -397,7 +397,9 @@ tracker and the placement together, because only a field that announced itself m
 message. The other hosts with fields on screen when a refusal arrives — the open row of an
 `NsListEditor` or of an editable `NsTable` — place their own with it rather than writing the rule
 again ([hosts.md](hosts.md)). **A placement lifts what it has standing whenever the `EditContext`
-it posted to is validated**, and lets go of it when its own host leaves the screen: a store's
+it posted to is validated, and the message under one field when that field is edited** (the
+context's `OnFieldChanged`, which a field raises for a value the person changed and never for one
+pushed in or echoed back), and lets go of it when its own host leaves the screen: a store's
 messages outlive the store, and one posted on someone else's context is a validation failure that
 context's owner cannot reach. **What the lift would leave unanswered is settled before it**: a
 host holding a row open registers on the form (`IFormRows`), and the submit runs that row's own
@@ -424,7 +426,9 @@ which is the silence the placement exists to prevent (`RefusalPlacement.Forget`)
   **The anchor carries the member's own client rule as well as the server's refusal**: a
   DataAnnotation on that member posts against the same identifier, so a rule the message mirrors
   from its handler (`[AttendeesRequired]` over Bookings' `RequireAttendees`) says the same
-  sentence in the same place with no round trip, and the handler never runs.
+  sentence in the same place with no round trip, and the handler never runs. No field raises
+  the member's edit, so its refusal stands until the next attempt — unless the editor tells the
+  context it changed the member (`EditContext.NotifyFieldChanged`), which lifts it like a field's.
 - **A field reserves nothing, and the message it draws is read in full** — nothing is spent while
   the field is clean, and the message that arrives stands in flow under the field and wraps to as
   many lines as its sentence needs. The refused field is taller than its neighbours and the row
