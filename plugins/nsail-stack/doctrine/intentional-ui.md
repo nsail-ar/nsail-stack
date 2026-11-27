@@ -697,11 +697,11 @@ door drawn beside the fields — the handler is the page's, the refusal is still
 takes the same three placements: anchored where its reason names a field the form renders
 (Almacenamiento's Probar naming Proveedor), at the foot where it names none. **Standing inside the
 form is what decides it** — no act declares anything and no page wires a report — and it stands
-there until the next press of an act, since the one that works says nothing at all: a press that
-sends nothing takes nothing down, and **what `Guardar` was refused for is never a probe's to
-clear**. An act with no form around it keeps the toast, and so does one on the far side of a portal
-(a menu row): there is nothing on screen for a refusal to belong to
-([ui/forms.md](ui/forms.md), [ui/actions.md](ui/actions.md)).
+there until the field it is anchored under is edited or the next press of an act, since the one
+that works says nothing at all: a press that sends nothing takes nothing down, and **what
+`Guardar` was refused for is never a probe's to clear**. An act with no form around it keeps the
+toast, and so does one on the far side of a portal (a menu row): there is nothing on screen for a
+refusal to belong to ([ui/forms.md](ui/forms.md), [ui/actions.md](ui/actions.md)).
 
 **Nothing reserves, and what arrives is read in full.** A field keeps no line for a message, so
 an unrefused form spends no air on the possibility; a message that arrives takes the room its

@@ -458,7 +458,8 @@ which is the silence the placement exists to prevent (`RefusalPlacement.Forget`)
   comes down at the next press of an ACT, not at the end of the act that worked** — an act that is
   refused reports a `Problem` and one that works reports nothing, so silence is only legible
   backwards, and a press that sends nothing (`NsHelp`'s `?`) resolves nothing and takes nothing
-  down. **The seat is one**: a submit drawing its own refusal ends the hosted act's claim to it
+  down; an edit of the field it is anchored under lifts that message, as it lifts a submit's.
+  **The seat is one**: a submit drawing its own refusal ends the hosted act's claim to it
   (`Draw`), so what the person reads about `Guardar` is never spent on a later probe.
   **The bound is the cascade**: an act outside every form keeps the toast, and so does one drawn
   on the far side of a portal (a menu row), where no cascade of the form's reaches.
