@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using NSail.Messaging;
+using NSail.Messaging.Runtime.Sending;
 
 namespace NSail.Data.Tests;
 
@@ -148,6 +150,67 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
         Assert.Equal(1, connection.Writes);
     }
 
+    // A session that ends inside an open unit of work is not the tenant write's to recover: the
+    // handler has run, so the send rolls back and the caller is told, and the handler is not run
+    // again behind it. DbContext, because that is the context the unit of work enlists.
+    [Fact]
+    public async Task A_session_that_ends_inside_a_send_fails_it_once_and_leaves_nothing()
+    {
+        await using var provider = Host(_connectionString);
+        await using var caller = provider.CreateAsyncScope();
+
+        Enter(caller, Lumina);
+
+        var sender = new InProcessSender<Noted>(provider, provider.GetRequiredService<IServiceScopeFactory>());
+        var runs = 0;
+
+        await Assert.ThrowsAnyAsync<Exception>(() => sender.Run(
+            async (services, cancellationToken) =>
+            {
+                runs++;
+
+                var db = services.GetRequiredService<DbContext>();
+
+                db.Add(new SessionNote { Id = Guid.NewGuid(), Text = "uncommitted" });
+
+                await db.SaveChangesAsync(cancellationToken);
+
+                await Terminate(await db.Database.SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"").SingleAsync(cancellationToken));
+            },
+            CancellationToken.None));
+
+        Assert.Equal(1, runs);
+
+        await using var check = provider.CreateAsyncScope();
+
+        Enter(check, Lumina);
+
+        Assert.Equal(["lumina's"], await check.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.Select(note => note.Text).ToListAsync());
+    }
+
+    // A statement the server refuses on a live session is the caller's at once, as Postgres said
+    // it: the insert is sent once and the failure is not wrapped as transient.
+    [Fact]
+    public async Task A_unique_violation_is_sent_once_and_surfaces_as_itself()
+    {
+        var inserts = new InsertCounter();
+
+        await using var provider = Host(_connectionString, inserts);
+        await using var scope = provider.CreateAsyncScope();
+
+        Enter(scope, Lumina);
+
+        var db = scope.ServiceProvider.GetRequiredService<SessionDbContext>();
+        var taken = await db.Notes.AsNoTracking().Select(note => note.Id).FirstAsync();
+
+        db.Notes.Add(new SessionNote { Id = taken, Text = "again" });
+
+        var refusal = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        Assert.Equal(PostgresErrorCodes.UniqueViolation, Assert.IsType<PostgresException>(refusal.InnerException).SqlState);
+        Assert.Equal(1, inserts.Sent);
+    }
+
     static Task EnterSession(EndingConnection connection)
     {
         connection.Open();
@@ -259,6 +322,39 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
             Failed++;
 
             return Task.CompletedTask;
+        }
+    }
+
+    sealed class InsertCounter : DbCommandInterceptor
+    {
+        public int Sent { get; private set; }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("INSERT", StringComparison.Ordinal))
+            {
+                Sent++;
+            }
+
+            return ValueTask.FromResult(result);
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("INSERT", StringComparison.Ordinal))
+            {
+                Sent++;
+            }
+
+            return ValueTask.FromResult(result);
         }
     }
 
@@ -385,6 +481,10 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
             throw new NotSupportedException();
         }
     }
+}
+
+public sealed class Noted : IMessage
+{
 }
 
 [CollectionDefinition(nameof(TenantSessionEndedTests), DisableParallelization = true)]
