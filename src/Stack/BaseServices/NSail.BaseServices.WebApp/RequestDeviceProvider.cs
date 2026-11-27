@@ -12,11 +12,8 @@ namespace NSail.BaseServices.WebApp;
 /// before the WebAssembly client boots.</summary>
 public sealed class RequestDeviceProvider : DeviceProvider
 {
-    // The Client Hint made for exactly this bit. Chromium sends it on every navigation with no
-    // Accept-CH opt-in, and it is a structured boolean: "?1" is a phone, "?0" is anything else
-    // — including an iPad, which has reported a desktop user agent since iPadOS 13.
+    // Chromium sends it on every navigation with no Accept-CH opt-in.
     const string MobileHint = "Sec-CH-UA-Mobile";
-    const string Mobile = "?1";
 
     readonly IHttpContextAccessor _requests;
 
@@ -35,28 +32,6 @@ public sealed class RequestDeviceProvider : DeviceProvider
             return false;
         }
 
-        var hint = headers[MobileHint].ToString();
-
-        if (!string.IsNullOrWhiteSpace(hint))
-        {
-            return string.Equals(hint.Trim(), Mobile, StringComparison.Ordinal);
-        }
-
-        return IsPhoneAgent(headers.UserAgent.ToString());
-    }
-
-    // The fallback, for the browsers that send no hint (Safari, Firefox). Android names the
-    // form factor rather than the device: every Android browser puts "Mobile" in the token on
-    // a phone and leaves it out on a tablet, which is the only thing that tells the two apart.
-    static bool IsPhoneAgent(string agent)
-    {
-        if (agent.Contains("iPhone", StringComparison.OrdinalIgnoreCase)
-            || agent.Contains("iPod", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return agent.Contains("Android", StringComparison.OrdinalIgnoreCase)
-            && agent.Contains("Mobile", StringComparison.OrdinalIgnoreCase);
+        return IsPhoneBy(headers[MobileHint].ToString(), headers.UserAgent.ToString());
     }
 }

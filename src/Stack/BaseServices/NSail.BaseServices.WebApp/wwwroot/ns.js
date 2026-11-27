@@ -1758,6 +1758,16 @@
     // The try/catch is not defensive noise: reading localStorage THROWS outright where storage
     // is disabled or the quota is full (private browsing, a locked-down kiosk), so without it
     // a machine that cannot remember could not render the screen either.
+    // What the server reads off the request, read off the browser for the WebAssembly client:
+    // userAgentData.mobile is the Sec-CH-UA-Mobile bit (Chromium only), answered in the header's
+    // own form so DeviceProvider applies one rule to both sides. Synchronous on purpose: the
+    // answer is owed on a component's first render.
+    function device() {
+        const data = navigator.userAgentData;
+        const hint = data && typeof data.mobile === "boolean" ? (data.mobile ? "?1" : "?0") : "";
+        return [hint, navigator.userAgent || ""];
+    }
+
     function recall(key) {
         try {
             return window.localStorage.getItem(key);
@@ -1981,5 +1991,5 @@
         scans.delete(id);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, focusRefused, arrivalFocus, chords, recall, remember, download, lightOffer, pressOffer, canScan, scanStart, scanStop, confirmRow };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, focusRefused, arrivalFocus, chords, device, recall, remember, download, lightOffer, pressOffer, canScan, scanStart, scanStop, confirmRow };
 })();
