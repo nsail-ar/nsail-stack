@@ -77,6 +77,31 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
         Assert.Equal(["lumina's"], await scope.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.Select(note => note.Text).ToListAsync());
     }
 
+    // A server restart ends every idle session in the pool at once, so the open that replaces the
+    // first dead one must not be handed the next.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_scope_whose_pool_holds_only_ended_sessions_is_served_on_a_fresh_one_under_its_tenant(bool async)
+    {
+        await using var provider = Host(_connectionString);
+
+        var ended = await Sessions(provider, Lumina, 4);
+
+        await TerminateAll();
+
+        var session = await Session(provider, Lumina, async);
+
+        Assert.DoesNotContain(session.Pid, ended);
+        Assert.Equal(Lumina.RowKey.ToString("D"), session.Tenant);
+
+        await using var scope = provider.CreateAsyncScope();
+
+        Enter(scope, Lumina);
+
+        Assert.Equal(["lumina's"], await scope.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.Select(note => note.Text).ToListAsync());
+    }
+
     // The replacement session goes back to the pool like any other, so the next scope to take
     // it carries no tenant of the one that opened it.
     [Fact]
@@ -329,6 +354,39 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
             .SqlQueryRaw<SessionRow>($"SELECT pg_backend_pid() AS \"Pid\", current_setting('{TenantPolicies.Setting}', true) AS \"Tenant\"");
 
         return async ? await query.SingleAsync() : query.Single();
+    }
+
+    // Held open together, so the pool keeps that many sessions idle once they are returned.
+    static async Task<int[]> Sessions(ServiceProvider provider, Tenant tenant, int count)
+    {
+        var scopes = Enumerable.Range(0, count).Select(_ => provider.CreateAsyncScope()).ToList();
+
+        try
+        {
+            var pids = new List<int>();
+
+            foreach (var scope in scopes)
+            {
+                Enter(scope, tenant);
+
+                var db = scope.ServiceProvider.GetRequiredService<SessionDbContext>();
+
+                await db.Database.OpenConnectionAsync();
+
+                pids.Add(await db.Database.SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"").SingleAsync());
+            }
+
+            Assert.Equal(count, pids.Distinct().Count());
+
+            return [.. pids];
+        }
+        finally
+        {
+            foreach (var scope in scopes)
+            {
+                await scope.DisposeAsync();
+            }
+        }
     }
 
     // From a connection of its own, and only back once the backend is gone, so the pooled

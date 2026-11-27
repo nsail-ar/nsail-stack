@@ -28,9 +28,10 @@ namespace NSail.Data;
 // The write is the first statement a pooled connection runs, so it is also the first to find
 // that the Postgres session behind it ended while it sat in the pool (a server restart, a
 // terminated backend). Nothing of the caller's has run yet, so the connection is opened once
-// more on a fresh session and the write is made there; a second failure is the caller's. A
-// failure that leaves the connection open is not a dead session and is not retried, and an open
-// that fails never reaches this hook.
+// more on a fresh session and the write is made there; a second failure is the caller's. One
+// more open is enough because Npgsql empties the pool when a session breaks, so even a restart
+// that ended every pooled session hands it a new one. A failure that leaves the connection open
+// is not a dead session and is not retried, and an open that fails never reaches this hook.
 sealed class TenantSession : DbConnectionInterceptor
 {
     const string Write = "SELECT set_config(@setting, @tenant, false)";
