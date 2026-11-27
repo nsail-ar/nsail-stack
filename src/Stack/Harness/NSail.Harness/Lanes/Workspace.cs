@@ -50,6 +50,29 @@ public sealed class Workspace
         return (await Shell.GitOut(dir, "rev-parse", "FETCH_HEAD^{commit}")).Trim();
     }
 
+    // Refs fetched from the remote into the store every slot shares, forced, in the mirror's turn: two
+    // jobs writing the same tag at once race for its lock, and git refuses the one that finds it taken.
+    public async Task Fetch(string dir, bool prune, params string[] refspecs)
+    {
+        using var turn = await Turn();
+        await Shell.Git(dir, [.. Guard, "fetch", "-q", "--force", .. (prune ? (string[])["--prune"] : []), _repoUrl, .. refspecs]);
+    }
+
+    // The mirror's turn, held until disposed.
+    internal async Task<IDisposable> Turn()
+    {
+        await _git.WaitAsync();
+        return new Held(_git);
+    }
+
+    sealed class Held(SemaphoreSlim held) : IDisposable
+    {
+        public void Dispose()
+        {
+            held.Release();
+        }
+    }
+
     // Prefix of a git that reaches the remote: the helper list is the harness's own alone.
     public string[] Guard => ["-c", "credential.helper=", .. Helper()];
 
