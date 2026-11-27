@@ -35,7 +35,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
 
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
-        await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", "--prune", ctx.Workspace.Url, $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*"]);
+        await ctx.Workspace.Fetch(dir, prune: true, $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*");
         var head = await Shell.Git(dir, "rev-parse", "HEAD");
         // The claim keeps the fleet's other harnesses off the cut while this one works, renewed while
         // the job lives (a wait for a build turn has no bound); the cut mark, written once the cut

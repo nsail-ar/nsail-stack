@@ -248,7 +248,10 @@ the files it leaves.
     machines, go on. The machine's log says it once at error level, naming the worker, the machine and
     the step. Its result is `machine` (`harness.jobs{outcome=machine}`), its outcome `machine fault —
     <step>`, and it adds nothing to the crew's job stats. A fetch a job runs inside its own work (the
-    tag fetches of a QA walk, a ship or a release) still breaks. Repairing the clone is a hand's work
+    tag fetches of a QA walk, a ship or a release) still breaks. Those fetches write the tag store every
+    slot shares, as the mirror's fetch does when it follows a new tag, so each waits for the mirror's
+    turn (`Workspace.Fetch`): two writers of one tag race for its lock, and git fails the one that finds
+    it taken. Repairing the clone is a hand's work
     on the machine. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
