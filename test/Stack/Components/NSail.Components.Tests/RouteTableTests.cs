@@ -40,6 +40,10 @@ public sealed class HomeTestPage : ComponentBase;
 [Route("/reports/{Year:int?}")]
 public sealed class ReportsTestPage : ComponentBase;
 
+[Route("/server-only/{Id:guid}")]
+[ExcludeFromInteractiveRouting]
+public sealed class ServerOnlyTestPage : ComponentBase;
+
 public sealed class UnroutedTestPage : ComponentBase;
 
 public sealed class RouteTableTests
@@ -47,6 +51,16 @@ public sealed class RouteTableTests
     private static RouteTable Build()
     {
         return new(typeof(RouteTableTests).Assembly, Array.Empty<System.Reflection.Assembly>());
+    }
+
+    [Fact]
+    public void An_excluded_page_keeps_its_url_and_stays_out_of_the_interactive_router()
+    {
+        var table = Build();
+        var id = Guid.NewGuid();
+
+        Assert.Equal($"/server-only/{id}", table.GetUrl<ServerOnlyTestPage>(new { Id = id }));
+        Assert.Null(table.Match($"/server-only/{id}"));
     }
 
     [Fact]
