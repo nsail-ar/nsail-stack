@@ -861,8 +861,9 @@ else
         return string.Format(culture, Strings.Translate(key, count), count.ToString("N0", culture));
     }
 
-    // Auto asks the device, not the size: the answer rides in on the request, so it is already
-    // in hand on the first render and no browser has to be measured for it. A phone therefore
+    // Auto asks the device, not the size: the request carries it, and a WebAssembly client the
+    // prerender's hand-off never reached reads the same facts off the browser synchronously, so
+    // it is in hand on the first render and no window has to be measured for it. A phone therefore
     // never renders a pager at all, and a narrow desktop window still pages — the infinite
     // scroll is a touch gesture, not a consequence of narrow columns.
     bool Scrolls

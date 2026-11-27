@@ -136,7 +136,8 @@ public sealed class NsTableDeviceModeTests : BunitContext, IAsyncLifetime
     [Fact]
     public async Task AClientReadLateAnswersAsOneHandedTheAnswer()
     {
-        // One phone, two clients: the hand-off reached one first read and not the other.
+        // One phone, three clients: the hand-off reached one first read, came empty to another,
+        // and the third had no persisted state at all.
         var handed = new DeviceProvider((await Handoff.Carrying("NSail.Device", true)).State, new Browser("", IPhone));
         var late = new DeviceProvider((await Handoff.Empty()).State, new Browser("", IPhone));
         var never = new DeviceProvider(null, new Browser("", IPhone));
@@ -144,6 +145,16 @@ public sealed class NsTableDeviceModeTests : BunitContext, IAsyncLifetime
         Assert.True(handed.IsPhone);
         Assert.Equal(handed.IsPhone, late.IsPhone);
         Assert.Equal(handed.IsPhone, never.IsPhone);
+    }
+
+    [Fact]
+    public async Task TheHandoffIsTakenBeforeTheBrowser()
+    {
+        // The first client render must answer what the last server one did, whatever the browser
+        // would say: a hand-off of no on a phone's browser still answers no.
+        var client = new DeviceProvider((await Handoff.Carrying("NSail.Device", false)).State, new Browser("", IPhone));
+
+        Assert.False(client.IsPhone);
     }
 
     [Fact]

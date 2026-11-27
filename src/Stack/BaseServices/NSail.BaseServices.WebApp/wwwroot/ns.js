@@ -1751,13 +1751,6 @@
         }
     }
 
-    // What this machine remembers: localStorage, so it survives the tab and belongs to the
-    // browser profile rather than to whoever is signed in. The values are already-serialized
-    // strings -- the C# side owns the shape, this side owns nothing but the store.
-    //
-    // The try/catch is not defensive noise: reading localStorage THROWS outright where storage
-    // is disabled or the quota is full (private browsing, a locked-down kiosk), so without it
-    // a machine that cannot remember could not render the screen either.
     // What the server reads off the request, read off the browser for the WebAssembly client:
     // userAgentData.mobile is the Sec-CH-UA-Mobile bit (Chromium only), answered in the header's
     // own form so DeviceProvider applies one rule to both sides. Synchronous on purpose: the
@@ -1768,6 +1761,13 @@
         return [hint, navigator.userAgent || ""];
     }
 
+    // What this machine remembers: localStorage, so it survives the tab and belongs to the
+    // browser profile rather than to whoever is signed in. The values are already-serialized
+    // strings -- the C# side owns the shape, this side owns nothing but the store.
+    //
+    // The try/catch is not defensive noise: reading localStorage THROWS outright where storage
+    // is disabled or the quota is full (private browsing, a locked-down kiosk), so without it
+    // a machine that cannot remember could not render the screen either.
     function recall(key) {
         try {
             return window.localStorage.getItem(key);
