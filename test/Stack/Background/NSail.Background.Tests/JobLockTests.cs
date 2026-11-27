@@ -278,8 +278,7 @@ public sealed class JobLockTests : IAsyncLifetime
             await Harness.Run(warm, warm.GetRequiredService<Signal>().Reached);
         }
 
-        await Harness.Execute("postgres", $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{_database}'");
-        await Ended();
+        await Harness.Terminate(_database);
 
         var logs = new LogRecorder();
         var signal = new Signal();
@@ -293,21 +292,6 @@ public sealed class JobLockTests : IAsyncLifetime
         Assert.Equal(2, meters.Passes(nameof(StoreJob), BackgroundJobMetrics.Succeeded));
         Assert.Equal(0, meters.Passes(nameof(StoreJob), BackgroundJobMetrics.Failed));
         Assert.DoesNotContain(logs.Entries, entry => entry.Level >= LogLevel.Error);
-    }
-
-    // pg_terminate_backend signals and returns: the sessions are gone once the server lists none.
-    async Task Ended()
-    {
-        await using var admin = new NpgsqlConnection(ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres;Pooling=false"));
-
-        await admin.OpenAsync();
-
-        await using var command = new NpgsqlCommand($"SELECT count(*) FROM pg_stat_activity WHERE datname = '{_database}'", admin);
-
-        for (var attempt = 0; attempt < 100 && (long)(await command.ExecuteScalarAsync())! > 0; attempt++)
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(20));
-        }
     }
 
     ServiceProvider BuildStore(Signal signal, LogRecorder? logs = null)

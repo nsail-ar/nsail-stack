@@ -51,8 +51,11 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
         await Admin($"DROP DATABASE IF EXISTS \"{_database}\" WITH (FORCE)");
     }
 
-    [Fact]
-    public async Task A_scope_whose_pooled_session_ended_is_served_on_a_fresh_one_under_its_tenant()
+    // EF opens the connection on the path the query took, so each opened hook is its own case.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_scope_whose_pooled_session_ended_is_served_on_a_fresh_one_under_its_tenant(bool async)
     {
         await using var provider = Host(_connectionString);
 
@@ -60,7 +63,7 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
 
         await Terminate(ended);
 
-        var session = await Session(provider, Lumina);
+        var session = await Session(provider, Lumina, async);
 
         Assert.NotEqual(ended, session.Pid);
         Assert.Equal(Lumina.RowKey.ToString("D"), session.Tenant);
@@ -189,15 +192,16 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
-    static async Task<SessionRow> Session(ServiceProvider provider, Tenant tenant)
+    static async Task<SessionRow> Session(ServiceProvider provider, Tenant tenant, bool async = true)
     {
         await using var scope = provider.CreateAsyncScope();
 
         Enter(scope, tenant);
 
-        return await scope.ServiceProvider.GetRequiredService<SessionDbContext>().Database
-            .SqlQueryRaw<SessionRow>($"SELECT pg_backend_pid() AS \"Pid\", current_setting('{TenantPolicies.Setting}', true) AS \"Tenant\"")
-            .SingleAsync();
+        var query = scope.ServiceProvider.GetRequiredService<SessionDbContext>().Database
+            .SqlQueryRaw<SessionRow>($"SELECT pg_backend_pid() AS \"Pid\", current_setting('{TenantPolicies.Setting}', true) AS \"Tenant\"");
+
+        return async ? await query.SingleAsync() : query.Single();
     }
 
     // From a connection of its own, and only back once the backend is gone, so the pooled

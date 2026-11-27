@@ -57,10 +57,7 @@ public sealed class EndedSessionSweepTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        await using (var connection = new NpgsqlConnection(_connection))
-        {
-            NpgsqlConnection.ClearPool(connection);
-        }
+        NpgsqlConnection.ClearPool(new NpgsqlConnection(_connection));
 
         await Harness.Execute("postgres", $"DROP DATABASE IF EXISTS \"{_database}\" WITH (FORCE)");
     }
@@ -73,8 +70,7 @@ public sealed class EndedSessionSweepTests : IAsyncLifetime
             await Harness.Run(warm, warm.GetRequiredService<Signal>().Reached);
         }
 
-        await Harness.Execute("postgres", $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{_database}'");
-        await Ended();
+        await Harness.Terminate(_database);
 
         using var meters = new Meters();
         var logs = new LogRecorder();
@@ -89,49 +85,6 @@ public sealed class EndedSessionSweepTests : IAsyncLifetime
         Assert.Equal(1, meters.Passes(nameof(EndedSessionJob), BackgroundJobMetrics.Succeeded));
         Assert.Equal(0, meters.Passes(nameof(EndedSessionJob), BackgroundJobMetrics.Failed));
         Assert.DoesNotContain(logs.Entries, entry => entry.Level >= LogLevel.Error);
-    }
-
-    // The connection opened again in place of the ended one is the one the query runs on, so
-    // what it reads back is the setting the row policies compare against.
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task The_session_opened_in_place_of_an_ended_one_carries_the_tenant_setting(bool async)
-    {
-        await using var provider = Build(new Signal());
-        await using var scope = provider.CreateAsyncScope();
-
-        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("alfa"));
-
-        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
-        var expected = scope.ServiceProvider.GetRequiredService<TenancyProvider>().RowKey!.Value.ToString("D");
-        var query = $"SELECT current_setting('{TenantPolicies.Setting}', true) AS \"Value\"";
-
-        Assert.Equal(expected, await db.Database.SqlQueryRaw<string>(query).SingleAsync());
-
-        await Harness.Execute("postgres", $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{_database}'");
-        await Ended();
-
-        var setting = async
-            ? await db.Database.SqlQueryRaw<string>(query).SingleAsync()
-            : db.Database.SqlQueryRaw<string>(query).Single();
-
-        Assert.Equal(expected, setting);
-    }
-
-    // pg_terminate_backend signals and returns: the sessions are gone once the server lists none.
-    async Task Ended()
-    {
-        await using var admin = new NpgsqlConnection(ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres;Pooling=false"));
-
-        await admin.OpenAsync();
-
-        await using var command = new NpgsqlCommand($"SELECT count(*) FROM pg_stat_activity WHERE datname = '{_database}'", admin);
-
-        for (var attempt = 0; attempt < 100 && (long)(await command.ExecuteScalarAsync())! > 0; attempt++)
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(20));
-        }
     }
 
     ServiceProvider Build(Signal signal, LogRecorder? logs = null)
