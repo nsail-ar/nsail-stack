@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Data;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Npgsql;
 
 namespace NSail.Data;
 
@@ -25,13 +25,15 @@ namespace NSail.Data;
 // return it to the pool still carrying this setting. Where the rows are a tenant's, the seam
 // refuses either (Setup.AddDataAccess).
 //
-// The setting is also the first statement a rented connection runs, so it is what learns that
-// the server already ended the pooled session (EndedSession). The pool is cleared, the
-// connection opened again on a fresh session and the setting written there; once, so any other
-// failure, or a second one, reaches the caller.
+// The write is the first statement a pooled connection runs, so it is also the first to find
+// that the Postgres session behind it ended while it sat in the pool (a server restart, a
+// terminated backend). Nothing of the caller's has run yet, so the connection is opened once
+// more on a fresh session and the write is made there; a second failure is the caller's. A
+// failure that leaves the connection open is not a dead session and is not retried, and an open
+// that fails never reaches this hook.
 sealed class TenantSession : DbConnectionInterceptor
 {
-    const string Statement = "SELECT set_config(@setting, @tenant, false)";
+    const string Write = "SELECT set_config(@setting, @tenant, false)";
 
     readonly TenancyProvider _tenancy;
 
@@ -46,9 +48,16 @@ sealed class TenantSession : DbConnectionInterceptor
     {
         ArgumentNullException.ThrowIfNull(connection);
 
-        await using var command = Command(connection, tenant);
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        try
+        {
+            await Execute(connection, tenant, cancellationToken);
+        }
+        catch (DbException) when (connection.State != ConnectionState.Open)
+        {
+            await connection.CloseAsync();
+            await connection.OpenAsync(cancellationToken);
+            await Execute(connection, tenant, cancellationToken);
+        }
     }
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
@@ -60,15 +69,13 @@ sealed class TenantSession : DbConnectionInterceptor
 
         try
         {
-            Write(connection, tenant);
+            Execute(connection, tenant);
         }
-        catch (Exception exception) when (EndedSession.Is(exception))
+        catch (DbException) when (connection.State != ConnectionState.Open)
         {
             connection.Close();
-            Clear(connection);
             connection.Open();
-
-            Write(connection, tenant);
+            Execute(connection, tenant);
         }
     }
 
@@ -82,33 +89,21 @@ sealed class TenantSession : DbConnectionInterceptor
             return;
         }
 
-        try
-        {
-            await Enter(connection, tenant, cancellationToken);
-        }
-        catch (Exception exception) when (EndedSession.Is(exception))
-        {
-            await connection.CloseAsync();
-            Clear(connection);
-            await connection.OpenAsync(cancellationToken);
-
-            await Enter(connection, tenant, cancellationToken);
-        }
+        await Enter(connection, tenant, cancellationToken);
     }
 
-    static void Write(DbConnection connection, Guid tenant)
+    static async Task Execute(DbConnection connection, Guid tenant, CancellationToken cancellationToken)
+    {
+        await using var command = Command(connection, tenant);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    static void Execute(DbConnection connection, Guid tenant)
     {
         using var command = Command(connection, tenant);
 
         command.ExecuteNonQuery();
-    }
-
-    static void Clear(DbConnection connection)
-    {
-        if (connection is NpgsqlConnection npgsql)
-        {
-            NpgsqlConnection.ClearPool(npgsql);
-        }
     }
 
     // set_config and not SET: the setting's value is a parameter here, and SET takes none. A
@@ -118,7 +113,7 @@ sealed class TenantSession : DbConnectionInterceptor
     {
         var command = connection.CreateCommand();
 
-        command.CommandText = Statement;
+        command.CommandText = Write;
 
         var setting = command.CreateParameter();
 
