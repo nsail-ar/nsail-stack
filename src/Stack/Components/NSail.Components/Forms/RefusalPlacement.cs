@@ -117,9 +117,9 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
     // first: an anchored refusal stands "until its field is edited or the next attempt"
     // (intentional-ui.md, Refusal placement), and a validation request is that attempt for
     // every placement on the context — the host that owns it and the open row inside it alike.
-    // Without this the row's own store is the one nobody can lift: the
-    // form clears its own and then validates, the row's messages still count, Validate() answers
-    // false and the submit returns having drawn nothing — a Guardar that goes mute.
+    // Without this the row's own store is the one nobody can lift: the form clears its own and
+    // then validates, the row's messages still count, Validate() answers false and the submit
+    // returns having drawn nothing — a Guardar that goes mute.
     // Nothing is lost by lifting it: what still refuses re-posts in the same pass (every field's
     // own problem, the annotations validator's), so the submit answers or runs, never neither. The
     // one answer that cannot re-post itself is a refusal a page's OnCommit decided, which nobody

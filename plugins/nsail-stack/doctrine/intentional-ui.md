@@ -649,10 +649,10 @@ foot judged values still standing. A value the page pushed into the field, or th
 it holds, is no edit and lifts nothing. Nothing is re-asked as the person types: the server
 answers on Save, and a field's own problem keeps following its own value as it always did.
 
-**Every attempt lifts the refusals under it.** The row's next Confirmar lifts the row's, and the document's submit lifts every
-placement on its context, the row's included — but only a field and the annotations validator
-re-answer inside that pass; a "no" a page's `OnCommit` decided has nobody to re-raise it, so the
-submit settles the open row BEFORE it validates at all (next paragraph) rather than replaying a
+**Every attempt lifts the refusals under it.** The row's next Confirmar lifts the row's, and the
+document's submit lifts every placement on its context, the row's included — but only a field
+and the annotations validator re-answer inside that pass; a "no" a page's `OnCommit` decided has
+nobody to re-raise it, so the submit settles the open row BEFORE it validates at all (next paragraph) rather than replaying a
 verdict. A row left refused never makes Guardar go mute — the submit runs or it draws its reason,
 and a collection that leaves the screen takes its refusal with it (cases). The one other mute
 answer is a host whose Runner is busy: its row stays as it was and that Guardar saves nothing.
