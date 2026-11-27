@@ -196,6 +196,41 @@ public sealed class StorageSettingsPageTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain(hidden, form);
     }
 
+    // «Bucket compatible con S3» does not fit half the aside's line, so the provider's item holds
+    // its own width; the rest of the form keeps its own natures, for whichever provider shows
+    // them.
+    [Theory]
+    [InlineData("s3", "Region")]
+    [InlineData("git", "Branch")]
+    public void TheProviderHoldsItsLongestWordWhileTheOtherFieldsKeepTheirWidths(string provider, string shortField)
+    {
+        _server.Stores[1].Provider = provider;
+
+        var app = RenderApp();
+
+        app.WaitForAssertion(() => Assert.Equal(3, app.FindAll("tbody tr").Count));
+
+        Navigation.NavigateTo("/settings/storage?aside=settings%2Fstorage%2Freports");
+        app.WaitForAssertion(() => Assert.Contains(shortField, app.FindAll("form label").Select(label => label.TextContent)));
+
+        Assert.Equal("ns-grid-item ns-grid-item-wide", Item(app, "Provider"));
+        Assert.Equal("ns-grid-item-grow", Item(app, "Container"));
+        Assert.Equal("ns-grid-item-grow", Item(app, "Service address"));
+        Assert.Equal("ns-grid-item", Item(app, shortField));
+    }
+
+    static string Item(IRenderedComponent<NsRouter> app, string label)
+    {
+        var element = app.FindAll("form label").Single(element => element.TextContent == label).ParentElement;
+
+        while (element is not null && !element.ClassList.Any(name => name.StartsWith("ns-grid-item", StringComparison.Ordinal)))
+        {
+            element = element.ParentElement;
+        }
+
+        return element!.ClassName!;
+    }
+
     static AngleSharp.Dom.IElement Field(IRenderedComponent<NsRouter> app, string label)
     {
         var id = app.FindAll("form label").Single(element => element.TextContent == label).GetAttribute("for");

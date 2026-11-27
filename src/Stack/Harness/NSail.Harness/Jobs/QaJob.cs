@@ -46,7 +46,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await w.WriteLineAsync($"== walk {ctx.Names.Ref(n)} on {ctx.Options.Machine} slot {slot}");
-        await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", ctx.Workspace.Url, "+refs/tags/*:refs/tags/*"]);
+        await ctx.Workspace.Fetch(dir, prune: false, "+refs/tags/*:refs/tags/*");
 
         var labels = await ctx.Board.Labels(n, ct);
         var product = ProductOf(labels, ctx.Options.Products);

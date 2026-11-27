@@ -99,6 +99,34 @@ public class WorkspaceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(Bare, "info", "exclude")));
     }
 
+    // Every slot writes the one tag store: a job's tag fetch while another job holds a tag's lock
+    // (the mirror's fetch following a new tag, another walk's fetch) waits its turn instead of failing.
+    [Fact]
+    public async Task ATagFetchWaitsForTheWriterHoldingTheSharedStore()
+    {
+        var ws = await Warm();
+        var seed = Path.Combine(_root, "seed");
+        await Shell.Git(seed, "tag", "kit/v1.0.0");
+        await Shell.Git(seed, "tag", "kit/v1.1.0");
+        await Shell.Git(seed, "push", "-q", "origin", "--tags");
+        var tags = Path.Combine(Bare, "refs", "tags", "kit");
+        var held = Path.Combine(tags, "v1.1.0.lock");
+
+        Task fetch;
+        using (await ws.Turn())
+        {
+            Directory.CreateDirectory(tags);
+            File.WriteAllText(held, "");
+            fetch = ws.Fetch(ws.SlotPath(1), prune: false, "+refs/tags/*:refs/tags/*");
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            File.Delete(held);
+        }
+        await fetch;
+
+        var newest = await Shell.GitOut(ws.SlotPath(1), "tag", "-l", "kit/v*", "--sort=-v:refname");
+        Assert.Equal("kit/v1.1.0", newest.Split('\n')[0].Trim());
+    }
+
     // The mirror's steps are every job's: one that fails says which, as a SharedStepException.
     [Fact]
     public async Task AFetchThatFailsIsTheSharedStepNamingIt()

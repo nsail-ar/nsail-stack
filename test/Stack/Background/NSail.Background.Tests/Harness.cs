@@ -199,6 +199,35 @@ static class Harness
         await command.ExecuteNonQueryAsync();
     }
 
+    /// <summary>Ends every session the server holds on the database, as a restart or an
+    /// administrator's terminate does, and returns once the server lists none: the pool still
+    /// holds them, so the next rent hands out an ended session.</summary>
+    public static async Task Terminate(string database)
+    {
+        await using var admin = new NpgsqlConnection(
+            ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres;Pooling=false"));
+
+        await admin.OpenAsync();
+
+        await using (var terminate = new NpgsqlCommand($"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{database}'", admin))
+        {
+            await terminate.ExecuteNonQueryAsync();
+        }
+
+        // pg_terminate_backend signals and returns: a session still listed would make the
+        // caller's next rent a live one, and its recovery would go unexercised.
+        await using var count = new NpgsqlCommand($"SELECT count(*) FROM pg_stat_activity WHERE datname = '{database}'", admin);
+
+        var deadline = Stopwatch.StartNew();
+
+        while ((long)(await count.ExecuteScalarAsync())! > 0)
+        {
+            Assert.True(deadline.Elapsed < _bound, $"the server still lists sessions on {database} after {_bound.TotalSeconds} seconds.");
+
+            await Task.Delay(TimeSpan.FromMilliseconds(20));
+        }
+    }
+
     /// <summary>Starts the runner, waits for the signal or the bound, and stops it. Stopping
     /// is awaited rather than fired: BackgroundService.StopAsync joins the loops, so the
     /// assertions that follow read a counter nothing is still writing to.</summary>

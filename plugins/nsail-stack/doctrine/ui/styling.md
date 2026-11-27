@@ -24,14 +24,14 @@ marked *(cases)* has its story there.
     448px aside and nothing moves on a surface wide enough for two at 14rem. Under two fields at
     the growing basis — the phone — the cap lifts and each field owns its row. `--ns-field-width`
     (`NsItem Narrow` 6rem, `.ns-field-money` 10rem, `NsItem Wide` 20rem) is a field's *own*
-    width and is never capped: it is what a label too long for half a line asks for, and
-    `.ns-field-money` is the other direction — a **block** of money figures read together (Cerrar
-    Caja's four) at the same 10rem `.ns-money-slot` calls a price's own, so four share one line
-    instead of three sharing it and the fourth taking a row the content under it needs. A lone
-    importe among fields of other kinds stays at the family's 14rem. Inside an **add row laid
-    out beside a table** that width is read as a ceiling rather than a starting width — the row
-    seats its line on its own floor and the field grows back to what it declares (the mirror,
-    below) — which is the only grid that reads it that way.
+    width and is never capped: it is what a label or a select's option too long for half a line
+    asks for, and `.ns-field-money` is the other direction — a **block** of money figures read
+    together (Cerrar Caja's four) at the same 10rem `.ns-money-slot` calls a price's own, so four
+    share one line instead of three sharing it and the fourth taking a row the content under it
+    needs. A lone importe among fields of other kinds stays at the family's 14rem. Inside an
+    **add row laid out beside a table** that width is read as a ceiling rather than a starting
+    width — the row seats its line on its own floor and the field grows back to what it declares
+    (the mirror, below) — which is the only grid that reads it that way.
   - `.ns-field-pair` raises a `Grow` item's basis to 32rem — two blocks of fields (a job card's
     eyes) pair only on a line that seats both as rows, and stack below it; `.ns-heading-row`
     gives such blocks' headings one height (a checkbox row's), so the fields under them start

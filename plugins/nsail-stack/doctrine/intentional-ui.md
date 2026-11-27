@@ -474,17 +474,17 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   update makes no difference. Contract: [ui/hosts.md](ui/hosts.md).
 - **Form density — a field is content-width or it grows, never a grid fraction.** Two honest
   widths, no third: **content-width** (the default) for *bounded, known* content — a date, a
-  document number, a CUIT, an amount, a short select — several flowing onto one line and
-  wrapping when the container narrows; **`Grow`** for open-ended text — a name, a description, a
+  document number, a CUIT, an amount, a select of short options — several flowing onto one
+  line and wrapping when the container narrows; **`Grow`** for open-ended text — a name, a description, a
   search — filling the rest of the line. `NsItem` has three modes: content-width,
   `Grow`, and `Full` (owns its line, wins over `Grow`); a content-width item says a width of its
   own with `Wide` (20rem) or `Narrow` (6rem), never a hand-typed class. Nothing pads a lonely field. **Content
   width is a CAP, half the line**, so two content-width fields share a row wherever the
   container can seat two (the 448px aside included), filling it with the grid's gap between
   them. Below the width where a pair stops reading (two fields at the growing basis — the phone)
-  a field takes its own width back and owns the row. **A label that cannot read at half a line
-  earns a WIDER nature, never a shorter word**, and a field that declares its own width means it
-  at every width. Exemplar: `PartyIdentityEditor` (cases).
+  a field takes its own width back and owns the row. **A label, or a select's option, that
+  cannot read at half a line earns a WIDER nature, never a shorter word**, and a field that
+  declares its own width means it at every width. Exemplar: `PartyIdentityEditor` (cases).
 - **A form only submits a model it loaded.** The read is the form's half (`OnLoad`), twin of its
   submit: a screen never builds an empty model "for now" and hands it over — a blank standing in
   for unreadable data is one click from overwriting it. A failed read renders the refusal (and a

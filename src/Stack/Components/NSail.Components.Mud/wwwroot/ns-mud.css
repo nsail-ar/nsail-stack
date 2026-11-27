@@ -4382,9 +4382,9 @@ div.mud-input-slot.mud-input-root::placeholder {
     --ns-field-width: 6rem;
 }
 
-/* A select whose floating label is a whole sentence needs more than the 14rem a date or a short
-   select fits in -- content-width, never Grow, since Grow's basis is smaller still and the
-   label is what is bounded here, not the row. */
+/* A select whose floating label is a whole sentence, or whose options are phrases, needs more
+   than the 14rem a date or a short select fits in -- content-width, never Grow, since Grow's
+   basis is smaller still and the label is what is bounded here, not the row. */
 .ns-grid-item-wide {
     --ns-field-width: 20rem;
 }
