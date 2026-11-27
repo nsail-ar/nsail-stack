@@ -208,6 +208,50 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
         Assert.Equal(["lumina's"], await check.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.Select(note => note.Text).ToListAsync());
     }
 
+    // The injected context is the one the send's transaction is open on, so a handler that needs
+    // a transaction of its own opens it on a context of its own, which commits where it is written
+    // and stands when the send rolls back.
+    [Fact]
+    public async Task A_handler_opens_a_transaction_of_its_own_on_a_context_of_its_own()
+    {
+        await using var provider = Host(_connectionString);
+        await using var caller = provider.CreateAsyncScope();
+
+        Enter(caller, Lumina);
+
+        var sender = new InProcessSender<Noted>(provider, provider.GetRequiredService<IServiceScopeFactory>());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => sender.Run(
+            async (services, cancellationToken) =>
+            {
+                var injected = services.GetRequiredService<SessionDbContext>();
+
+                Assert.Same(injected, services.GetRequiredService<DbContext>());
+                await Assert.ThrowsAsync<InvalidOperationException>(() => injected.Database.BeginTransactionAsync(cancellationToken));
+
+                injected.Add(new SessionNote { Id = Guid.NewGuid(), Text = "rolled back" });
+
+                await injected.SaveChangesAsync(cancellationToken);
+
+                await using var own = await services.GetRequiredService<IDbContextFactory<SessionDbContext>>().CreateDbContextAsync(cancellationToken);
+                await using var transaction = await own.Database.BeginTransactionAsync(cancellationToken);
+
+                own.Add(new SessionNote { Id = Guid.NewGuid(), Text = "its own" });
+
+                await own.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                throw new OperationCanceledException();
+            },
+            CancellationToken.None));
+
+        await using var check = provider.CreateAsyncScope();
+
+        Enter(check, Lumina);
+
+        Assert.Equal(["its own", "lumina's"], await check.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.Select(note => note.Text).OrderBy(text => text).ToListAsync());
+    }
+
     // A statement the server refuses on a live session is the caller's at once, as Postgres said
     // it: the insert is sent once and the failure is not wrapped as transient.
     [Fact]
