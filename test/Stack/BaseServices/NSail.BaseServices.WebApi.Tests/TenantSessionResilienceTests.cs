@@ -44,6 +44,46 @@ public sealed class TenantSessionResilienceTests : IAsyncLifetime
         Assert.Equal(["lumina's note"], await Unfiltered("lumina"));
     }
 
+    // A restart ends every session the pool holds idle at once, so the open that replaces the
+    // first dead one must not be handed the next.
+    [Fact]
+    public async Task RequestsAfterTheServerTerminatedEveryIdleSessionOfAPoolHoldingSeveralReadTheirOwnRows()
+    {
+        Assert.False(await _host.RoleCanBypass());
+
+        await Write("lumina", "lumina's note");
+        await Write("vision", "vision's note");
+        await Idle(3);
+
+        Assert.True(await TerminateThePool() >= 3);
+
+        Assert.Equal(["lumina's note"], await Unfiltered("lumina"));
+        Assert.Equal(["vision's note"], await Unfiltered("vision"));
+        Assert.Equal(["lumina's note"], await Unfiltered("lumina"));
+    }
+
+    // Held open together on the app's own connection string, which keys the pool its requests
+    // take from, so once returned the pool holds that many sessions idle.
+    async Task Idle(int count)
+    {
+        var connections = Enumerable.Range(0, count).Select(_ => new NpgsqlConnection(_host.InstallConnection)).ToList();
+
+        try
+        {
+            foreach (var connection in connections)
+            {
+                await connection.OpenAsync();
+            }
+        }
+        finally
+        {
+            foreach (var connection in connections)
+            {
+                await connection.DisposeAsync();
+            }
+        }
+    }
+
     async Task Write(string tenant, string text)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri($"https://demo.nsail.ar/notes?text={Uri.EscapeDataString(text)}"))
