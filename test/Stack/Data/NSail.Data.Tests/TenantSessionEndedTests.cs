@@ -14,6 +14,10 @@ namespace NSail.Data.Tests;
 /// <summary>A pooled connection whose Postgres session ended while it sat in the pool, on a real
 /// Postgres under SingleDb: the tenant write is the first statement it runs, so that is where the
 /// dead session is found.</summary>
+// Alone: these tests follow one pooled connection from scope to scope, and the pools are the
+// process's, emptied by any class that clears them or creates a database (Npgsql's creator calls
+// ClearAllPools), which would hand the next scope a session the test never saw.
+[Collection(nameof(TenantSessionEndedTests))]
 public sealed class TenantSessionEndedTests : IAsyncLifetime
 {
     static readonly Tenant Lumina = Tenant.For("lumina");
@@ -381,6 +385,11 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
             throw new NotSupportedException();
         }
     }
+}
+
+[CollectionDefinition(nameof(TenantSessionEndedTests), DisableParallelization = true)]
+public sealed class TenantSessionEndedCollection
+{
 }
 
 public sealed class SessionDbContext : DbContext, ITenanted, IHasOrgScope
