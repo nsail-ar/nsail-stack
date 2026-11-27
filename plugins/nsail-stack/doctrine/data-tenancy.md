@@ -153,9 +153,8 @@ refused rather than stored.
   server restart, a terminated backend) is found: the connection is **opened once more** and
   written there, since nothing of the caller's has run. Once is enough: Npgsql empties the pool
   when a session breaks, so a restart that ended every pooled session still hands the second
-  open a fresh one. A second failure is the caller's, and
-  nothing after the open is retried — EF's retrying execution strategy stays off, because it
-  refuses the caller's own transactions.
+  open a fresh one. A second failure is the caller's, and nothing after the open is retried —
+  EF's retrying execution strategy stays off, because it refuses the caller's own transactions.
 - **The chain is the install's own work and its connection says so.** `ApplyMigrations` writes
   the install's key onto the connection it opens and runs the whole chain on it: a startup scope
   resolves no tenant, and a data migration's INSERT into a tenant-scoped table would otherwise
@@ -800,12 +799,12 @@ reads nothing and cannot write at all.
   under a key of the cell's `{product}_{cell}_` prefix and the job's full name: a neighbouring
   cell or product on the server is not a sibling. The durable queue's drain is a job like any
   other: a tenant's drain runs on one replica at a time. A restart or an administrator's terminate
-  ends the sessions the pool holds idle and the pool still hands them out, so when the lock's
-  first command learns its session was ended (`57P01`, `57P02`, a closed socket) the lock clears
-  that pool — the job's EF work draws from it too — and asks once more on a fresh session. Once:
-  any other failure, or a second one, is the server's answer and fails the pass at Error. Under
-  `SingleDb` a tenant's pass meets the ended session earlier, in the tenant setting its state read
-  writes, which recovers on its own (the session setting, above).
+  ends the sessions the pool holds idle and the pool hands one out, so when the lock's first
+  command learns its session was ended (`57P01`, `57P02`, a closed socket) it asks once more,
+  on a fresh session because Npgsql emptied the pool when that one broke (the session setting,
+  above). Once: any other failure, or a second one, is the server's answer and fails the pass at
+  Error. Under `SingleDb` a tenant's pass meets the ended session earlier, in the tenant setting
+  its state read writes, which recovers on its own (the session setting, above).
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead

@@ -93,8 +93,8 @@ The runners read three things from the host:
   fence each other. A host with no Npgsql `DbContext` takes no lock. The durable queue's drain is
   a job like any other, so a tenant's drain runs on one replica at a time and a sibling yields its
   pass. A pooled session the server already ended (a restart, a terminate) does not cost the pass:
-  the lock clears that pool and asks once more on a fresh session. Any other failure, or a second
-  one, fails the pass at Error.
+  Npgsql empties the pool when that session breaks, and the lock asks once more on a fresh one.
+  Any other failure, or a second one, fails the pass at Error.
 
 **Deferred work** (`DeferredWork`):
 

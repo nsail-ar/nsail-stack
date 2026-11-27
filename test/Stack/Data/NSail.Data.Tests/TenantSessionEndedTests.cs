@@ -94,6 +94,12 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
 
         Assert.DoesNotContain(session.Pid, ended);
         Assert.Equal(Lumina.RowKey.ToString("D"), session.Tenant);
+
+        await using var scope = provider.CreateAsyncScope();
+
+        Enter(scope, Lumina);
+
+        Assert.Equal(["lumina's"], await scope.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.Select(note => note.Text).ToListAsync());
     }
 
     // The replacement session goes back to the pool like any other, so the next scope to take

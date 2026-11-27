@@ -34,9 +34,9 @@ public sealed class AdvisoryLock : IAsyncDisposable
     }
 
     // A restart or an administrator's terminate ends the sessions the pool holds idle, and the
-    // pool hands them out unchecked: the first command is what learns it. The pool is cleared,
-    // which also spares the job's EF work that shares it, and the lock is asked once more on a
-    // fresh session. Once: a second failure is the server's own answer and the caller's to report.
+    // pool hands one out unchecked: the first command is what learns it. Npgsql empties the pool
+    // when that session breaks, so the lock is asked once more on a fresh session. Once: a second
+    // failure is the server's own answer and the caller's to report.
     static async Task<AdvisoryLock?> Acquire(string connectionString, string key, string function, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
@@ -77,8 +77,6 @@ public sealed class AdvisoryLock : IAsyncDisposable
         catch (Exception exception) when (again && Ended(exception))
         {
             await connection.DisposeAsync().ConfigureAwait(false);
-
-            NpgsqlConnection.ClearPool(connection);
 
             return await Attempt(connectionString, key, function, again: false, cancellationToken).ConfigureAwait(false);
         }

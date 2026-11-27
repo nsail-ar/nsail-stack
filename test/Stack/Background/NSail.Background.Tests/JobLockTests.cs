@@ -267,7 +267,7 @@ public sealed class JobLockTests : IAsyncLifetime
     }
 
     // A restart, or an administrator's terminate: the server ends every session the pool holds
-    // idle, and the pool still hands them out.
+    // idle, and the pool hands one out before it learns they are gone.
     [Fact]
     public async Task A_pass_after_the_server_ended_the_pooled_sessions_runs_on_a_live_connection()
     {
