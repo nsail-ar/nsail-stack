@@ -408,8 +408,8 @@ app unable to remove the one it did not ask for.
 
 **Some destinations the route table resolves nothing for** — `PageType` is how the menu names a
 door the router answers for, and `Url` is the seam for one it does not: another site (nsail#2497,
-Ops' Observabilidad onto OpenObserve), or an address this same host serves outside the router,
-which no `PageType` could name either. The two are not a choice of syntax for one idea: a page is
+Ops' Observabilidad onto OpenObserve), or an address this same host serves that no page type names. A page the server alone serves
+(`[ExcludeFromInteractiveRouting]`) is not that: it keeps its URL, so a leaf names it by `PageType`. The two are not a choice of syntax for one idea: a page is
 reached and the app stays up, a `Url` is opened, always in a new window — whoever answers at the
 other end, the surface this session was on would be gone and no route brings it back.
 

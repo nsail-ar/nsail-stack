@@ -99,14 +99,12 @@ public sealed partial class RouteTable
             {
                 _templates[type] = templates;
 
-                if (IsExcludedFromInteractiveRouting(type))
+                if (!IsExcludedFromInteractiveRouting(type))
                 {
-                    continue;
-                }
-
-                foreach (var template in templates)
-                {
-                    _routes.Add((type, template));
+                    foreach (var template in templates)
+                    {
+                        _routes.Add((type, template));
+                    }
                 }
             }
         }

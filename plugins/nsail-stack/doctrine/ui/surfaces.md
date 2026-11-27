@@ -98,7 +98,8 @@ door.** Four transitions, and the caller influences one:
 
 **A page marked `[ExcludeFromInteractiveRouting]` keeps its URL.** The server alone serves it, so
 `RouteTable.Match` and the interactive router never see it; `GetUrl` and `GetLink` still resolve
-it, so a link (`Target="@Surfaces.Blank"`) can point at it.
+it, so a link can point at it — with `Target="@Surfaces.Blank"` only: any other target puts the
+route in a surface that matches nothing, and `NsSurface` draws nothing, silently.
 
 **Which open pushed is `SurfaceHistory`'s** — a scoped service, registered beside `RootSurface` in
 `AddRouteTable` and handed to every `SurfaceContext`. It cannot be a field on the context: the
