@@ -34,8 +34,8 @@ public static class Setup
         services.TryAddScoped<DeviceMemory>();
 
         // TryAdd, so a host that can read the request registered its own first (AddBaseWebApp)
-        // and keeps it; the WebAssembly client has no request to read and adopts what the
-        // prerender handed over through this one.
+        // and keeps it; the WebAssembly client has no request to read, so this one adopts what
+        // the prerender handed over or, with nothing handed, reads the browser.
         services.TryAddScoped<IDeviceProvider, DeviceProvider>();
         services.TryAddScoped<PageGate>();
         services.TryAddScoped<NavMenu>();

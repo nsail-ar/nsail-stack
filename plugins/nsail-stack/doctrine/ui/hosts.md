@@ -354,9 +354,13 @@ are asked in that same breath, for the reason and through the walk the list's ar
   about the server contract moves**: the same `OnQuery`, the same page asked for and answered,
   so no grid is edited to get any of it.
 - **`Auto`'s answer is in hand on the first render.** The device rides in on the request and
-  is handed from the prerender to the WebAssembly client (`DeviceProvider`), so no browser has
-  to be measured and no grid swaps branches after it paints; a host with no device seam (a
-  component test) answers `Page`, as a desktop does.
+  is handed from the prerender to the WebAssembly client (`DeviceProvider`), so no grid swaps
+  branches after it paints. A client the hand-off never reached — a screen reached by navigating
+  inside the app, a prerender that never asked — reads the same two facts off the browser
+  synchronously (`nsapp.device`: the `Sec-CH-UA-Mobile` bit, then the user agent) and applies
+  the request's rule, so its answer never depends on the hand-off. Nothing is measured: it is the
+  device, not a width. A host with no device seam (a component test) answers `Page`, as a desktop
+  does.
 - **Scrolling keeps `Cargar más` under the rows.** A first page shorter than the viewport never
   produces a scroll event to ask for the second, and a keyboard has no floor gesture at all; the
   control disappears when the list is exhausted, or when a read failed: the failure strip takes

@@ -8,9 +8,10 @@ namespace NSail.Components;
 /// a phone held sideways, on a split screen, and on a desktop window dragged small, and a
 /// caller choosing a touch gesture wants the first.
 ///
-/// Synchronous, and answerable before anything is painted: the answer travels with the
-/// request, so a caller reads it on its first render instead of waiting for the browser to
-/// be measured. A tablet answers no — it has the room to page.</summary>
+/// Synchronous, and answerable before anything is painted: the server reads it off the
+/// request, and the WebAssembly client off the browser's own synchronous answer, so a caller
+/// reads it on its first render instead of waiting for a window to be measured. A tablet
+/// answers no — it has the room to page.</summary>
 public interface IDeviceProvider
 {
     bool IsPhone { get; }

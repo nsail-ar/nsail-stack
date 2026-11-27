@@ -1751,6 +1751,16 @@
         }
     }
 
+    // What the server reads off the request, read off the browser for the WebAssembly client:
+    // userAgentData.mobile is the Sec-CH-UA-Mobile bit (Chromium only), answered in the header's
+    // own form so DeviceProvider applies one rule to both sides. Synchronous on purpose: the
+    // answer is owed on a component's first render.
+    function device() {
+        const data = navigator.userAgentData;
+        const hint = data && typeof data.mobile === "boolean" ? (data.mobile ? "?1" : "?0") : "";
+        return [hint, navigator.userAgent || ""];
+    }
+
     // What this machine remembers: localStorage, so it survives the tab and belongs to the
     // browser profile rather than to whoever is signed in. The values are already-serialized
     // strings -- the C# side owns the shape, this side owns nothing but the store.
@@ -1981,5 +1991,5 @@
         scans.delete(id);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, focusRefused, arrivalFocus, chords, recall, remember, download, lightOffer, pressOffer, canScan, scanStart, scanStop, confirmRow };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, focusRefused, arrivalFocus, chords, device, recall, remember, download, lightOffer, pressOffer, canScan, scanStart, scanStop, confirmRow };
 })();
