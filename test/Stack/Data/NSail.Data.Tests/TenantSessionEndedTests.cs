@@ -150,11 +150,29 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
         Assert.Equal(1, connection.Writes);
     }
 
+    // A scope that resolved no tenant still writes its (empty) setting first, so a session that
+    // ended in the pool is found by that write and not by the caller's query.
+    [Fact]
+    public async Task A_scope_that_resolved_no_tenant_reads_nothing_when_its_pooled_session_ended()
+    {
+        await using var provider = Host(_connectionString);
+
+        await Session(provider, Lumina);
+        await TerminateAll();
+
+        await using var scope = provider.CreateAsyncScope();
+
+        Assert.Empty(await scope.ServiceProvider.GetRequiredService<SessionDbContext>().Notes.ToListAsync());
+    }
+
     // A session that ends inside an open unit of work is not the tenant write's to recover: the
     // handler has run, so the send rolls back and the caller is told, and the handler is not run
-    // again behind it. DbContext, because that is the context the unit of work enlists.
-    [Fact]
-    public async Task A_session_that_ends_inside_a_send_fails_it_once_and_leaves_nothing()
+    // again behind it. Through either type a handler may inject, since both are the one context
+    // the unit of work enlists.
+    [Theory]
+    [InlineData(typeof(DbContext))]
+    [InlineData(typeof(SessionDbContext))]
+    public async Task A_session_that_ends_inside_a_send_fails_it_once_and_leaves_nothing(Type injected)
     {
         await using var provider = Host(_connectionString);
         await using var caller = provider.CreateAsyncScope();
@@ -163,22 +181,24 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
 
         var sender = new InProcessSender<Noted>(provider, provider.GetRequiredService<IServiceScopeFactory>());
         var runs = 0;
+        var terminated = false;
 
-        await Assert.ThrowsAnyAsync<Exception>(() => sender.Run(
+        await Assert.ThrowsAnyAsync<DbException>(() => sender.Run(
             async (services, cancellationToken) =>
             {
                 runs++;
 
-                var db = services.GetRequiredService<DbContext>();
+                var db = (DbContext)services.GetRequiredService(injected);
 
                 db.Add(new SessionNote { Id = Guid.NewGuid(), Text = "uncommitted" });
 
                 await db.SaveChangesAsync(cancellationToken);
 
-                await Terminate(await db.Database.SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"").SingleAsync(cancellationToken));
+                terminated = await Terminated(await db.Database.SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"").SingleAsync(cancellationToken));
             },
             CancellationToken.None));
 
+        Assert.True(terminated);
         Assert.Equal(1, runs);
 
         await using var check = provider.CreateAsyncScope();
@@ -267,6 +287,11 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
     // connection is certain to be holding a dead session when the next scope takes it.
     static async Task Terminate(int pid)
     {
+        Assert.True(await Terminated(pid));
+    }
+
+    static async Task<bool> Terminated(int pid)
+    {
         await using var connection = new NpgsqlConnection(ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres;Pooling=false"));
 
         await connection.OpenAsync();
@@ -275,7 +300,24 @@ public sealed class TenantSessionEndedTests : IAsyncLifetime
 
         terminate.Parameters.AddWithValue("pid", pid);
 
-        Assert.Equal(true, await terminate.ExecuteScalarAsync());
+        return await terminate.ExecuteScalarAsync() is true;
+    }
+
+    // Every session on the test's database, as a server restart would end them, so whichever one
+    // the pool hands the next scope is dead.
+    async Task TerminateAll()
+    {
+        await using var connection = new NpgsqlConnection(ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres;Pooling=false"));
+
+        await connection.OpenAsync();
+
+        await using var terminate = new NpgsqlCommand(
+            "SELECT count(*) FILTER (WHERE pg_terminate_backend(pid, 5000)) FROM pg_stat_activity WHERE datname = @database AND pid <> pg_backend_pid()",
+            connection);
+
+        terminate.Parameters.AddWithValue("database", _database);
+
+        Assert.True((long)(await terminate.ExecuteScalarAsync())! > 0);
     }
 
     static async Task Admin(string sql)
