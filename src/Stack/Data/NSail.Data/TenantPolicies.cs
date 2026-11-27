@@ -18,8 +18,8 @@ namespace NSail.Data;
 public static class TenantPolicies
 {
     /// <summary>The session setting the policy compares against, written on connection open
-    /// from <see cref="TenancyProvider.RowKey"/>. A connection that carries nothing compares
-    /// against NULL, which no row equals — the SQL half of "an unresolved scope reads
+    /// from <see cref="TenancyProvider.RowKey"/>. A scope with no key writes it empty, which the
+    /// policy reads as NULL and no row equals — the SQL half of "an unresolved scope reads
     /// nothing".</summary>
     public const string Setting = "nsail.tenant";
 

@@ -644,7 +644,11 @@ public class AuthenticationHandler : IHandler<SignIn>
 
 Inject `DbContext` when kits should stay provider-agnostic; inject `OpticalDbContext` in app
 handlers when the concrete type is acceptable. Both are the scope's one instance, so both save in
-the send's transaction.
+the send's transaction — and inside a send that instance already has it, so
+`Database.BeginTransactionAsync` on the injected context throws (`TransactionAlreadyStarted`).
+Work that needs a transaction of its own takes a context of its own: a scope of its own
+([messaging.md](messaging.md#the-ambient-unit-of-work)) or `IDbContextFactory<T>`, as
+`TenantBootstrap` does.
 
 **`SaveChanges` is not a commit.** The outermost in-process `Send` owns a transaction every
 nested send joins, so a handler's saves — its own and every nested handler's — are visible to

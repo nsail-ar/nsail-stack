@@ -149,8 +149,8 @@ refused rather than stored.
   **refuses the two tuning switches that would break them**: multiplexing, which hands one
   physical connection to several scopes in turn, and `No Reset On Close`, which returns a pooled
   connection still carrying the setting. The write is the first statement a pooled connection
-  runs, a scope in no tenant included, so it is where a session that ended in the pool (a server restart, a terminated backend)
-  is found: the connection is **opened once more** and written there, since nothing of the
+  runs, a scope in no tenant included, so it is where a session that ended in the pool (a
+  server restart, a terminated backend) is found: the connection is **opened once more** and written there, since nothing of the
   caller's has run. A second failure is the caller's, and nothing after the open is retried —
   EF's retrying execution strategy stays off, because it refuses the caller's own transactions.
 - **The chain is the install's own work and its connection says so.** `ApplyMigrations` writes
