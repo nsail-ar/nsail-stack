@@ -197,7 +197,7 @@ public sealed class StorageSettingsPageTests : BunitContext, IAsyncLifetime
     }
 
     // «Bucket compatible con S3» does not fit half the aside's line, so the provider's item holds
-    // its own width; the rest of the form keeps the natures it had, for whichever provider shows
+    // its own width; the rest of the form keeps its own natures, for whichever provider shows
     // them.
     [Theory]
     [InlineData("s3", "Region")]
