@@ -406,4 +406,73 @@ public sealed class NsFormProblemDisplayTests : BunitContext, IAsyncLifetime
         // And it stayed anchored: the badge points at it, the foot line did not absorb it.
         Assert.Equal(string.Empty, FootAlert(cut));
     }
+    /// <summary>A refusal under a field judged the value the field held at the Save; once the
+    /// person changes it, the message judges something no longer on screen, so it lifts at once
+    /// — with no second Save, and only an attempt re-checks it.</summary>
+    [Fact]
+    public async Task AnAnchoredRefusal_LiftsWhenItsFieldIsEdited()
+    {
+        var model = new FormProblemModel();
+        var problem = Invalid(new Issue("Required", "Falta el apodo.", nameof(FormProblemModel.Name)));
+
+        var cut = Render<FormProblemHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Problem, problem));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.Equal(["Falta el apodo.", null], FieldErrors(cut));
+
+        // A render of the page that hands the form the same document lifts nothing: no field
+        // was edited.
+        cut.Render(p => p.Add(x => x.Model, model));
+
+        Assert.Equal(["Falta el apodo.", null], FieldErrors(cut));
+
+        await cut.InvokeAsync(() => cut.FindAll("input")[0].Input("Lito"));
+
+        Assert.Equal([null, null], FieldErrors(cut));
+    }
+
+    /// <summary>The edit lifts the refusal of the field edited and nothing else: the message
+    /// under another field and the strip at the foot judged values still on screen.</summary>
+    [Fact]
+    public async Task AnEditedField_LeavesAnotherFieldsRefusalAndTheFootStanding()
+    {
+        var problem = Invalid(
+            new Issue("Required", "Falta el nombre.", nameof(FormProblemModel.Name)),
+            new Issue("Required", "Falta el alias.", nameof(FormProblemModel.Alias)),
+            new Issue("RuleViolation", "El turno ya pasó.", "StartsInTheFuture"));
+
+        var cut = Render<FormProblemHost>(p => p
+            .Add(x => x.Model, new FormProblemModel())
+            .Add(x => x.Problem, problem));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+        await cut.InvokeAsync(() => cut.FindAll("input")[0].Input("Lito"));
+
+        Assert.Equal([null, "Falta el alias."], FieldErrors(cut));
+        Assert.Contains("El turno ya pasó.", FootAlert(cut), StringComparison.Ordinal);
+    }
+
+    /// <summary>The badge reads the messages standing on its tab's fields, so the one an edit
+    /// lifted takes the badge with it.</summary>
+    [Fact]
+    public async Task ATabBadge_GoesWithTheRefusalItsFieldLifted()
+    {
+        var problem = Invalid(new Issue("Required", "Falta el alias.", nameof(FormProblemModel.Alias)));
+
+        var cut = Render<FormProblemTabHost>(p => p
+            .Add(x => x.Model, new FormProblemModel())
+            .Add(x => x.Problem, problem));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.Contains("mud-badge-dot", cut.FindAll(".mud-tab")[1].OuterHtml, StringComparison.Ordinal);
+
+        await cut.InvokeAsync(() => cut.FindAll("input")[1].Input("Lito"));
+
+        Assert.DoesNotContain("mud-badge-dot", cut.FindAll(".mud-tab")[1].OuterHtml, StringComparison.Ordinal);
+        Assert.Equal([null, null], FieldErrors(cut));
+    }
 }

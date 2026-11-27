@@ -105,6 +105,24 @@ public sealed class NsTableSettleTests : BunitContext, IAsyncLifetime
         Assert.Empty(cut.FindAll(".ns-form-problem"));
     }
 
+    /// <summary>A refusal under a field of the open row lifts as that field is edited, the same
+    /// as one under a field of the form: it judged a value the person has since changed.</summary>
+    [Fact]
+    public async Task ARowsRefusalLiftsWhenItsFieldIsEdited()
+    {
+        var cut = Render<TableFormHost>(ps => ps.Add(p => p.Refuse, true));
+
+        await Press(cut, "Agregar");
+        await Type(cut, "Armazón");
+        await Press(cut, "Confirmar");
+
+        Assert.Equal("Obligatorio", RowError(cut));
+
+        await Type(cut, "Armazón de metal");
+
+        Assert.Null(RowError(cut));
+    }
+
     /// <summary>A refusal naming no member the row renders — a rule naming itself — is the
     /// row's all the same: one strip on a row of its own directly under the row that caused it,
     /// never the form's foot and never a toast.</summary>
