@@ -423,9 +423,11 @@ public sealed class NsFormProblemDisplayTests : BunitContext, IAsyncLifetime
 
         Assert.Equal(["Falta el apodo.", null], FieldErrors(cut));
 
-        // A render of the page that hands the form the same document lifts nothing: no field
-        // was edited.
+        // A value the page pushes into the field is no edit and lifts nothing.
+        model.Name = "Pepe";
         cut.Render(p => p.Add(x => x.Model, model));
+
+        Assert.Equal("Pepe", cut.FindAll("input")[0].GetAttribute("value"));
 
         Assert.Equal(["Falta el apodo.", null], FieldErrors(cut));
 
