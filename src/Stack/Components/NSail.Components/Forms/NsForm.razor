@@ -636,9 +636,9 @@ else if (HasDocument)
 
     // Whether the answer standing on screen RIGHT NOW came from an act this form hosts rather than
     // from its own submit. The two are lifted at different moments: a submit lifts its own on the
-    // next one (ClearProblems), while a hosted act that WORKS reports nothing at all — so the only
-    // moment its last "no" can be taken down is the next press, and only a "no" this seam placed is
-    // that press's to take. Written by whatever last drew (Draw) and by the clear, never by the
+    // next one (ClearProblems), while a hosted act that WORKS reports nothing at all — so its last
+    // "no" comes down at the next press or at an edit of the field it stands under
+    // (RefusalPlacement), and only a "no" this seam placed is that press's to take. Written by whatever last drew (Draw) and by the clear, never by the
     // placing call: a flag a caller sets is a flag that outlives what it describes, and one left
     // standing would hand the next act the submit's own refusal to erase.
     bool _hosted;

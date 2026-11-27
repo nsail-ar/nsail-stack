@@ -538,6 +538,23 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
         Assert.Empty(cut.FindAll(".ns-form-problem"));
     }
 
+    /// <summary>A refusal under a field of the open row lifts as that field is edited, the same
+    /// as one under a field of the form: it judged a value the person has since changed.</summary>
+    [Fact]
+    public async Task ARowsRefusalLiftsWhenItsFieldIsEdited()
+    {
+        var cut = Render<ListEditorFormHost>(ps => ps.Add(p => p.Refuse, true));
+
+        await Press(cut, "Agregar");
+        await Press(cut, "Confirmar");
+
+        Assert.Equal("Obligatorio", RowError(cut));
+
+        await Type(cut, "Caja chica");
+
+        Assert.Null(RowError(cut));
+    }
+
     /// <summary>The other half of the ruling: Guardar commits an open row nothing refuses, the
     /// usual behavior of a pending inline edit on save — the editor closes and the document saves
     /// in one tap. The row is in Items before any Confirmar, so the save was writing it either

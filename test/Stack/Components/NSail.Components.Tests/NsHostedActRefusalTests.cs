@@ -146,9 +146,10 @@ public sealed class NsHostedActRefusalTests : BunitContext, IAsyncLifetime
         Assert.Empty(Dialogs.Notices);
     }
 
-    /// <summary>The refusal stays where it was drawn instead of fading on a timer: nothing but the
-    /// next press takes it down. A toast is the opposite contract, which is why this one is held
-    /// by the renders that follow rather than by the one that drew it.</summary>
+    /// <summary>The refusal stays where it was drawn instead of fading on a timer: neither a
+    /// render nor an edit of another field takes it down. A toast is the opposite contract, which
+    /// is why this one is held by the renders that follow rather than by the one that drew
+    /// it.</summary>
     [Fact]
     public async Task TheRefusalStandsAcrossLaterRenders()
     {
@@ -157,9 +158,25 @@ public sealed class NsHostedActRefusalTests : BunitContext, IAsyncLifetime
         await Press(host, "act-inside");
 
         host.Render();
-        await host.InvokeAsync(() => host.Find("input").Input("typed after the refusal"));
+        await host.InvokeAsync(() => host.FindAll("input")[1].Input("typed after the refusal"));
 
         Assert.Equal("This install has no storage.", FieldErrors(host)[0]);
+    }
+
+    /// <summary>An edit of the field the act's refusal stands under lifts it, as it lifts a
+    /// submit's: the value it judged is gone.</summary>
+    [Fact]
+    public async Task TheRefusalLiftsWhenItsFieldIsEdited()
+    {
+        var host = Host(Anchored(nameof(FormProblemModel.Name)));
+
+        await Press(host, "act-inside");
+
+        Assert.Equal("This install has no storage.", FieldErrors(host)[0]);
+
+        await host.InvokeAsync(() => host.Find("input").Input("typed after the refusal"));
+
+        Assert.Equal([null, null], FieldErrors(host));
     }
 
     /// <summary>The act that WORKS reports nothing at all, so its silence can only be read at the

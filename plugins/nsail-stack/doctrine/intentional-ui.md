@@ -641,11 +641,18 @@ item's last line, or a row of its own directly under the grid row. Never at the 
 never a toast the user has to connect back to the row they just confirmed. The same two rules,
 measured from the host the user is actually looking at ([ui/hosts.md](ui/hosts.md), cases).
 
-**A refusal stands until the attempt that could replace it, and every attempt lifts the ones
-under it.** The row's next Confirmar lifts the row's, and the document's submit lifts every
-placement on its context, the row's included — but only a field and the annotations validator
-re-answer inside that pass; a "no" a page's `OnCommit` decided has nobody to re-raise it, so the
-submit settles the open row BEFORE it validates at all (next paragraph) rather than replaying a
+**An anchored refusal stands until its field is edited or the next attempt, whichever comes
+first, and only an attempt re-checks it.** It judged the value the field held when it was asked;
+once the person changes that value it judges something no longer on screen, so the edit lifts the
+message under that field — and under nothing else: another field's refusal and the strip at the
+foot judged values still standing. A value the page pushed into the field, or the echo of the one
+it holds, is no edit and lifts nothing. Nothing is re-asked as the person types: the server
+answers on Save, and a field's own problem keeps following its own value as it always did.
+
+**Every attempt lifts the refusals under it.** The row's next Confirmar lifts the row's, and the
+document's submit lifts every placement on its context, the row's included — but only a field
+and the annotations validator re-answer inside that pass; a "no" a page's `OnCommit` decided has
+nobody to re-raise it, so the submit settles the open row BEFORE it validates at all (next paragraph) rather than replaying a
 verdict. A row left refused never makes Guardar go mute — the submit runs or it draws its reason,
 and a collection that leaves the screen takes its refusal with it (cases). The one other mute
 answer is a host whose Runner is busy: its row stays as it was and that Guardar saves nothing.
@@ -678,9 +685,10 @@ the kit's own manual promises it is not.
 **No screen draws one of the three itself — including a refusal it decided ITSELF.** A "no"
 reached before any round trip — a rule over two values, a check the server would also make — is
 handed to the form on submit (`SubmitEventArgs.Problem`), which places it by the same rules and
-clears it on the next submit. Early and server refusals are one markup, one placement, one
-moment: **Save**, never the keystroke. An alert a page renders in its own footer is a fourth
-placement and costs that row height every time it appears (34px→50px, measured — cases).
+lifts it the same way: as its field is edited, or on the next submit. Early and server refusals
+are one markup, one placement, one moment: **Save**, never the keystroke. An alert a page renders
+in its own footer is a fourth placement and costs that row height every time it appears
+(34px→50px, measured — cases).
 `Abort()` is the mute twin: it refuses the submit silently, which fits a "no" the user just gave
 (a declined confirmation) and never one they have yet to read.
 
@@ -689,11 +697,11 @@ door drawn beside the fields — the handler is the page's, the refusal is still
 takes the same three placements: anchored where its reason names a field the form renders
 (Almacenamiento's Probar naming Proveedor), at the foot where it names none. **Standing inside the
 form is what decides it** — no act declares anything and no page wires a report — and it stands
-there until the next press of an act, since the one that works says nothing at all: a press that
-sends nothing takes nothing down, and **what `Guardar` was refused for is never a probe's to
-clear**. An act with no form around it keeps the toast, and so does one on the far side of a portal
-(a menu row): there is nothing on screen for a refusal to belong to
-([ui/forms.md](ui/forms.md), [ui/actions.md](ui/actions.md)).
+there until the field it is anchored under is edited or the next press of an act, since the one
+that works says nothing at all: a press that sends nothing takes nothing down, and **what
+`Guardar` was refused for is never a probe's to clear**. An act with no form around it keeps the
+toast, and so does one on the far side of a portal (a menu row): there is nothing on screen for a
+refusal to belong to ([ui/forms.md](ui/forms.md), [ui/actions.md](ui/actions.md)).
 
 **Nothing reserves, and what arrives is read in full.** A field keeps no line for a message, so
 an unrefused form spends no air on the possibility; a message that arrives takes the room its

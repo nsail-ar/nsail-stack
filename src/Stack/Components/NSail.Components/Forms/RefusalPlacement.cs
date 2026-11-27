@@ -21,6 +21,7 @@ namespace NSail.Components;
 sealed class RefusalPlacement(StringManager strings) : IFieldTracker
 {
     readonly HashSet<FieldIdentifier> _rendered = [];
+    readonly HashSet<FieldIdentifier> _placed = [];
     readonly List<string> _unplaced = [];
 
     EditContext? _context;
@@ -67,6 +68,7 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
 
         _messages = new ValidationMessageStore(context);
         context.OnValidationRequested += LiftOnValidation;
+        context.OnFieldChanged += LiftOnEdit;
     }
 
     public void Track(FieldIdentifier identifier)
@@ -105,18 +107,19 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
     public void Clear()
     {
         _messages?.Clear();
+        _placed.Clear();
         _unplaced.Clear();
         AtField = false;
         _context?.NotifyValidationStateChanged();
     }
 
     // The next attempt on the context re-answers it, so the answer standing on it is lifted
-    // first: "a refusal is handed to the form on submit, which places it and clears it on the
-    // NEXT submit" (intentional-ui.md, Refusal placement) is the rule, and a validation request
-    // is that moment for every placement on the context — the host that owns it and the open
-    // row inside it alike. Without this the row's own store is the one nobody can lift: the
-    // form clears its own and then validates, the row's messages still count, Validate() answers
-    // false and the submit returns having drawn nothing — a Guardar that goes mute.
+    // first: an anchored refusal stands "until its field is edited or the next attempt"
+    // (intentional-ui.md, Refusal placement), and a validation request is that attempt for
+    // every placement on the context — the host that owns it and the open row inside it alike.
+    // Without this the row's own store is the one nobody can lift: the form clears its own and
+    // then validates, the row's messages still count, Validate() answers false and the submit
+    // returns having drawn nothing — a Guardar that goes mute.
     // Nothing is lost by lifting it: what still refuses re-posts in the same pass (every field's
     // own problem, the annotations validator's), so the submit answers or runs, never neither. The
     // one answer that cannot re-post itself is a refusal a page's OnCommit decided, which nobody
@@ -127,6 +130,23 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
         Clear();
     }
 
+    // An edit of the field a refusal names lifts that refusal alone: it judged a value no longer
+    // on screen, and only the next attempt re-checks it (intentional-ui.md, Refusal placement).
+    // The other fields' messages and the foot strip judged values still standing, so they stay.
+    // A field raises this for an edit only — never for a value its page pushed in, nor for an
+    // echo of the one it holds (NsFieldBase.SetValue) — so a load lifts nothing.
+    void LiftOnEdit(object? sender, FieldChangedEventArgs args)
+    {
+        if (_messages is null || !_placed.Remove(args.FieldIdentifier))
+        {
+            return;
+        }
+
+        _messages.Clear(args.FieldIdentifier);
+        AtField = _placed.Count > 0;
+        _context?.NotifyValidationStateChanged();
+    }
+
     void Release()
     {
         if (_context is null)
@@ -135,6 +155,7 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
         }
 
         _context.OnValidationRequested -= LiftOnValidation;
+        _context.OnFieldChanged -= LiftOnEdit;
 
         Clear();
 
@@ -155,6 +176,7 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
         }
 
         _messages.Clear();
+        _placed.Clear();
         _unplaced.Clear();
         AtField = false;
 
@@ -187,6 +209,7 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
             if (identifier is { } field && _rendered.Contains(field))
             {
                 _messages.Add(field, message);
+                _placed.Add(field);
                 AtField = true;
             }
             else

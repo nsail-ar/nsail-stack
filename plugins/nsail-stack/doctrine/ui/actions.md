@@ -237,9 +237,10 @@ anybody — an act the page runs (`GetAction`) hands its `Problem` to the form i
 because that is where the person is looking and the field its reason names is on screen
 ([forms.md](forms.md), *Placing a refusal*). It lives on `NsAction`, where the press and the form
 around it are known at once and every `ActionItem` in the house renders — the toolbar's command
-rows included. Not on the `NsButton` underneath, because **taking the claim is what takes the last
-refusal down, and only a press of an act has earned that**: the `?` beside the act is that same
-button and resolves nothing (`NsHelp`). An act beside the form, one in a portaled menu, and a
+rows included. Not on the `NsButton` underneath, because **at a press, taking the claim is what
+takes the last refusal down, and only a press of an act has earned that** — the one other moment
+is an edit of the field it stands under ([forms.md](forms.md), *Placing a refusal*): the `?`
+beside the act is that same button and resolves nothing (`NsHelp`). An act beside the form, one in a portaled menu, and a
 handler a page draws as a bare `NsButton` instead of an `ActionItem` all keep the toast.
 
 **A footer standing OUTSIDE the form reaches none of this**, and `Submits` is no use to it:
