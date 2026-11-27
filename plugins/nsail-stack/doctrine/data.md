@@ -33,7 +33,7 @@ Infrastructure only. No domain entities, no shared DbContext type.
 | `Setup.AddDbContextSetup<T>` | Registers a kit's `IDbContextSetup` in DI |
 | `DbContextExtensions.ApplySetups` | Applies `IDbContextSetup` instances to a `ModelBuilder`, then the Stack's own three tables (seed history, tenant state, declared features) and the model-wide rules (row version, collation, personal-data comment, tenant column, org filter) |
 | `DbContextExtensions.ApplyTenancy` | What a product's context states in `ConfigureConventions` — see Tenancy |
-| `DbContextExtensions.SetDefaultDbContext<T>` | `AddScoped<DbContext, T>()` for handler injection |
+| `DbContextExtensions.SetDefaultDbContext<T>` | `DbContext` resolves to the scope's registered `T` (one instance) for handler injection |
 | `Setup.AddDataAccess<T>` | The tenancy seam plus the app's context — what a host calls instead of `AddDbContext` |
 | `TenancyOptions` / `TenancyProvider` / `Tenant` / `ITenanted` | The seam itself — see Tenancy |
 | `TenantRoster` | Who the install's tenants are: what a sweep enters, and under `SingleDb` what a request's slug must be on — data-tenancy.md |
@@ -643,7 +643,8 @@ public class AuthenticationHandler : IHandler<SignIn>
 ```
 
 Inject `DbContext` when kits should stay provider-agnostic; inject `OpticalDbContext` in app
-handlers when the concrete type is acceptable.
+handlers when the concrete type is acceptable. Both are the scope's one instance, so both save in
+the send's transaction.
 
 **`SaveChanges` is not a commit.** The outermost in-process `Send` owns a transaction every
 nested send joins, so a handler's saves — its own and every nested handler's — are visible to

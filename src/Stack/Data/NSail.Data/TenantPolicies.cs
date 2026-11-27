@@ -86,9 +86,10 @@ public static class TenantPolicies
             """;
     }
 
-    // nullif before the cast, because a setting the session never wrote reads as NULL and one
-    // RESET on a pooled connection's return reads as the empty string: casting '' to uuid is an
-    // error, not a comparison that matches nothing.
+    // nullif before the cast, because a setting the session never wrote reads as NULL, and one
+    // RESET on a pooled connection's return or written for a scope in no tenant (TenantSession)
+    // reads as the empty string: casting '' to uuid is an error, not a comparison that matches
+    // nothing.
     static string Predicate
     {
         get { return $"\"{TenantColumn.Name}\" = nullif(current_setting('{Setting}', true), '')::uuid"; }

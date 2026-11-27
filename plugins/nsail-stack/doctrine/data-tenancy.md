@@ -140,16 +140,16 @@ refused rather than stored.
   pass over every table a migration added, and the role's attributes re-stated (`NOSUPERUSER
   NOBYPASSRLS`), because a role that already exists keeps whatever someone gave it.
 - **The tenant reaches the connection as a session setting written on connection open**
-  (`TenantSession`), from `TenancyProvider.RowKey` and from nothing else — **left unwritten
-  where the wall IS the column and nothing resolved**, so the policy compares against NULL and
-  no row equals it. That is *an unresolved scope reads nothing*, said by Postgres, which is what
+  (`TenantSession`), from `TenancyProvider.RowKey` and from nothing else — **written empty
+  where the wall IS the column and nothing resolved**, which the policy reads as NULL, and no
+  row equals it. That is *an unresolved scope reads nothing*, said by Postgres, which is what
   makes it true of a query that forgot the filter. Npgsql resets a pooled connection's state on
   return and `Enter` refuses a second tenant on one scope, so the setting outlives neither its
   connection nor its scope — and because both of those rest on the connection string, the seam
   **refuses the two tuning switches that would break them**: multiplexing, which hands one
   physical connection to several scopes in turn, and `No Reset On Close`, which returns a pooled
   connection still carrying the setting. The write is the first statement a pooled connection
-  runs, so it is where a session that ended in the pool (a server restart, a terminated backend)
+  runs, a scope in no tenant included, so it is where a session that ended in the pool (a server restart, a terminated backend)
   is found: the connection is **opened once more** and written there, since nothing of the
   caller's has run. A second failure is the caller's, and nothing after the open is retried —
   EF's retrying execution strategy stays off, because it refuses the caller's own transactions.

@@ -121,7 +121,7 @@ string may not set Npgsql `Multiplexing` or `No Reset On Close`; startup refuses
 | `AddTenantCache<T>()` | An `ITenantCache` that forgets a tenant after its first touch |
 | `AddWellKnownRows(ids)` | Frozen ids code names by constant; `TenancyProvider.Row(id)` translates them per tenant |
 | `AddInstallScopedRows(ids)` | Ids of seeded `IInstallScoped` rows, so `TenancyProvider.Owned(id)` leaves them alone |
-| `SetDefaultDbContext<T>()` / `AddUnitOfWork()` | Called by `AddDataAccess`; for a host that composes its context another way |
+| `SetDefaultDbContext<T>()` / `AddUnitOfWork()` | Called by `AddDataAccess`; for a host that composes its context another way, which registers `T` itself — `DbContext` resolves to that same instance |
 
 **Model rules**, applied by `ApplySetups` to every entity:
 

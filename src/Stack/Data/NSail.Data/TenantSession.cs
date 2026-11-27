@@ -13,10 +13,10 @@ namespace NSail.Data;
 // statement is one place a rule can be forgotten.
 //
 // The value is TenancyProvider.RowKey and nothing else: the install's own key wherever the wall
-// is not the column, the resolved tenant's where it is — and NOTHING where the wall IS the
-// column and no tenant resolved. Leaving it unwritten is the point: the policy's comparison is
-// against NULL, which no row equals, so a scope that entered no tenant reads nothing in SQL for
-// the same reason it reads nothing through the filter.
+// is not the column, the resolved tenant's where it is — and EMPTY where the wall IS the column
+// and no tenant resolved. The policy reads empty as NULL (TenantPolicies), which no row equals,
+// so a scope that entered no tenant reads nothing in SQL for the same reason it reads nothing
+// through the filter. It is still written, so that it is still the connection's first statement.
 //
 // Npgsql resets a pooled connection's state when it is returned, so the setting cannot outlive
 // the connection that carried it; ResolvedTenancyProvider.Enter refuses a second tenant on one
@@ -44,7 +44,12 @@ sealed class TenantSession : DbConnectionInterceptor
         _tenancy = tenancy;
     }
 
-    public static async Task Enter(DbConnection connection, Guid tenant, CancellationToken cancellationToken)
+    public static Task Enter(DbConnection connection, Guid tenant, CancellationToken cancellationToken)
+    {
+        return Enter(connection, tenant.ToString("D"), cancellationToken);
+    }
+
+    static async Task Enter(DbConnection connection, string tenant, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(connection);
 
@@ -62,10 +67,7 @@ sealed class TenantSession : DbConnectionInterceptor
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {
-        if (_tenancy.RowKey is not { } tenant)
-        {
-            return;
-        }
+        var tenant = Value();
 
         try
         {
@@ -84,22 +86,22 @@ sealed class TenantSession : DbConnectionInterceptor
         ConnectionEndEventData eventData,
         CancellationToken cancellationToken = default)
     {
-        if (_tenancy.RowKey is not { } tenant)
-        {
-            return;
-        }
-
-        await Enter(connection, tenant, cancellationToken);
+        await Enter(connection, Value(), cancellationToken);
     }
 
-    static async Task Execute(DbConnection connection, Guid tenant, CancellationToken cancellationToken)
+    string Value()
+    {
+        return _tenancy.RowKey?.ToString("D") ?? "";
+    }
+
+    static async Task Execute(DbConnection connection, string tenant, CancellationToken cancellationToken)
     {
         await using var command = Command(connection, tenant);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    static void Execute(DbConnection connection, Guid tenant)
+    static void Execute(DbConnection connection, string tenant)
     {
         using var command = Command(connection, tenant);
 
@@ -109,7 +111,7 @@ sealed class TenantSession : DbConnectionInterceptor
     // set_config and not SET: the setting's value is a parameter here, and SET takes none. A
     // tenant key is a Guid and could not carry a quote, but the seam that writes it is not the
     // place to rely on that.
-    static DbCommand Command(DbConnection connection, Guid tenant)
+    static DbCommand Command(DbConnection connection, string tenant)
     {
         var command = connection.CreateCommand();
 
@@ -123,7 +125,7 @@ sealed class TenantSession : DbConnectionInterceptor
         var value = command.CreateParameter();
 
         value.ParameterName = "tenant";
-        value.Value = tenant.ToString("D");
+        value.Value = tenant;
 
         command.Parameters.Add(setting);
         command.Parameters.Add(value);
