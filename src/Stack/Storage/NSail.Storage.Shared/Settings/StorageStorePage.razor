@@ -18,7 +18,7 @@
     <Content>
         <NsForm @key="Name" TModel="SaveStorageSettings" OnLoad="Load" OnSubmit="OnSubmit">
             <NsGrid>
-                <NsItem>
+                <NsItem Wide>
                     <NsSelect TItem="StorageProviderRef" TValue="string?"
                               @bind-Value="context.Provider"
                               Items="_providers"

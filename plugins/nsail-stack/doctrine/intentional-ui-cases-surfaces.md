@@ -142,11 +142,11 @@ the gap — so a pair exactly fills the row where twice 14rem would not fit, and
 already seats two at 14rem `min()` hands 14rem back and nothing on a wide surface moves. **Only
 the default is capped**: `--ns-field-width` (`NsItem Narrow`, `ns-field-money`,
 `NsItem Wide`) is a field answering its own content rather than the line and means that width
-at every container size, which is what a label too long for half a line asks for instead of a
-shorter word — and, at `ns-field-money`'s 10rem, what a block of money figures read together
-(Cerrar Caja's four) asks for so the line seats all of them instead of leaving the last one a
-row of its own. One **row** answers the line instead of its own content, an add row laid out
-beside a table: its items have to fit one line of it or the act wraps and takes the price axis
+at every container size, which is what a label or a select's option too long for half a line
+asks for instead of a shorter word — and, at `ns-field-money`'s 10rem, what a block of money
+figures read together (Cerrar Caja's four) asks for so the line seats all of them instead of
+leaving the last one a row of its own. One **row** answers the line instead of its own
+content, an add row laid out beside a table: its items have to fit one line of it or the act wraps and takes the price axis
 with it (styling.md's mirror). It does not set this width for the row — a flex line is seated on
 the BASIS, so what the row declares there is a wrap floor, and a field's own `--ns-field-width`
 becomes the ceiling it grows back to out of whatever the line has over that floor: the one grid
