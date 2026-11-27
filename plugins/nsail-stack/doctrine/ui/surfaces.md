@@ -96,6 +96,10 @@ door.** Four transitions, and the caller influences one:
   link rendered on main that points at an already-open aside. Today the manual is the only
   reader ([guide.md](guide.md), Anchors).
 
+**A page marked `[ExcludeFromInteractiveRouting]` keeps its URL.** The server alone serves it, so
+`RouteTable.Match` and the interactive router never see it; `GetUrl` and `GetLink` still resolve
+it, so a link (`Target="@Surfaces.Blank"`) can point at it.
+
 **Which open pushed is `SurfaceHistory`'s** — a scoped service, registered beside `RootSurface` in
 `AddRouteTable` and handed to every `SurfaceContext`. It cannot be a field on the context: the
 open is written by the surface UNDERNEATH, and the overlay's own context is keyed by the route

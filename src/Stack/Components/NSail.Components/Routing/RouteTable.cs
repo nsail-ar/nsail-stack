@@ -84,7 +84,7 @@ public sealed partial class RouteTable
 
     void IndexRoutes()
     {
-        foreach (var type in GetRouteableComponents())
+        foreach (var type in GetRoutedComponents())
         {
             if (_templates.ContainsKey(type))
             {
@@ -98,6 +98,11 @@ public sealed partial class RouteTable
             if (templates.Length > 0)
             {
                 _templates[type] = templates;
+
+                if (IsExcludedFromInteractiveRouting(type))
+                {
+                    continue;
+                }
 
                 foreach (var template in templates)
                 {
@@ -283,11 +288,11 @@ public sealed partial class RouteTable
         return path;
     }
 
-    IEnumerable<Type> GetRouteableComponents()
+    IEnumerable<Type> GetRoutedComponents()
     {
         foreach (var type in _appAssembly.ExportedTypes)
         {
-            if (IsRouteable(type))
+            if (IsRouted(type))
             {
                 yield return type;
             }
@@ -302,7 +307,7 @@ public sealed partial class RouteTable
 
             foreach (var type in assembly.ExportedTypes)
             {
-                if (IsRouteable(type))
+                if (IsRouted(type))
                 {
                     yield return type;
                 }
@@ -310,11 +315,17 @@ public sealed partial class RouteTable
         }
     }
 
-    static bool IsRouteable(Type type)
+    static bool IsRouted(Type type)
     {
         return typeof(IComponent).IsAssignableFrom(type)
-        && type.IsDefined(typeof(RouteAttribute), inherit: false)
-        && !type.IsDefined(typeof(ExcludeFromInteractiveRoutingAttribute), inherit: false);
+        && type.IsDefined(typeof(RouteAttribute), inherit: false);
+    }
+
+    // The server alone serves such a page, so the interactive router must not match it; links
+    // to it still need its URL.
+    static bool IsExcludedFromInteractiveRouting(Type type)
+    {
+        return type.IsDefined(typeof(ExcludeFromInteractiveRoutingAttribute), inherit: false);
     }
 
     static bool TryMatch(
