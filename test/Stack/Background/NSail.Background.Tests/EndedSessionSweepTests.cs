@@ -35,7 +35,9 @@ sealed class EndedSessionJob : IBackgroundJob
 /// <summary>A tenant's pass whose first rented connection the server already ended: the
 /// tenant's state is the first thing it reads, and the tenant setting is the first statement on
 /// that connection. Wired through AddDataAccess, because the setting is what the seam writes on
-/// every open and a hand-built context would not carry it.</summary>
+/// every open and a hand-built context would not carry it. Run alone: another class clearing the
+/// pools between the terminate and the sweep would hand the pass a fresh session.</summary>
+[Collection(nameof(EndedSessionSweepTests))]
 public sealed class EndedSessionSweepTests : IAsyncLifetime
 {
     readonly string _database = "nsail4431_" + Guid.NewGuid().ToString("N")[..12];
@@ -55,7 +57,10 @@ public sealed class EndedSessionSweepTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        NpgsqlConnection.ClearAllPools();
+        await using (var connection = new NpgsqlConnection(_connection))
+        {
+            NpgsqlConnection.ClearPool(connection);
+        }
 
         await Harness.Execute("postgres", $"DROP DATABASE IF EXISTS \"{_database}\" WITH (FORCE)");
     }
@@ -143,4 +148,9 @@ public sealed class EndedSessionSweepTests : IAsyncLifetime
             services.AddBackgroundJob<EndedSessionJob>();
         }, logs);
     }
+}
+
+[CollectionDefinition(nameof(EndedSessionSweepTests), DisableParallelization = true)]
+public sealed class EndedSessionSweepCollection
+{
 }
