@@ -8,6 +8,14 @@ What a test proves in NSail, and which layer owes it.
 
 Each layer proves one kind of truth. A test in the wrong layer proves nothing twice.
 
+**Where each layer runs.** The gate (a PR's, and main's) runs only what needs no database: the
+Stack unit tests, Shared/bUnit, the app tests that touch no Postgres and `Architecture.Tests`
+but its one database sweep. Everything that runs against real Postgres (every test project on
+`NSail.Data.Testing`: the kit handler harnesses, the apps' web and scenario tests, the migration
+script sweep) runs once a day on main with the browser suites, before the release cut, and a
+product is cut from the last commit where both are green. What is slow runs once a day; the
+gate stays the build and the fast tests (Leonardo, 2026-11-28).
+
 | Layer | Proves | Lives in |
 |---|---|---|
 | `Architecture.Tests` | **form** — doctrine made mechanical: a rule over the whole tree (no `Mud*` in pages, migrations drift, the gate answers first on every endpoint) | `test/Architecture` in the products' repository |
@@ -148,8 +156,8 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
     after** — *cerrar caja* and *cerrar caja con diferencia* are two paths, two tests, two
     paragraphs. **The test's name, the path's name and the `##` title of its guide paragraph
     are the same words**, so "which E2E does this change touch" is a grep and not a
-    judgement. The suites are excluded from the gate on purpose (the Harness build's
-    `TestFilter`, `FullyQualifiedName!~.E2E.`) and run at the product's release cut, so a
+    judgement. The suites are out of the gate on purpose and run once a day with the
+    Postgres suites, at the product's release cut (the layer map, *Where each layer runs*), so a
     path's proof is the builder's own run before the push. This bounds nothing in ruling 7:
     an outcome the product promises is a contract, and the anecdote it refuses is a second
     test of the same outcome. What it costs a story: the product's story template (a product page);
@@ -224,7 +232,8 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   composed models offline, except `MigrationScriptTests`: it applies each app's migration
   script (what `dotnet ef migrations script` writes) to an ephemeral empty database
   through `TestDatabase`, because only applying it shows whether the chain's raw SQL
-  terminates its own statements (data.md).
+  terminates its own statements (data.md). Needing a database, it runs with the daily integration run, not
+  in the gate.
 
 ### bUnit
 
