@@ -150,7 +150,9 @@ the files it leaves.
     (its `Mcp` servers; `Tools` adds what the walker may call): the harness lays down the story, its
     PRs, and which build each of `Products` runs (the newest `Live.Tag`, or
     a tenant's `Live.Header`) — a story its tenant does not run yet is not walked, and is asked again
-    after `QaJob.NotLiveRecheck` rather than at the next cut, because a deploy lands after its cut — and attaches
+    after `QaJob.NotLiveRecheck` rather than at the next cut, because a deploy lands after its cut; a walker
+    that found the tenant it was sent to behind (the thread's, not the board's) is not seated again on that
+    story until one of the builds changes — and attaches
     the walk's shots to the board (on GitHub, the attachments a pasted file becomes). A walk that could
     not be made for a reason outside the story (a doubt: the tenant is down, the tools failed) puts its
     report on the story, moves nothing and is tried once more after `QaJob.DoubtRecheck`; a second doubt
