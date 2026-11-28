@@ -80,6 +80,43 @@ public sealed class AmbientUnitOfWorkTests
         Assert.Equal(["begin", "rollback"], log.Steps);
     }
 
+    // The caller left after the handler returned: its work is done, and the operation commits.
+    [Fact]
+    public async Task A_send_whose_caller_left_after_its_handler_returned_commits()
+    {
+        var services = Build();
+
+        var log = services.GetRequiredService<Log>();
+        var ledger = services.GetRequiredService<Ledger>();
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<Mediator>().Send(new Abandoned(), services.GetRequiredService<Caller>().Token);
+        }
+
+        Assert.Equal(["begin", "commit"], log.Steps);
+        Assert.Equal(["abandoned"], ledger.Entries);
+    }
+
+    // The handler saw the cancellation and stopped, so its work is not done and nothing stands.
+    [Fact]
+    public async Task A_send_whose_handler_stops_on_the_cancellation_rolls_back()
+    {
+        var services = Build();
+
+        var log = services.GetRequiredService<Log>();
+        var ledger = services.GetRequiredService<Ledger>();
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => scope.ServiceProvider.GetRequiredService<Mediator>().Send(new Abandoned { Stop = true }, services.GetRequiredService<Caller>().Token));
+        }
+
+        Assert.Equal(["begin", "rollback"], log.Steps);
+        Assert.Empty(ledger.Entries);
+    }
+
     [Fact]
     public async Task Two_sends_started_in_parallel_inside_one_operation_are_refused_by_name()
     {
@@ -302,6 +339,7 @@ public sealed class AmbientUnitOfWorkTests
         services.AddSingleton<Ledger>();
         services.AddScoped<ScopeMarker>();
         services.AddScoped<Book>();
+        services.AddSingleton<Caller>();
         services.AddScoped<IUnitOfWork, RecordingUnitOfWork>();
 
         services.AddScoped<ISender<Outer>, InProcessSender<Outer>>();
@@ -313,6 +351,7 @@ public sealed class AmbientUnitOfWorkTests
         services.AddScoped<ISender<Remote>, RemoteSender>();
         services.AddScoped<ISender<Noticing>, InProcessSender<Noticing>>();
         services.AddScoped<ISender<Composing>, InProcessSender<Composing>>();
+        services.AddScoped<ISender<Abandoned>, InProcessSender<Abandoned>>();
 
         services.AddScoped<IHandler<Outer>, OuterHandler>();
         services.AddScoped<IHandler<Inner>, InnerHandler>();
@@ -322,6 +361,7 @@ public sealed class AmbientUnitOfWorkTests
         services.AddScoped<IHandler<Counted, int>, CountedHandler>();
         services.AddScoped<IHandler<Noticing>, NoticingHandler>();
         services.AddScoped<IHandler<Composing>, ComposingHandler>();
+        services.AddScoped<IHandler<Abandoned>, AbandonedHandler>();
 
         services.AddScoped<IInterceptor<Watched>, WatchingInterceptor>();
         services.AddScoped<IInterceptor<Counted, int>, CountingInterceptor>();
@@ -348,6 +388,14 @@ public sealed class AmbientUnitOfWorkTests
     }
 
     sealed record Composing : IMessage;
+
+    sealed record Abandoned : IMessage
+    {
+        public bool Stop { get; init; }
+    }
+
+    // The HTTP caller whose request is aborted while the operation runs.
+    sealed class Caller : CancellationTokenSource;
 
     sealed record Watched : IMessage
     {
@@ -460,7 +508,7 @@ public sealed class AmbientUnitOfWorkTests
             return Task.CompletedTask;
         }
 
-        public Task Commit(CancellationToken cancellationToken)
+        public Task Commit()
         {
             _log.Step("commit");
             _book.Keep();
@@ -563,6 +611,30 @@ public sealed class AmbientUnitOfWorkTests
                 throw new BusinessException(BusinessProblem.RuleViolation("Refused", "The handler says no after registering the work."));
 
             return Task.CompletedTask;
+        }
+    }
+
+    sealed class AbandonedHandler : IHandler<Abandoned>
+    {
+        readonly Caller _caller;
+        readonly Book _book;
+
+        public AbandonedHandler(Caller caller, Book book)
+        {
+            _caller = caller;
+            _book = book;
+        }
+
+        public async Task Handle(Abandoned message, CancellationToken cancellationToken = default)
+        {
+            _book.Write("abandoned");
+
+            await _caller.CancelAsync();
+
+            if (message.Stop)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
     }
 

@@ -12,7 +12,10 @@ public interface IUnitOfWork
 {
     Task Begin(CancellationToken cancellationToken);
 
-    Task Commit(CancellationToken cancellationToken);
+    /// <summary>Takes no token: it runs once the handler has returned, and the operation commits
+    /// whatever the caller's token says by then. Cancellation abandons only work not yet done,
+    /// and a commit cancelled in flight would leave its outcome in doubt.</summary>
+    Task Commit();
 
     /// <summary>Takes no token on purpose: undoing is what has to happen when the operation was
     /// already cancelled, so cancellation must not be able to skip it.</summary>

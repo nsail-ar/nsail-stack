@@ -112,7 +112,7 @@ public sealed class DbContextUnitOfWorkTests
         work.GetType().GetField("_transaction", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(work, throwing);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => work.Commit(CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => work.Commit());
 
         Assert.True(disposed);
         await work.Rollback();

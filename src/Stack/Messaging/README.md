@@ -133,7 +133,8 @@ declare the zero member or make the field nullable.
   input: correlate with it, never authorize by it. `MessageHeaders.Source` is the one name the
   Stack writes itself.
 - The outermost in-process send opens one scope and one transaction; every nested send joins
-  it. `IUnitOfWork` is the store's side; `AfterCommit.Register(Func<Task>)` runs work right
+  it. `IUnitOfWork` is the store's side, and its `Commit()` takes no token, so a caller that left
+  after the handler returned still commits; `AfterCommit.Register(Func<Task>)` runs work right
   after the commit and never after a rollback. Parallel sends inside one operation are refused.
 - `Publish` is broadcast: `InProcessPublisher<T>` calls every registered `IHandler<T>` and every
   `Subscribe<T>(SubscriptionDelegate<T>)` subscription (dispose it to unsubscribe). `ISaved`

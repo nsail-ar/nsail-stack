@@ -74,7 +74,10 @@ static class AmbientUnitOfWork
             result = await Invoke(unit, 1, () => handle(scope.ServiceProvider, cancellationToken))
                 .ConfigureAwait(false);
 
-            await unit.Commit(cancellationToken).ConfigureAwait(false);
+            // Untokened: once the handler has returned, its operation commits whatever the
+            // caller's token says — a caller that left after the work was done cancels nothing,
+            // and a COMMIT cancelled in flight would leave its outcome in doubt.
+            await unit.Commit().ConfigureAwait(false);
         }
         catch
         {
@@ -181,11 +184,11 @@ static class AmbientUnitOfWork
             }
         }
 
-        public async Task Commit(CancellationToken cancellationToken)
+        public async Task Commit()
         {
             foreach (var store in _stores)
             {
-                await store.Commit(cancellationToken).ConfigureAwait(false);
+                await store.Commit().ConfigureAwait(false);
             }
         }
 

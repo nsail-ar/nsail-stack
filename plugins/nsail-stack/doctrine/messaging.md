@@ -161,7 +161,10 @@ to `InProcessSender` opens a service scope and a transaction; every send nested 
 at any depth — joins that scope, so the composing handler and everything it sends share one
 `DbContext`, one connection and one transaction. It commits when the outermost send's whole
 pipeline returns (including interceptor work after `next()`) and rolls back entirely when
-anything escapes it.
+anything escapes it. The commit takes no token: a caller that leaves after the pipeline
+returned cancels nothing, because the work is done and a COMMIT cancelled in flight leaves its
+outcome in doubt. Cancellation abandons only work not yet done — a handler that observes it
+and throws rolls the operation back like any other failure.
 
 **A composing handler writes nothing to get this.** `SaleHandler` sends `CreateVoucher`;
 `WorkOrderHandler` sends `CreateSettlement` and `RegisterStockMovement`. The mechanism lives

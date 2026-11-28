@@ -36,7 +36,7 @@ sealed class DbContextUnitOfWork : IUnitOfWork
         _transaction = await _db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task Commit(CancellationToken cancellationToken)
+    public async Task Commit()
     {
         if (_transaction is null)
         {
@@ -49,7 +49,7 @@ sealed class DbContextUnitOfWork : IUnitOfWork
 
         try
         {
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync().ConfigureAwait(false);
         }
         finally
         {
