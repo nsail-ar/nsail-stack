@@ -312,6 +312,13 @@ public class OrphanTests
         Assert.Equal(TimeSpan.FromMinutes(4), HarnessLoop.PlannerOptionsOf(new HarnessOptions { OrphanGraceMinutes = 4 }).OrphanGrace);
     }
 
+    [Fact]
+    public void NoWipLimitUnlessAMachineSetsOne()
+    {
+        Assert.Equal(0, HarnessLoop.PlannerOptionsOf(new HarnessOptions { Agents = 6 }).WipLimit);
+        Assert.Equal(4, HarnessLoop.PlannerOptionsOf(new HarnessOptions { Agents = 6, WipLimit = 4 }).WipLimit);
+    }
+
     // Only a keeper that reads an absent PR waits: the others move the story on the pass that sees it.
     [Fact]
     public void EveryOtherKeeperMovesWithNoGrace()

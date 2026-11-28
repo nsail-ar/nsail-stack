@@ -61,8 +61,10 @@ public sealed class HarnessOptions
     // Whether new stories leave the queue (p1, epic, rest); false only finishes what is started.
     public bool TakeNew { get; set; } = true;
 
-    // Stories under way at once before a new one starts (Planner's WipLimit); unset is the agent count, 0 none.
-    public int? WipLimit { get; set; }
+    // Stories under way at once before a new one starts (Planner's WipLimit). None unless set: the
+    // count is the whole board's, every machine's stories in it, so a number sized for one machine
+    // holds all the others.
+    public int WipLimit { get; set; }
 
     // A story In-Progress a keeper with no open PR (`Pr: none`) would move must have been quiet this
     // long (Planner's OrphanGrace): a job's ending and its PR's opening land inside it.

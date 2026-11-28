@@ -710,7 +710,7 @@ public sealed class HarnessLoop(
             var conditions = _workers.SelectMany(w => w.Options.When.Use.Select(u => o.Conditions[u]).Append(w.Options.When));
             var down = await Down(conditions.SelectMany(c => c.Reachable).Distinct(), stop);
             if (down.Count > 0) log.LogWarning("{Down} not answering: the workers that need it wait", string.Join(", ", down));
-            var (plan, saturated) = Saturated(WorkerPlanner.Make(snapshot, _workers, PlannerOptionsOf(o, limits.Agents), w => WhenHolds(w, o, down), AndonOpen(started)), jobs.Pressure.Read(), o.Pressure);
+            var (plan, saturated) = Saturated(WorkerPlanner.Make(snapshot, _workers, PlannerOptionsOf(o), w => WhenHolds(w, o, down), AndonOpen(started)), jobs.Pressure.Read(), o.Pressure);
             _stalled = snapshot.Issues.Count(i => i.Has(Labels.Stalled));
             Unsettle(snapshot.Issues);
             Planned(plan.Items, started);
@@ -931,14 +931,14 @@ public sealed class HarnessLoop(
         return _running.Values.Where(r => r.Item.Worker is not null).GroupBy(r => r.Item.Worker!).ToDictionary(g => g.Key, g => g.Count());
     }
 
-    // The planner's knobs, as this project configured them; the WIP limit follows the agents.
-    internal static PlannerOptions PlannerOptionsOf(HarnessOptions o, int? agents = null)
+    // The planner's knobs, as this project configured them.
+    internal static PlannerOptions PlannerOptionsOf(HarnessOptions o)
     {
         var suite = o.Texts.SuiteRedTitle;
         var slot = suite.IndexOf("{product}", StringComparison.Ordinal);
         return new PlannerOptions(o.Gate)
         {
-            WipLimit = o.WipLimit ?? agents ?? o.Agents,
+            WipLimit = o.WipLimit,
             OrphanGrace = TimeSpan.FromMinutes(o.OrphanGraceMinutes),
             UnrunnableDrivers = o.UnrunnableDrivers,
             SuiteRedTitle = suite,
