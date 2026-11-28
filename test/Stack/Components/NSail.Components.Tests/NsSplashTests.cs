@@ -56,12 +56,26 @@ public sealed class NsSplashTests : BunitContext
     public void TheMarkIsDrawnInABandOfTheSharedHeight()
     {
         var cut = Render<NsSplash>(p => p.Add(c => c.LogoUrl, "api/branding/logo"));
-        var script = cut.Find("script").TextContent;
+        var band = cut.Find("#ns-splash-logo").GetAttribute("style");
 
-        Assert.Contains($"height:{NsSplash.MarkHeight}px", cut.Find("#ns-splash-logo").GetAttribute("style"), StringComparison.Ordinal);
-        Assert.Contains("height:100%", cut.Find("#ns-splash-logo img").GetAttribute("style"), StringComparison.Ordinal);
-        Assert.Contains("root.style.height = \"100%\";", script, StringComparison.Ordinal);
-        Assert.Contains("root.style.width = \"auto\";", script, StringComparison.Ordinal);
+        Assert.Contains($"height:{NsSplash.MarkHeight}px", band, StringComparison.Ordinal);
+        Assert.Contains("align-items:flex-end", band, StringComparison.Ordinal);
+    }
+
+    // The mark's box is its artwork: a wide lockup is as tall as the block's width leaves, never a
+    // band-high box with the drawing letterboxed inside it, which is the gap nsail#3109 measures.
+    [Fact]
+    public void TheMarkKeepsItsOwnRatioInsideTheBand()
+    {
+        var cut = Render<NsSplash>(p => p.Add(c => c.LogoUrl, "api/branding/logo"));
+        var script = cut.Find("script").TextContent;
+        var image = cut.Find("#ns-splash-logo img").GetAttribute("style");
+
+        Assert.Contains("height:auto", image, StringComparison.Ordinal);
+        Assert.Contains($"max-height:{NsSplash.MarkHeight}px", image, StringComparison.Ordinal);
+        Assert.Contains("max-width:100%", image, StringComparison.Ordinal);
+        Assert.Contains("root.style.aspectRatio = art.width + \" / \" + art.height;", script, StringComparison.Ordinal);
+        Assert.Contains("root.style.height = \"auto\";", script, StringComparison.Ordinal);
     }
 
     [Fact]

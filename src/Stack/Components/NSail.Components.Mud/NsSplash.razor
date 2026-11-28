@@ -30,22 +30,23 @@
         <div id="ns-splash-block" class="d-flex flex-column align-center gap-4" style="width:200px; max-width:100%;">
             @if (LogoUrl is not null)
             {
-                @* One band of one height (MarkHeight), whatever the file: the mark takes the band's
-                   height and the width its ratio gives under it, never more than the block, so a
-                   square mark is no taller than a wide lockup and NsPageFace draws the same size.
-                   The height is fixed before the file's bytes decode, so nothing below drops when
-                   the logo answers. *@
+                @* One band of one height (MarkHeight), whatever the file, and the mark stands on its
+                   floor: a square mark fills the band's height, and a wide lockup the block's width
+                   at the height its ratio leaves, so the mark's box is always its artwork and the gap
+                   under it is the block's own, never the band's unpainted rest (nsail#3109). The
+                   band's height is fixed before the file's bytes decode, so nothing below drops
+                   when the logo answers. *@
                 <div id="ns-splash-logo" data-logo="@LogoUrl" data-dark-logo="@DarkLogoUrl"
-                     style="width:100%; height:@(MarkHeight)px; display:flex; align-items:center; justify-content:center; color:var(--mud-palette-primary, #8a8782);">
+                     style="width:100%; height:@(MarkHeight)px; display:flex; align-items:flex-end; justify-content:center; color:var(--mud-palette-primary, #8a8782);">
                     @* The first frame, before the inlined mark replaces it: the OS scheme picks the
                        file here, and the script below picks by the ground the splash is actually
                        painted on once it has measured it. *@
-                    <picture style="display:block; height:100%; max-width:100%;">
+                    <picture style="display:block; max-width:100%;">
                         @if (DarkLogoUrl is not null)
                         {
                             <source media="(prefers-color-scheme: dark)" srcset="@DarkLogoUrl" />
                         }
-                        <img src="@LogoUrl" alt="" style="display:block; height:100%; width:auto; max-width:100%; object-fit:contain;"
+                        <img src="@LogoUrl" alt="" style="display:block; width:auto; height:auto; max-width:100%; max-height:@(MarkHeight)px; object-fit:contain;"
                              onerror="this.style.display='none'; this.closest('#ns-splash-logo').dataset.failed='1';" />
                     </picture>
                 </div>
@@ -227,9 +228,8 @@
         // An <img> is its own document and cannot inherit the colour around it, so an SVG
         // logo drawn with currentColor renders black. Inlining is the only way it takes the
         // primary the container carries -- and only an SVG is inlined, so a raster logo keeps
-        // its own baked colours through the <img> that is already here. Sized the same as the
-        // <img> fallback above (the band's height, width following the ratio), then fitted
-        // to its artwork in this same task so the block lays out once.
+        // its own baked colours through the <img> that is already here. Fitted to its artwork
+        // and then sized by that artwork's ratio, in this same task so the block lays out once.
         fetch(logoUrl(host), { credentials: "same-origin" })
             .then(response => {
                 const type = (response.headers.get("content-type") || "").split(";")[0].trim();
@@ -250,6 +250,7 @@
                 root.style.width = "auto";
                 root.style.height = "100%";
                 root.style.maxWidth = "100%";
+                root.style.flex = "none";
                 // An inline svg sits on the line box's baseline and adds the descender gap
                 // under the mark; a block has none, so the block's own gap is all that is left.
                 root.style.display = "block";
@@ -258,6 +259,19 @@
                 // is already the artwork's own: the band under the mark is the block's
                 // gap and nothing else, and the fit adds no second resize.
                 window.nsapp.fitMark(root);
+
+                // The artwork's own ratio decides the box: as wide as the band's height gives it,
+                // never wider than the block, and as tall as that width leaves. A width the page
+                // writes also outranks the file's own width and height attributes.
+                const art = root.viewBox.baseVal;
+
+                if (art && art.width > 0 && art.height > 0) {
+                    const ratio = art.width / art.height;
+
+                    root.style.aspectRatio = art.width + " / " + art.height;
+                    root.style.width = "min(100%, " + (host.clientHeight * ratio) + "px)";
+                    root.style.height = "auto";
+                }
             })
             .catch(() => { });
     })();
