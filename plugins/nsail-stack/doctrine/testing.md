@@ -21,6 +21,16 @@ The kits are covered. **The Apps layer is where defects pool** — a screen send
 `Guid.Empty`, a pack missing a verb — because a handler test cannot see what a screen
 sends. When an app story touches a seam, the seam's test rides the story.
 
+**A rule is proven where it lives (shift left; Leonardo, 2026-11-28).** A business rule that lives
+in code (a validator, a calculation, a state change, a mapping) is proven by a unit test of that
+code, in the kit's `Shared.Tests` or a unit project of its own, never through a handler against
+Postgres. The handler harness keeps what only the database shows: tenancy and the second wall,
+a constraint or a unique index, concurrency and locks, the migrations, and one round trip per
+handler that proves the wiring. A rule buried inline in a handler is lifted into a method or a
+type a unit test can call; EF's InMemory provider and a mocked `DbContext` are not the way down,
+because neither behaves like the database the rule will meet. A story names, in its Done, the
+layer that owes each criterion's proof.
+
 **No coverage target, deliberately.** A target breeds filler in the layers already covered;
 the question is *which layer owes the proof*, not how much. The honest-count rule lives in
 the product's commits page (a product page): the suite total is the tree's, verified against
