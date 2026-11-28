@@ -372,9 +372,10 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   `Alt=""` makes the svg decorative (`aria-hidden`), and an unset `Alt` leaves the served
   markup's own attributes.
   `NsSplash` draws its own markup rather than `NsRemoteImage`, fits the same artwork in the same
-  task that inlines it (one resize, not two), and sizes the opposite way — width,
-  not height: its logo, its name and its progress bar all take the width its own script measures
-  off the install's name, so the three read as one block instead of three widths of their own.
+  task that inlines it (one resize, not two). Its mark is drawn in a band of fixed height
+  (`NsSplash.MarkHeight`, the same number `NsPageFace` uses), so a square mark is no taller than a
+  wide lockup; its name and progress bar take the width its own script measures off the install's
+  name, so they read as one block with the mark.
   The first-frame `<picture>`/`<img>` and the inlined `<svg>` are all `display:block`, so no baseline
   band sits under the mark and the swap moves nothing: the only space below it is the block's gap.
   A brand's dark mark (`DarkLogoUrl`) is the one it wears when its own painted ground is dark.

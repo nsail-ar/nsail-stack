@@ -3909,10 +3909,8 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* The one absolute width ceiling NsSplash and NsPageFace both draw their mark against --
-   named once here instead of each carrying its own copy of the number. A ceiling, not an
-   equalizer: NsSplash's band takes the install name's rendered width and NsPageFace's
-   takes NsRemoteImage's own fixed Height, so a wide lockup still draws at two different
-   sizes within it. */
+   named once here instead of each carrying its own copy of the number. A ceiling, not a
+   size: the mark's size is the band height NsSplash.MarkHeight names. */
 .ns-brand-column {
     max-width: 320px;
     width: 100%;

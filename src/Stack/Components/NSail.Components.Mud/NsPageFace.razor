@@ -14,17 +14,16 @@
    ns-brand-column is NsSplash's own column width, shared by class rather than repeated here
    so a wide lockup never draws past that ceiling -- without one of its own this frame's
    width is the viewport, and NsRemoteImage's max-width:100% only bites once the container
-   is already narrower than the mark. A shared ceiling, not a shared size: this frame's mark
-   draws at NsRemoteImage's own fixed Height, not at NsSplash's name-driven width, so a wide
-   lockup still draws at two different sizes between the two faces. The ceiling is the
-   mark's alone: the words wrap at ns-page-face's reading measure, centered on the same axis,
-   or a long message breaks ragged-right at 320px under a centered logo. *@
+   is already narrower than the mark. The mark's height is NsSplash's band (MarkHeight), so
+   one install's mark has one size on its splash and on its faces. The ceiling is the mark's
+   alone: the words wrap at ns-page-face's reading measure, centered on the same axis, or a
+   long message breaks ragged-right at 320px under a centered logo. *@
 <div id="@Id" class="fixed inset-0 z-max d-flex flex-column align-center justify-center pa-6 bg-background">
     <NsStack Align="NsAlign.Center" Gap="NsSize.Md" Class="ns-page-face">
         @if (LogoUrl is not null)
         {
             <NsStack Align="NsAlign.Center" Class="ns-brand-column">
-                <NsRemoteImage Url="@LogoUrl" Alt="" Height="160" As="NsAs.Main" />
+                <NsRemoteImage Url="@LogoUrl" Alt="" Height="NsSplash.MarkHeight" As="NsAs.Main" />
             </NsStack>
         }
 
