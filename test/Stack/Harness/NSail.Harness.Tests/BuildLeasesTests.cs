@@ -174,6 +174,18 @@ public class BuildLeasesTests
     }
 
     [Fact]
+    public void AReleaseThatOpensNoBrowserTakesNoBrowserTurn()
+    {
+        var limits = new Limits(Agents: 5, Builds: 3, Browsers: 1);
+        WorkItem Cut(string product, bool browserless = false) => new(WorkKind.Release, null, null, "release", "the day's cut", $"release-{product}.yml", ProductName: product, Browserless: browserless);
+
+        var picked = Capacity.Pick([Cut("integration", browserless: true), Cut("web"), Cut("api")], new Dictionary<Resource, int>(), limits);
+
+        Assert.Equal(["integration", "web"], picked.Select(i => i.Product));
+        Assert.Equal([Resource.Build], Capacity.Needs(picked[0]));
+    }
+
+    [Fact]
     public void ACutThatNeedsASuiteWaitsForItsGreenOfTheDay()
     {
         var fired = DateTimeOffset.UtcNow.AddMinutes(-200);

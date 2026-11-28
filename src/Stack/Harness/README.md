@@ -53,7 +53,7 @@ the files it leaves.
     nothing failed is red by time alone: its verdict names what was green (the build, each test project that passed)
     and fires the Verify event `OutOfTime`, whose default adds `hand` instead of sending a round no builder can do; a malformed project or a
     missing solution in the PR is its red), and a
-    Release's `Suite` (a test project, `{Product}` its name) runs there — no script; so does a Release with `Integration`, whose suite is every integration test project. Another repository
+    Release's `Suite` (a test project, `{Product}` its name) runs there — no script; so does a Release with `Integration`, whose suite is every integration test project and takes a build turn and no browser's. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
     a release holds that repository's merges when the version its tag pins does, and a story merged
     there has landed on the default branch at the oldest commit whose pin names a version holding

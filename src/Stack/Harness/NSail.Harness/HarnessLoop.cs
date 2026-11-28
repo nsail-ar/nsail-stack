@@ -457,7 +457,7 @@ public sealed class HarnessLoop(
         var worker = _workers.FirstOrDefault(w => w.Kind == item.Kind && (item.Kind != WorkKind.Release || string.Equals(w.Options.Product, item.ProductName, StringComparison.OrdinalIgnoreCase)))
             ?? throw new InvalidOperationException($"no worker runs {item.Kind}{(item.ProductName is { } p ? $" for {p}" : "")}");
         if (ForceRefusal(options.Value.Mode, Paused, AgentsOffUntil, item.Kind) is { } refusal) throw (BusinessException)BusinessProblem.InvalidState(refusal);
-        return Start(item with { Worker = worker.Name, Workflow = item.Workflow ?? worker.Options.ReleaseKey }, CancellationToken.None);
+        return Start(item with { Worker = worker.Name, Workflow = item.Workflow ?? worker.Options.ReleaseKey, Browserless = worker.Options.Integration }, CancellationToken.None);
     }
 
     internal static string? ForceRefusal(HarnessMode mode, string? paused, DateTimeOffset? wall, WorkKind kind)
@@ -481,7 +481,7 @@ public sealed class HarnessLoop(
 
     Dictionary<Resource, int> InUse()
     {
-        return _running.Values.SelectMany(r => Capacity.Needs(r.Item.Kind)).GroupBy(r => r).ToDictionary(g => g.Key, g => g.Count());
+        return _running.Values.SelectMany(r => Capacity.Needs(r.Item)).GroupBy(r => r).ToDictionary(g => g.Key, g => g.Count());
     }
 
     internal bool Settled(WorkItem item, IReadOnlyList<Board.Issue> issues)

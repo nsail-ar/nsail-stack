@@ -240,11 +240,11 @@ public static class WorkerPlanner
                 if (flight.ReleaseWorkflows.Contains(wf)) break;
                 if (board.Releases.FirstOrDefault(r => r.Workflow == wf) is { } fix)
                 {
-                    yield return new WorkItem(WorkKind.Release, fix.Story, null, "release", $"the red fix #{fix.Story} merged", wf, fix.Sha, Worker: w.Name, ProductName: w.Options.Product);
+                    yield return new WorkItem(WorkKind.Release, fix.Story, null, "release", $"the red fix #{fix.Story} merged", wf, fix.Sha, Worker: w.Name, ProductName: w.Options.Product, Browserless: w.Options.Integration);
                 }
                 else if (board.DueReleases.Contains(wf))
                 {
-                    yield return new WorkItem(WorkKind.Release, null, null, "release", "the day's cut", wf, Worker: w.Name, ProductName: w.Options.Product);
+                    yield return new WorkItem(WorkKind.Release, null, null, "release", "the day's cut", wf, Worker: w.Name, ProductName: w.Options.Product, Browserless: w.Options.Integration);
                 }
                 break;
             case WorkKind.Watch when board.DueWatches.Contains(w.Name):
