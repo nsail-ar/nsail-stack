@@ -30,6 +30,28 @@ public class WorkerOptionsTests
         Assert.Contains("Harness:Workers:x: no type Deploy", Problem(("Workers:x:Type", "Deploy")));
     }
 
+    // A Release that presses nothing is a check: it needs its suite and its name, not a Workflow or Paths.
+    [Fact]
+    public void AReleaseWithNoWorkflowIsACheckThatNeedsItsSuite()
+    {
+        (string, string)[] check = [("Workers:i:Type", "Release"), ("Workers:i:Product", "Integration"), ("Workers:i:When:Schedule:Start", "0 2 * * *")];
+        (string, string)[] build = [("Repositories:0:Name", "acme/app"), ("Repositories:0:Build:Solution", "S.sln"), ("Repositories:0:Build:Integration:0", "Acme.Data.Testing")];
+
+        Assert.Contains("a Release needs a Workflow", Problem(check));
+        Assert.Contains("it names none", Problem([.. check, ("Workers:i:Integration", "true")]));
+        var worker = Assert.Single(Worker.Compile(Bind([.. check, .. build, ("Workers:i:Integration", "true")])));
+        Assert.Equal("suite:integration", worker.Options.ReleaseKey);
+    }
+
+    [Fact]
+    public void ACutNeedsAnotherReleaseWorkersSuiteByItsProduct()
+    {
+        (string, string)[] cut = [("Workers:r:Type", "Release"), ("Workers:r:Product", "Web"), ("Workers:r:Workflow", "release-web.yml"), ("Workers:r:Paths", "web.paths"), ("Workers:r:When:Schedule:Start", "0 2 * * *")];
+
+        Assert.Contains("no Release worker has that Product", Problem([.. cut, ("Workers:r:Needs", "Integration")]));
+        Assert.Contains("not its own", Problem([.. cut, ("Workers:r:Needs", "web")]));
+    }
+
     [Fact]
     public void AnAgentWorkerNeedsASeat()
     {

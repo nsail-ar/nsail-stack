@@ -42,6 +42,21 @@ public sealed class WorkerOptions
     // product's name. A Command runs instead when the worker names one.
     public string? Suite { get; set; }
 
+    // A Release whose suite is the repository's integration test projects (its Build's Integration),
+    // every one of them. Such a worker may name no Workflow: it cuts nothing, it is a check — its
+    // verdict is its suite's status on main's head, its red files the red-suite story of its Product
+    // (the check's name), and its green closes that story once the head holds the fix.
+    public bool Integration { get; set; }
+
+    // A Release that cuts only what another Release worker's suite found green, by that worker's
+    // Product: its day's cut is due once that suite's newest verdict is green and newer than the
+    // schedule's firing, and it cuts at the sha that verdict stands on, wherever main has moved to.
+    public string? Needs { get; set; }
+
+    // What a Release is known by among the cuts planned and running: its Workflow, or, for one that
+    // presses nothing, a name of its own.
+    public string? ReleaseKey => Workflow ?? (Product is null ? null : $"suite:{Product.ToLowerInvariant()}");
+
     // The MCP servers its agent runs with, by name, and the tools it may call beyond its access
     // (a Test's browser, a repository's own script).
     public Dictionary<string, CommandOptions> Mcp { get; set; } = [];

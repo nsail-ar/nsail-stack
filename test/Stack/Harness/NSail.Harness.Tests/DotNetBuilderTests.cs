@@ -25,6 +25,26 @@ public class DotNetBuilderTests
         return builder.Closure(changed, Solution, onDisk.Contains, p => Refs.GetValueOrDefault(p) ?? []);
     }
 
+    // A test project is an integration one by what it references, itself or through a project it
+    // references: the gate builds it and leaves its run to the integration suite.
+    [Fact]
+    public void ATestProjectThatReferencesWhatIntegrationNamesIsLeftOutOfTheGate()
+    {
+        var builder = new DotNetBuilder(new BuildOptions { Solution = "S.sln", Integration = ["Acme.Data.Testing"] }, 4);
+        var named = new Dictionary<string, (IReadOnlyList<string>, IReadOnlyList<string>)>
+        {
+            ["test/Kit.Tests/Kit.Tests.csproj"] = (["xunit", "Kit"], ["src/Kit/Kit.csproj"]),
+            ["test/Kit.WebApi.Tests/Kit.WebApi.Tests.csproj"] = (["xunit", "acme.data.testing"], []),
+            ["test/App.Web.Tests/App.Web.Tests.csproj"] = (["xunit", "Support"], ["test/Support/Support.csproj"]),
+            ["test/Support/Support.csproj"] = (["Acme.Data.Testing"], []),
+            ["src/Kit/Kit.csproj"] = ([], []),
+        };
+        string[] tests = ["test/Kit.Tests/Kit.Tests.csproj", "test/Kit.WebApi.Tests/Kit.WebApi.Tests.csproj", "test/App.Web.Tests/App.Web.Tests.csproj"];
+
+        Assert.Equal(["test/Kit.WebApi.Tests/Kit.WebApi.Tests.csproj", "test/App.Web.Tests/App.Web.Tests.csproj"], builder.IntegrationOf(tests, p => named[p]));
+        Assert.Empty(new DotNetBuilder(new BuildOptions { Solution = "S.sln" }, 4).IntegrationOf(tests, p => named[p]));
+    }
+
     [Fact]
     public void AChangeAffectsItsProjectAndEveryoneAboveIt()
     {

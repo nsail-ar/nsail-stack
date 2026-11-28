@@ -17,6 +17,12 @@ public static class Capacity
         };
     }
 
+    // What this item holds while it runs: its kind's, less the browser for a release that opens none.
+    public static IReadOnlyList<Resource> Needs(WorkItem item)
+    {
+        return item is { Kind: WorkKind.Release, Browserless: true } ? [Resource.Build] : Needs(item.Kind);
+    }
+
     // A story started from the queue holds its agent for hours: it never takes the last one, so a
     // review, a round or a QA drain that shows up meanwhile finds an agent free.
     public static readonly string[] Starting = ["p1", "epic", "rest"];
@@ -33,7 +39,7 @@ public static class Capacity
         var picked = new List<WorkItem>();
         foreach (var item in plan)
         {
-            var needs = Needs(item.Kind);
+            var needs = Needs(item);
             if (needs.Any(r => used[r] >= limits.Of(r))) continue;
             if (Starting.Contains(item.Tier) && limits.Agents > 1 && used[Resource.Agent] >= limits.Agents - 1) continue;
             if (item.Worker is { } w && max?.GetValueOrDefault(w, int.MaxValue) is { } cap && byWorker.GetValueOrDefault(w) >= cap) continue;

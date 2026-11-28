@@ -7,6 +7,9 @@ namespace NSail.Harness;
 // folders whose changes seed projects (empty: the whole tree); a Markdown change outside them is prose, any other builds it all. A
 // change matching Everything is build configuration and builds the whole solution. Tests: the test
 // projects the gate runs, by file name; TestFilter narrows them (the browser suites stay out).
+// Integration: the packages or projects whose reference makes a test project an integration one (it
+// needs what a gate does not bring up, a real database): the gate builds it and does not run it, and
+// a Release worker's integration suite runs every one of them. Empty: the gate runs them all.
 public sealed class BuildOptions
 {
     public string Kind { get; set; } = "DotNet";
@@ -15,6 +18,7 @@ public sealed class BuildOptions
     public List<string> Everything { get; set; } = ["*.sln", "*.slnx", "global.json", "*.props", "*.targets", "nuget.config", ".editorconfig", "Directory.Build.rsp", "*.globalconfig"];
     public string Tests { get; set; } = "*.Tests.csproj";
     public string? TestFilter { get; set; }
+    public List<string> Integration { get; set; } = [];
     public string Configuration { get; set; } = "Release";
     public List<string> RestoreArgs { get; set; } = [];
 }

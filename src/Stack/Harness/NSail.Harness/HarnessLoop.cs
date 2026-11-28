@@ -421,8 +421,17 @@ public sealed class HarnessLoop(
         return _workers.Where(w => w.Kind == WorkKind.Release && w.Options.When.Schedule is not null)
             .Where(w => Conditions.LastFiring(w.Options.When.Schedule!, now) is { } fired
                 && (StatusMark.LastAt(marks, Markers.CutContext(w.Options.Product!.ToLowerInvariant())) is not { } tried || tried < fired)
-                && !CutHeld(marks, w.Options.Product!.ToLowerInvariant(), fired, now))
-            .Select(w => w.Options.Workflow!).ToList();
+                && !CutHeld(marks, w.Options.Product!.ToLowerInvariant(), fired, now)
+                && NeedMet(marks, w.Options.Needs, fired))
+            .Select(w => w.Options.ReleaseKey!).ToList();
+    }
+
+    // A cut that needs another worker's suite waits for that suite's verdict of the day: its newest
+    // one green, and said since the firing. A red one holds the cut until its fix's run is green.
+    internal static bool NeedMet(IReadOnlyList<StatusMark> marks, string? needs, DateTimeOffset fired)
+    {
+        if (needs is null) return true;
+        return StatusMark.Newest(marks, Markers.SuiteContext(needs.ToLowerInvariant())) is { Ok: true } said && said.At >= fired;
     }
 
     // A harness holds the cut while its newest claim since the firing is unreleased and was renewed inside the lapse.
@@ -448,7 +457,7 @@ public sealed class HarnessLoop(
         var worker = _workers.FirstOrDefault(w => w.Kind == item.Kind && (item.Kind != WorkKind.Release || string.Equals(w.Options.Product, item.ProductName, StringComparison.OrdinalIgnoreCase)))
             ?? throw new InvalidOperationException($"no worker runs {item.Kind}{(item.ProductName is { } p ? $" for {p}" : "")}");
         if (ForceRefusal(options.Value.Mode, Paused, AgentsOffUntil, item.Kind) is { } refusal) throw (BusinessException)BusinessProblem.InvalidState(refusal);
-        return Start(item with { Worker = worker.Name, Workflow = item.Workflow ?? worker.Options.Workflow }, CancellationToken.None);
+        return Start(item with { Worker = worker.Name, Workflow = item.Workflow ?? worker.Options.ReleaseKey, Browserless = worker.Options.Integration }, CancellationToken.None);
     }
 
     internal static string? ForceRefusal(HarnessMode mode, string? paused, DateTimeOffset? wall, WorkKind kind)
@@ -472,7 +481,7 @@ public sealed class HarnessLoop(
 
     Dictionary<Resource, int> InUse()
     {
-        return _running.Values.SelectMany(r => Capacity.Needs(r.Item.Kind)).GroupBy(r => r).ToDictionary(g => g.Key, g => g.Count());
+        return _running.Values.SelectMany(r => Capacity.Needs(r.Item)).GroupBy(r => r).ToDictionary(g => g.Key, g => g.Count());
     }
 
     internal bool Settled(WorkItem item, IReadOnlyList<Board.Issue> issues)
@@ -584,7 +593,7 @@ public sealed class HarnessLoop(
             var login = await jobs.Repo.Login(ct);
             foreach (var a in plan.Andon)
             {
-                var cut = _workers.FirstOrDefault(w => w.Kind == WorkKind.Release && string.Equals(w.Options.Product, a.Product, StringComparison.OrdinalIgnoreCase))?.Options.Workflow;
+                var cut = _workers.FirstOrDefault(w => w.Kind == WorkKind.Release && string.Equals(w.Options.Product, a.Product, StringComparison.OrdinalIgnoreCase))?.Options.ReleaseKey;
                 if (cut is not null && snapshot.Flight.ReleaseWorkflows.Contains(cut)) continue;
                 if (jobs.Markers.InARow(await board.Comments(a.Story, ct), Markers.AndonStill, login) > 0) continue;
                 var said = HarnessTexts.Fill(o.Texts.AndonStill, ("product", a.Product), ("since", $"{AndonStillSince:HH:mm}"), ("waits", a.Waits));

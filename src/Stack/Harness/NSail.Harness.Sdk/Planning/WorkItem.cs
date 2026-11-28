@@ -10,7 +10,8 @@ namespace NSail.Harness.Planning;
 // Sha is the head a round's PR was planned on, or the head of main a Main gate judges.
 // Worker names the worker (Harness:Workers) that planned it, when workers plan.
 // A Ship names the release (Tag, `web/v1.2.0`) whose stories it moves to Released. A Watch is its worker.
-public sealed record WorkItem(WorkKind Kind, int? Story, int? Pr, string Tier, string Why, string? Workflow = null, string? Sha = null, string? PrRepo = null, string? Worker = null, string? ProductName = null, string? Tag = null)
+// Browserless: a Release whose suite opens no browser (the integration tests), so it takes no browser turn.
+public sealed record WorkItem(WorkKind Kind, int? Story, int? Pr, string Tier, string Why, string? Workflow = null, string? Sha = null, string? PrRepo = null, string? Worker = null, string? ProductName = null, string? Tag = null, bool Browserless = false)
 {
     // The product a release cuts, lowercase: its worker's, else read off its button (`release-web.yml`).
     public string? Product => ProductName?.ToLowerInvariant() ?? (Workflow is null ? null : Path.GetFileNameWithoutExtension(Workflow)["release-".Length..]);

@@ -246,7 +246,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         {
             // Only a red suite names its product; a red main's fix is cut with the next day's cut.
             var release = options.Releases.FirstOrDefault(r => i.Title == HarnessTexts.Fill(options.Texts.SuiteRedTitle, ("product", r.Product!)));
-            if (release?.Workflow is not { } wf) continue;
+            if (release?.ReleaseKey is not { } wf) continue;
             if (await StoryLanding.Of(repos, board, _markers, i.Number, ct) is not { } merge) continue;
             var product = release.Product!;
             if (releases.Any(r => r.Tag.StartsWith($"{product.ToLowerInvariant()}/v", StringComparison.Ordinal) && r.PublishedAt > merge.At))
@@ -255,7 +255,9 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
                 continue;
             }
             if (flight.ReleaseWorkflows.Contains(wf)) continue;
-            if (await repos.Default.RunsSince(wf, merge.At, ct) >= 2) continue;
+            // A worker that presses nothing has no runs to count: its own run moves the story out of
+            // Merged either way (closed on green, back to Ready on red).
+            if (release.Workflow is not null && await repos.Default.RunsSince(wf, merge.At, ct) >= 2) continue;
             result.Add(new ReleaseCandidate(i.Number, wf, merge.Sha));
         }
         return (result, shipped);

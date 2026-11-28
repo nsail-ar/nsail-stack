@@ -113,9 +113,19 @@ public sealed class Worker
         if (type.Name == "Release" && w.Suite is not null && o.Repositories.FirstOrDefault(r => r.Label is null)?.Build is null) yield return $"{where}: a Suite runs on the repository's Build, and it names none";
         if (type.Name == "Release")
         {
-            foreach (var (field, value) in new[] { ("Product", w.Product), ("Workflow", w.Workflow), ("Paths", w.Paths) })
+            // A Release that presses nothing is a check: its suite is all it does.
+            var check = string.IsNullOrWhiteSpace(w.Workflow) && (w.Integration || w.Suite is not null || !string.IsNullOrWhiteSpace(w.Command));
+            foreach (var (field, value) in new[] { ("Product", w.Product), ("Workflow", check ? "-" : w.Workflow), ("Paths", check ? "-" : w.Paths) })
             {
                 if (string.IsNullOrWhiteSpace(value)) yield return $"{where}: a Release needs a {field}";
+            }
+            if (w.Integration && w.Suite is not null) yield return $"{where}: Integration or a Suite, one of them";
+            if (w.Integration && o.Repositories.FirstOrDefault(r => r.Label is null)?.Build is not { Integration.Count: > 0 }) yield return $"{where}: Integration runs what the repository's Build names as Integration, and it names none";
+            if (w.Needs is { } needs)
+            {
+                if (string.Equals(needs, w.Product, StringComparison.OrdinalIgnoreCase)) yield return $"{where}: Needs names another Release's Product, not its own";
+                else if (!o.Workers.Values.Any(r => string.Equals(r.Type, "Release", StringComparison.OrdinalIgnoreCase) && string.Equals(r.Product, needs, StringComparison.OrdinalIgnoreCase)))
+                    yield return $"{where}: Needs names {needs}, and no Release worker has that Product";
             }
         }
         if (w.Max is < 0) yield return $"{where}: Max can't be negative";

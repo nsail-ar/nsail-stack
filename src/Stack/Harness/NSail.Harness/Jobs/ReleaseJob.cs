@@ -20,6 +20,11 @@ namespace NSail.Harness.Jobs;
 // red sends the story back to Ready with what still fails. A branch, a list or a pick that is not
 // there falls back to the whole suite on main's head.
 // Its verdicts live on the commits: the day's cut tried and the suite's word, as commit statuses.
+// A worker that names no Workflow is a check: its suite (the repository's integration tests, or a
+// suite of its own) runs on main's head with no branch, its red files the same story under the
+// check's name, and its green — nothing ships to say so — closes that story once the head holds the
+// fix. A worker that Needs a check cuts where the check's newest verdict stands green, wherever main
+// has moved to since, and waits while there is none.
 public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
 {
     public WorkItem Item { get; } = item;
@@ -37,6 +42,15 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await ctx.Workspace.Fetch(dir, prune: true, $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*");
         var head = await Shell.Git(dir, "rev-parse", "HEAD");
+        // What the cut needs is read before anything is claimed or marked: a cut that only waited
+        // leaves the day due.
+        string? at = null;
+        if (step.Worker.Needs is { } needs)
+        {
+            var said = StatusMark.Newest(await ctx.Repo.Statuses(ct: ct), Markers.SuiteContext(needs.ToLowerInvariant()));
+            if (said is not { Ok: true }) return new JobOutcome($"{needs}'s suite {(said is null ? "has no verdict yet" : $"is red at {said.Sha[..8]}")} — {p}'s cut waits for its green", Idle: true);
+            at = said.Sha;
+        }
         // The claim keeps the fleet's other harnesses off the cut while this one works, renewed while
         // the job lives (a wait for a build turn has no bound); the cut mark, written once the cut
         // reached a verdict, keeps the day. A cut that threw lets go of the claim and leaves the day
@@ -48,7 +62,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         JobOutcome outcome;
         try
         {
-            outcome = await Cut(p, product, step, dir, head, slot, w, logPath, ct);
+            outcome = await Cut(p, product, step, dir, at ?? head, slot, w, logPath, ct);
         }
         catch
         {
@@ -98,42 +112,91 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         var last = (await ctx.Repo.Releases(ct)).FirstOrDefault(r => r.Tag.StartsWith($"{p}/v", StringComparison.Ordinal))?.Tag;
         await w.WriteLineAsync($"== release {p} at {head[..8]} (last tag {last ?? "none"}) on {ctx.Options.Machine} slot {slot}");
 
-        if (Item.Story is { } red && HasSuite(step) && await FixOnBranch(p, product, red, dir, step, w, logPath, ct) is { } carried) return carried;
+        // A check presses nothing: no branch carries its fix, no paths make it worth running.
+        var check = step.Worker.Workflow is null;
+        if (Item.Story is { } red && HasSuite(step) && !check && await FixOnBranch(p, product, red, dir, step, w, logPath, ct) is { } carried) return carried;
 
-        var pathsFile = step.Worker.Paths ?? throw new InvalidOperationException($"release {p} names no Paths");
-        if (!File.Exists(Path.Combine(dir, pathsFile))) return new JobOutcome($"no {pathsFile}", Idle: true);
-        if (last is not null)
+        if (step.Worker.Needs is not null && await Shell.Git(dir, "rev-parse", "HEAD") != head)
         {
-            var paths = (await File.ReadAllLinesAsync(Path.Combine(dir, pathsFile), ct)).Where(l => l.Trim().Length > 0).Select(l => l.Trim());
-            var news = await Shell.Git(dir, ["log", "--format=%h", $"{last}..HEAD", "--", .. paths]);
-            if (news.Trim().Length == 0) return new JobOutcome($"nothing new for {p} since {last}", Idle: true);
+            await Shell.Git(dir, "checkout", "-q", "--detach", head);
+            await w.WriteLineAsync($"cutting at {head[..8]}, where {step.Worker.Needs}'s suite is green: main has moved on");
         }
 
+        if (!check)
+        {
+            var pathsFile = step.Worker.Paths ?? throw new InvalidOperationException($"release {p} names no Paths");
+            if (!File.Exists(Path.Combine(dir, pathsFile))) return new JobOutcome($"no {pathsFile}", Idle: true);
+            if (last is not null)
+            {
+                var paths = (await File.ReadAllLinesAsync(Path.Combine(dir, pathsFile), ct)).Where(l => l.Trim().Length > 0).Select(l => l.Trim());
+                var news = await Shell.Git(dir, ["log", "--format=%h", $"{last}..HEAD", "--", .. paths]);
+                if (news.Trim().Length == 0) return new JobOutcome($"nothing new for {p} since {last}", Idle: true);
+            }
+        }
+
+        var judged = false;
         if (HasSuite(step) && StatusMark.Newest(marks, Markers.SuiteContext(p)) is { } ran && ran.Sha == head)
         {
             if (!ran.Ok) return new JobOutcome($"the suite is already red at {head[..8]} — waits for a new head", Idle: true);
+            judged = true;
+            // A check's green is said again at each firing: the cuts that need it read a verdict of the day.
+            if (check) await ctx.Repo.SetStatus(head, Markers.SuiteContext(p), "success", $"{product}'s suite still green on {ctx.Options.Machine}", ct);
         }
         else if (HasSuite(step))
         {
-            var branch = await OpenBranch(p, dir, w);
+            var where = check ? "main's head" : $"main's head, on `{await OpenBranch(p, dir, w)}`";
             var result = await Suite(product, null, dir, step, w, ct);
             var why = result.ExitCode == 0 ? "green" : result.TimedOut ? $"passed {step.Minutes} min" : "red";
             await ctx.Repo.SetStatus(head, Markers.SuiteContext(p), result.ExitCode == 0 ? "success" : "failure", $"{product}'s suite {why} on {ctx.Options.Machine}", ct);
             if (result.ExitCode != 0)
             {
-                await ReportRed(product, head, $"main's head, on `{branch}`", why, result.Output, logPath);
+                await ReportRed(product, head, where, why, result.Output, logPath);
+                if (check) return new JobOutcome($"suite {why} at {head[..8]}", Failed: true);
                 return await CutLastGreen(p, dir, last, StatusMark.Newest(marks, Markers.SuiteContext(p), ok: true)?.Sha, $"suite {why} at {head[..8]}", ct);
             }
         }
 
+        if (check)
+        {
+            // A head already found green has nothing new to say: a red story it still cannot close
+            // (its PR open, no merge the head holds) is left alone for a while, not run in a loop.
+            var open = await CloseFixedRed(product, head, dir, ct);
+            return new JobOutcome($"suite green at {head[..8]}{(judged ? " already" : "")}{(open is { } n ? $"; could not close #{n}" : "")}", Idle: judged && open is null, Failed: open is not null);
+        }
         await ctx.Repo.Dispatch(Item.Workflow!, new { tested_sha = head }, ct);
         return new JobOutcome($"suite green at {head[..8]} — {Item.Workflow} dispatched");
     }
 
-    // A suite to run: the worker's command, or its Suite on the repository's builder.
+    // A suite to run: the worker's command, its Suite on the repository's builder, or the
+    // repository's integration tests.
     static bool HasSuite(JobStep step)
     {
-        return step.Command is not null || step.Worker.Suite is not null;
+        return step.Command is not null || step.Worker.Suite is not null || step.Worker.Integration;
+    }
+
+    // A check's red story closes on its first green run at a head that holds the fix's merge, as a
+    // red main's does on main's gate: no release ships to say it is done, and left open its andon
+    // would stand for good. Only that evidence closes (Landing.Fixed); a story with no merged fix
+    // is a hand's. The story it could not close comes back, so the job fails loud.
+    async Task<int?> CloseFixedRed(string product, string head, string dir, CancellationToken ct)
+    {
+        if (await ctx.Board.FindOpen(HarnessTexts.Fill(ctx.Texts.SuiteRedTitle, ("product", product)), [], ct: ct) is not { } story) return null;
+        try
+        {
+            var merge = await ctx.LandingOf(story, ct);
+            var holds = merge is not null && (await Shell.Run("git", ["merge-base", "--is-ancestor", merge.Sha, head], dir)).ExitCode == 0;
+            if (Landing.Fixed(await ctx.Repos.PrsOf(story, "open", ct), merge, holds, head, $"{product}'s suite") is not { } evidence) return null;
+            var said = (await ctx.Board.Comments(story, ct)).Any(c => c.At >= merge!.At && c.Body.Contains(Markers.RedFixed, StringComparison.Ordinal));
+            if (!said) await ctx.Board.Comment(story, $"{HarnessTexts.Fill(ctx.Texts.MainRedFixed, ("evidence", evidence))} {ctx.Texts.Signature}\n{Markers.RedFixed}");
+            if (await ctx.Board.StageOf(story, ct) != Stages.Closed) await ctx.Board.SetStage(story, Stages.Closed, ct);
+            await ctx.Board.Close(story, ct);
+            return null;
+        }
+        catch (Exception e) when (!ct.IsCancellationRequested)
+        {
+            ctx.Logs.CreateLogger("release").LogError("#{Story}: {Product}'s red fixed but not closed: {Error}", story, product, e.Message);
+            return story;
+        }
     }
 
     internal static string BranchPrefix(string product)
@@ -176,6 +239,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
                 string[] args = filter is null ? [product] : [product, filter];
                 return await ctx.Run(command, args, dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct, keep: GateJob.IsFailureLine, runsCode: true);
             }
+            if (step.Worker.Integration) return await ctx.Builder!.Integration(dir, filter, env, TimeSpan.FromMinutes(step.Minutes), w, ct, ctx.Options.RunCodeAs);
             var suite = step.Worker.Suite!.Replace("{Product}", product, StringComparison.Ordinal);
             return await ctx.Builder!.Suite(dir, suite, filter, env, TimeSpan.FromMinutes(step.Minutes), w, ct, ctx.Options.RunCodeAs);
         }
