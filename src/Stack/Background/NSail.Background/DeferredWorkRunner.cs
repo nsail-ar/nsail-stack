@@ -87,6 +87,9 @@ sealed class DeferredWorkRunner : BackgroundService
         AsyncServiceScope? scope = null;
         Task? abandoned = null;
 
+        // Reported once the item is released, so a release that faults reports it failed.
+        string? outcome = null;
+
         try
         {
             scope = _scopes.CreateAsyncScope();
@@ -107,8 +110,15 @@ sealed class DeferredWorkRunner : BackgroundService
 
                 throw;
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested && !work.IsCompleted)
+            {
+                // The host stopped and the item has not: its scope is released when it ends.
+                abandoned = work;
 
-            Report(item.Kind, DeferredWorkMetrics.Succeeded);
+                throw;
+            }
+
+            outcome = DeferredWorkMetrics.Succeeded;
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -118,7 +128,7 @@ sealed class DeferredWorkRunner : BackgroundService
         {
             // The budget fired and not the host: the item ran past its own timeout, not past
             // shutdown.
-            Report(item.Kind, DeferredWorkMetrics.TimedOut);
+            outcome = DeferredWorkMetrics.TimedOut;
 
             if (abandoned is null)
             {
@@ -131,13 +141,28 @@ sealed class DeferredWorkRunner : BackgroundService
         }
         catch (Exception exception)
         {
-            Report(item.Kind, DeferredWorkMetrics.Failed);
+            outcome = DeferredWorkMetrics.Failed;
 
             _logger.LogError(exception, "Deferred work failed; the queue continues with the next item.");
         }
         finally
         {
-            await Abandonment.Release(scope, abandoned).ConfigureAwait(false);
+            // Caught here: a fault out of the finally would end the queue's single consumer.
+            try
+            {
+                await Abandonment.Release(scope, abandoned).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                outcome = DeferredWorkMetrics.Failed;
+
+                _logger.LogError(exception, "Deferred work could not be released; the queue continues with the next item.");
+            }
+
+            if (outcome is not null)
+            {
+                Report(item.Kind, outcome);
+            }
         }
     }
 

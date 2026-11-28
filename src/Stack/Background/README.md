@@ -76,7 +76,10 @@ The runners read three things from the host:
   tenant's later ticks are skipped, each counted failed and logged, so a hang holds one scope, not
   one per tick. Keep a job's budget below `Queue:Lease` (or the lease above the budget), or an
   abandoned drain pass leaves rows another drain claims again. A job
-  that stops on its own cancellation or timeout is logged as the failure it threw.
+  that stops on its own cancellation or timeout is logged as the failure it threw. A pass still
+  running when the host stops keeps its scope and lock until it ends too, and the loop ends
+  quietly. A pass whose scope or lock faults on release is counted failed and logged at Error with
+  the exception; the loop goes on to its next tick.
 - A job must be constructible with no tenant entered: anything that needs one (a `DbContext`) is
   resolved inside `Run`. A job that is not logs "could not be started" and never runs again in that
   process.
@@ -104,7 +107,9 @@ The runners read three things from the host:
   logged and counted and the queue continues. Work that ignores its token is abandoned after a
   short grace and logged. Its scope stays open until it ends and the queue moves on at once, so
   an item that ignores its token holds a scope (and what it resolved, a connection included) for
-  as long as it hangs, one per such item and with no ceiling: honour the token.
+  as long as it hangs, one per such item and with no ceiling: honour the token. An item still
+  running when the host stops keeps its scope until it ends the same way. An item whose scope
+  faults on release is counted failed and logged at Error.
 - The queue is in memory: an item queued when the process dies is lost. Work that must survive
   goes through a `[Queue]` message instead ([Messaging](../Messaging/README.md)).
 - `DrainAll(scopes, ct)` runs everything queued inline, for test hosts that start no runner;

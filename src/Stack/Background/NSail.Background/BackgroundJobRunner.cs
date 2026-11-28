@@ -240,6 +240,10 @@ sealed class BackgroundJobRunner : BackgroundService
 
         Task? abandoned = null;
 
+        // Counted once the pass is released, so a release that faults counts the pass failed
+        // and never twice.
+        bool? succeeded = null;
+
         try
         {
             scope = Scope();
@@ -323,8 +327,16 @@ sealed class BackgroundJobRunner : BackgroundService
 
                 throw;
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested && !pass.IsCompleted)
+            {
+                // The host stopped and the pass has not: it still uses its scope, so the scope
+                // is released when the pass ends, as an abandoned one is.
+                abandoned = pass;
 
-            _meter.Passed(jobType, succeeded: true);
+                throw;
+            }
+
+            succeeded = true;
 
             return true;
         }
@@ -336,7 +348,7 @@ sealed class BackgroundJobRunner : BackgroundService
         {
             // The budget fired, not the host and not the job's own cancellation: the pass is
             // counted failed so the sweep reaches the next tenant.
-            _meter.Passed(jobType, succeeded: false);
+            succeeded = false;
 
             if (tenant is null)
             {
@@ -355,7 +367,7 @@ sealed class BackgroundJobRunner : BackgroundService
         }
         catch (Exception exception)
         {
-            _meter.Passed(jobType, succeeded: false);
+            succeeded = false;
 
             // Every occurrence, not the first one only. A job failing on a minutes-scale
             // cadence is not log spam, and degrading the repeats to Debug — the shape used
@@ -378,7 +390,34 @@ sealed class BackgroundJobRunner : BackgroundService
         }
         finally
         {
-            await Abandonment.Release(scope, abandoned, held).ConfigureAwait(false);
+            // Caught here: a fault out of the finally would replace the pass's outcome and end
+            // the job's loop as one that could not be started.
+            try
+            {
+                await Abandonment.Release(scope, abandoned, held).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                succeeded = false;
+
+                if (tenant is null)
+                {
+                    _logger.LogError(exception, "Background job {Job} could not release its pass; the runner continues on its next tick.", jobType.Name);
+                }
+                else
+                {
+                    _logger.LogError(
+                        exception,
+                        "Background job {Job} could not release its pass for tenant {Tenant}; the sweep continues with the next tenant.",
+                        jobType.Name,
+                        tenant.Slug);
+                }
+            }
+
+            if (succeeded is { } outcome)
+            {
+                _meter.Passed(jobType, outcome);
+            }
         }
     }
 
