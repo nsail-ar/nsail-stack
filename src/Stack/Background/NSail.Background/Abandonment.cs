@@ -9,7 +9,8 @@ static class Abandonment
 {
     // The scope is what the abandoned work still resolves from and holds a DbContext of, so it
     // is disposed when that work ends, not under it, and so is the lock that fences the pass; the
-    // work's fault is observed there too.
+    // work's fault is observed there too. Work is abandoned when it outlives its budget or the
+    // host's stop.
     internal static async ValueTask Release(AsyncServiceScope? scope, Task? abandoned, IAsyncDisposable? held = null)
     {
         if (scope is not { } owned)
@@ -24,12 +25,7 @@ static class Abandonment
 
         if (abandoned is null)
         {
-            await owned.DisposeAsync().ConfigureAwait(false);
-
-            if (held is not null)
-            {
-                await held.DisposeAsync().ConfigureAwait(false);
-            }
+            await Dispose(owned, held).ConfigureAwait(false);
 
             return;
         }
@@ -41,16 +37,27 @@ static class Abandonment
 
                     var (scoped, lease) = ((AsyncServiceScope, IAsyncDisposable?))state!;
 
-                    await scoped.DisposeAsync().ConfigureAwait(false);
-
-                    if (lease is not null)
-                    {
-                        await lease.DisposeAsync().ConfigureAwait(false);
-                    }
+                    await Dispose(scoped, lease).ConfigureAwait(false);
                 },
                 (owned, held),
                 TaskScheduler.Default)
             .Unwrap()
             .ContinueWith(static task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    // The lock is freed even when the scope faults on dispose: it rides a connection of its own.
+    static async ValueTask Dispose(AsyncServiceScope scope, IAsyncDisposable? held)
+    {
+        try
+        {
+            await scope.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            if (held is not null)
+            {
+                await held.DisposeAsync().ConfigureAwait(false);
+            }
+        }
     }
 }
