@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
 using NSail.Data;
 
@@ -67,18 +68,18 @@ sealed class Witness : IAsyncDisposable
     }
 }
 
-// Inside a database call that ignores its token when the host stops.
+// Inside a database call that ignores its token when the host stops. What only implements
+// IAsyncDisposable is resolved inside Run: the scope that reads the job's cadence is disposed
+// synchronously.
 sealed class SleepingJob : IBackgroundJob
 {
-    readonly DbContext _db;
-    readonly Witness _witness;
+    readonly IServiceProvider _services;
     readonly Ledger _ledger;
     readonly Signal _signal;
 
-    public SleepingJob(DbContext db, Witness witness, Ledger ledger, Signal signal)
+    public SleepingJob(IServiceProvider services, Ledger ledger, Signal signal)
     {
-        _db = db;
-        _witness = witness;
+        _services = services;
         _ledger = ledger;
         _signal = signal;
     }
@@ -89,9 +90,12 @@ sealed class SleepingJob : IBackgroundJob
 
     public async Task Run(CancellationToken cancellationToken)
     {
+        var db = _services.GetRequiredService<DbContext>();
+
+        _services.GetRequiredService<Witness>();
         _signal.Record();
 
-        await _db.Database.ExecuteSqlRawAsync("SELECT pg_sleep(1)", CancellationToken.None);
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_sleep(1)", CancellationToken.None);
 
         _ledger.Add("ended");
     }
@@ -107,10 +111,12 @@ sealed class FaultyRelease : IAsyncDisposable
 
 sealed class FaultyReleaseJob : IBackgroundJob
 {
+    readonly IServiceProvider _services;
     readonly Signal _signal;
 
-    public FaultyReleaseJob(FaultyRelease faulty, Signal signal)
+    public FaultyReleaseJob(IServiceProvider services, Signal signal)
     {
+        _services = services;
         _signal = signal;
     }
 
@@ -120,6 +126,7 @@ sealed class FaultyReleaseJob : IBackgroundJob
 
     public Task Run(CancellationToken cancellationToken)
     {
+        _services.GetRequiredService<FaultyRelease>();
         _signal.Record();
 
         return Task.CompletedTask;
@@ -199,8 +206,8 @@ public sealed class HostStopTests : IAsyncLifetime
         await runner.StopAsync(CancellationToken.None);
         await ledger.Released.WaitAsync(_bound);
 
+        Assert.Empty(logs.Entries.Where(entry => entry.Level >= LogLevel.Error).Select(entry => entry.Message));
         Assert.Equal(["ended", "released"], ledger.Events);
-        Assert.DoesNotContain(logs.Entries, entry => entry.Level >= LogLevel.Error);
     }
 
     [Fact]
