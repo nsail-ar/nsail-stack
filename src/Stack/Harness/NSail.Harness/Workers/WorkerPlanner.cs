@@ -232,7 +232,7 @@ public static class WorkerPlanner
         {
             // A worker's product: its newest release to walk, its red fix merged (a cut now), or its
             // day's cut due. The walk moves only the board, so it goes while a cut runs.
-            case WorkKind.Release when w.Options.Workflow is { } wf:
+            case WorkKind.Release when w.Options.ReleaseKey is { } wf:
                 if (w.Options.Product is { } product && board.Unshipped.TryGetValue(product.ToLowerInvariant(), out var tag) && !flight.ShipTags.Contains(tag))
                 {
                     yield return new WorkItem(WorkKind.Ship, null, null, "release", $"{tag} published", wf, Worker: w.Name, ProductName: product, Tag: tag);

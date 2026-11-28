@@ -174,6 +174,21 @@ public class BuildLeasesTests
     }
 
     [Fact]
+    public void ACutThatNeedsASuiteWaitsForItsGreenOfTheDay()
+    {
+        var fired = DateTimeOffset.UtcNow.AddMinutes(-200);
+        StatusMark Said(string sha, bool ok, int minutes) => new(sha, Markers.SuiteContext("integration"), ok, fired.AddMinutes(minutes));
+
+        Assert.True(HarnessLoop.NeedMet([], null, fired));
+        Assert.False(HarnessLoop.NeedMet([], "Integration", fired));
+        Assert.True(HarnessLoop.NeedMet([Said("b", true, 60)], "Integration", fired));
+        Assert.False(HarnessLoop.NeedMet([Said("b", false, 60)], "Integration", fired));
+        // Yesterday's green is not the day's; a red on a newer commit hides the green under it.
+        Assert.False(HarnessLoop.NeedMet([Said("a", true, -600)], "Integration", fired));
+        Assert.False(HarnessLoop.NeedMet([Said("b", false, 60), Said("a", true, 30)], "Integration", fired));
+    }
+
+    [Fact]
     public void ACutHeldByAnotherHarnessIsNotDueUntilItsClaimLapsesOrIsLetGo()
     {
         var worker = SampleWorkers.Workers.First(w => w.Kind == WorkKind.Release && w.Options.Product is not null);

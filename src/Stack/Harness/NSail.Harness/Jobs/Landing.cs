@@ -29,10 +29,11 @@ public static class Landing
     // A red main's fix: its merge, with no PR of the story open, and the head main's gate just
     // judged green holds that merge — so the gate has run the range that held the red and the fix
     // (it diffs from the last head it found green, which no red head is).
-    public static string? Fixed(IReadOnlyList<PrRef> open, Merge? merge, bool headHoldsMerge, string head)
+    // A check's red (a Release worker that presses nothing) is fixed the same way: `judge` names what found the head green.
+    public static string? Fixed(IReadOnlyList<PrRef> open, Merge? merge, bool headHoldsMerge, string head, string judge = "main's gate")
     {
         if (open.Count > 0 || merge is null || !headHoldsMerge) return null;
-        return string.Create(CultureInfo.InvariantCulture, $"the fix merged as `{merge.Sha[..Math.Min(8, merge.Sha.Length)]}` ({merge.At:yyyy-MM-dd HH:mm} UTC) and main's gate is green at `{head[..Math.Min(8, head.Length)]}`, which holds it");
+        return string.Create(CultureInfo.InvariantCulture, $"the fix merged as `{merge.Sha[..Math.Min(8, merge.Sha.Length)]}` ({merge.At:yyyy-MM-dd HH:mm} UTC) and {judge} is green at `{head[..Math.Min(8, head.Length)]}`, which holds it");
     }
 
     // Reads the story's evidence from where it lives. The merge counts in the repository the story's

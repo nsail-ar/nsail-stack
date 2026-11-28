@@ -66,7 +66,7 @@ public sealed class HarnessTexts
     public string GateBroke { get; set; } = "the gate broke on infrastructure, not on this PR ({error}). The head is gated again after a short wait.";
 
     public string SuiteRedTitle { get; set; } = "Regression red on main ({product})";
-    public string SuiteRed { get; set; } = "**{product}**'s browser suite went {why} on `{sha}` ({where}).\n\n**What went red:**\n```\n{failed}\n```\n\nThe run's log and evidence: `{log}` on {machine}.";
+    public string SuiteRed { get; set; } = "**{product}**'s suite went {why} on `{sha}` ({where}).\n\n**What went red:**\n```\n{failed}\n```\n\nThe run's log and evidence: `{log}` on {machine}.";
     public string MainRedTitle { get; set; } = "CI red on main";
     public string MainRed { get; set; } = "`main`'s gate went {why} at `{sha}` — the commits in {range} are the suspects.\n\n**What went red:**\n```\n{failed}\n```\n\nThe gate's log: `{log}` on {machine}.";
     public string MainRedWithoutFix { get; set; } = "`{sha}` does not hold this story's merge `{merge}`: its red is no news about the fix, and the story stays in {stage}.";

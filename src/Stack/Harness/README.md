@@ -38,7 +38,7 @@ the files it leaves.
     issues (the list API, never the search index), so labels stay free to edit.
     A board that names its columns or labels otherwise maps them (`Stages`, `Labels`); a repository
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
-    seed projects (a non-Markdown change outside them builds it all), the `Everything` files that build it all (by default solutions, `global.json`, props, targets, `nuget.config`, `.editorconfig`, `Directory.Build.rsp`, `*.globalconfig`), the `Tests` and their `TestFilter`): the
+    seed projects (a non-Markdown change outside them builds it all), the `Everything` files that build it all (by default solutions, `global.json`, props, targets, `nuget.config`, `.editorconfig`, `Directory.Build.rsp`, `*.globalconfig`), the `Tests` and their `TestFilter`, and `Integration`: the packages or projects whose reference, direct or through a referenced project, makes a test project an integration one, which the gate builds and does not run): the
     gate builds and tests what a change affects through the solution's ProjectReference graph (the
     `Solution` itself, when its change only adds projects — their entries, configurations, nesting and new solution
     folders, `DotNetBuilder.AddedOnly` — seeds those projects instead of building it all, so a new kit builds itself and
@@ -53,7 +53,7 @@ the files it leaves.
     nothing failed is red by time alone: its verdict names what was green (the build, each test project that passed)
     and fires the Verify event `OutOfTime`, whose default adds `hand` instead of sending a round no builder can do; a malformed project or a
     missing solution in the PR is its red), and a
-    Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
+    Release's `Suite` (a test project, `{Product}` its name) runs there — no script; so does a Release with `Integration`, whose suite is every integration test project. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
     a release holds that repository's merges when the version its tag pins does, and a story merged
     there has landed on the default branch at the oldest commit whose pin names a version holding
@@ -130,7 +130,7 @@ the files it leaves.
     blockers, title, an epic started or with every child closed), `When` (schedule, CPU, memory, quota, reachable endpoints, named
     `Conditions`), `Max`, `Seat` (from `Seats`), a prompt layered after the seat's, `Command`,
     `Minutes`, `DailyCap`, `Setup`, `Variables` (a Release also its `Product`, `Workflow` and `Paths`, and a
-    `When.Schedule` with no End: its day's cut fires there), and `On` — per event, a list of actions (`MoveTo`, `AddLabel`,
+    `When.Schedule` with no End: its day's cut fires there; one with a suite and no `Workflow` is a check, which cuts nothing and needs no `Paths`, and a Release that `Needs` a check's `Product` cuts only where that check stands green), and `On` — per event, a list of actions (`MoveTo`, `AddLabel`,
     `RemoveLabel`, `Comment` — `{report}` quotes what the job wrote —, `Close`) that replaces the type's; a
     comment signs as the worker's `Seat`. A story worker's job moves the board only through its
     events, at its end or while it runs (a Develop's `Started`, `Unfinished`, `Stalled`, `Landed`; a
@@ -334,6 +334,10 @@ the files it leaves.
   the suite red); main's gate; the product's own cut (the day's, or the red fix's on its release
   branch) and the walk of its published release. No other story, PR, QA walk, Watch or cut starts, a
   `bug` included, and the WIP limit does not hold the release's stories. Jobs already running finish.
+  A check (a Release with a suite and no `Workflow`) lights it the same way under its own `Product`; it ships
+  nothing, so its story is closed by its own first green run on a head that holds the fix's merge, and its
+  run goes again when that fix merges. While its newest verdict is red or older than the day's firing, no cut
+  that `Needs` it is due.
   Its items carry the `andon` tier, above `bug`: a customer's bug still waits behind the release
   because the release is the line's one way back to a shipped day. `take-new` off still holds the
   start of a story the andon would take — it is the operator's switch. The status page shows the

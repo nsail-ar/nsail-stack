@@ -228,13 +228,73 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         var build = Filter(dir, "affected.slnf", projects);
         if (await run.Dotnet(["build", build, "--configuration", options.Configuration, "--no-restore", Nodes]) is { ExitCode: not 0 } built) return built;
 
-        var tests = projects.Where(p => FileSystemName.MatchesSimpleExpression(options.Tests, Path.GetFileName(p))).ToList();
-        if (tests.Count == 0) return run.Say("No test project is affected by this change.");
+        var affectedTests = projects.Where(IsTest).ToList();
+        var integration = IntegrationOf(affectedTests, p => Named(dir, p));
+        var tests = affectedTests.Except(integration, StringComparer.OrdinalIgnoreCase).ToList();
+        if (integration.Count > 0) run.Say($"Built and not run here, {integration.Count} integration test project(s) (they reference {string.Join(", ", options.Integration)}): the integration suite runs them.");
+        if (tests.Count == 0) return run.Say(integration.Count > 0 ? "No test project the gate runs is affected by this change." : "No test project is affected by this change.");
         var testFilter = Filter(dir, "affected-tests.slnf", tests);
         string[] filter = options.TestFilter is { } f ? ["--filter", f] : [];
         // Minimal still writes every failed test and each assembly's count; a line per passed test is
         // megabytes nobody reads.
         return await run.Dotnet(["test", testFilter, "--configuration", options.Configuration, "--no-build", "--verbosity", "minimal", .. filter]);
+    }
+
+    public async Task<ShellResult> Integration(string dir, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null)
+    {
+        var run = new Run(dir, env, DateTimeOffset.UtcNow + timeout, log, ct, runAs);
+        var tests = IntegrationOf(Projects(dir).Where(IsTest).ToList(), p => Named(dir, p));
+        if (tests.Count == 0) return run.Fail(options.Integration.Count == 0 ? "The repository's Build names no Integration reference: there is no integration suite." : $"No test project references {string.Join(", ", options.Integration)}.");
+        run.Say($"Integration: {tests.Count} test projects:\n{string.Join('\n', tests)}");
+
+        if (await run.Dotnet(["restore", options.Solution, .. options.RestoreArgs]) is { ExitCode: not 0 } restore) return restore;
+        var suite = Filter(dir, "integration-tests.slnf", tests);
+        if (await run.Dotnet(["build", suite, "--configuration", options.Configuration, "--no-restore", Nodes]) is { ExitCode: not 0 } built) return built;
+
+        var narrowed = (options.TestFilter, filter) switch
+        {
+            (null, null) => null,
+            ({ } own, null) => own,
+            (null, { } asked) => asked,
+            ({ } own, { } asked) => $"({own})&({asked})",
+        };
+        string[] only = narrowed is null ? [] : ["--filter", narrowed];
+        return await run.Dotnet(["test", suite, "--configuration", options.Configuration, "--no-build", "--verbosity", "minimal", .. only]);
+    }
+
+    bool IsTest(string project)
+    {
+        return FileSystemName.MatchesSimpleExpression(options.Tests, Path.GetFileName(project));
+    }
+
+    // The integration ones among these test projects: those that reference, themselves or through a
+    // project they reference, a package or a project BuildOptions.Integration names.
+    internal IReadOnlyList<string> IntegrationOf(IReadOnlyList<string> tests, Func<string, (IReadOnlyList<string> Names, IReadOnlyList<string> Projects)> named)
+    {
+        if (options.Integration.Count == 0) return [];
+        var known = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        return tests.Where(Is).ToList();
+
+        bool Is(string project)
+        {
+            if (known.TryGetValue(project, out var answer)) return answer;
+            // A cycle of references answers no: MSBuild refuses it long before.
+            known[project] = false;
+            var (names, projects) = named(project);
+            return known[project] = names.Any(n => options.Integration.Contains(n, StringComparer.OrdinalIgnoreCase)) || projects.Any(Is);
+        }
+    }
+
+    // What a project references: the names (each package's id, each project's file name without its
+    // extension) and the projects themselves, repository-relative.
+    static (IReadOnlyList<string> Names, IReadOnlyList<string> Projects) Named(string dir, string project)
+    {
+        var full = Path.Combine(dir, project);
+        if (!File.Exists(full)) return ([], []);
+        var packages = XDocument.Load(full).Descendants().Where(e => e.Name.LocalName == "PackageReference")
+            .Select(e => (string?)e.Attribute("Include")).OfType<string>().ToList();
+        var projects = References(dir, project).ToList();
+        return ([.. packages, .. projects.Select(p => Path.GetFileNameWithoutExtension(p))], projects);
     }
 
     public async Task<ShellResult> Suite(string dir, string project, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null)

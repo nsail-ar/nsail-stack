@@ -16,6 +16,10 @@ public interface IBuilder
     // Restore, build what the change affects, test the affected test projects; as runAs when it is set.
     Task<ShellResult> Gate(string dir, string? baseSha, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null);
 
+    // Every integration test project of the repository (BuildOptions.Integration) built and run, its
+    // tests narrowed by the filter: the suite a gate leaves out.
+    Task<ShellResult> Integration(string dir, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null);
+
     // One test project (a browser suite) built and run, its tests narrowed by the filter.
     Task<ShellResult> Suite(string dir, string project, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null);
 }
