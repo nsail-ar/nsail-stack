@@ -14,7 +14,11 @@ but its one database sweep. Everything that runs against real Postgres (every te
 `NSail.Data.Testing`: the kit handler harnesses, the apps' web and scenario tests, the migration
 script sweep) runs once a day on main with the browser suites, before the release cut, and a
 product is cut from the last commit where both are green. What is slow runs once a day; the
-gate stays the build and the fast tests (Leonardo, 2026-11-28).
+gate stays the build and the fast tests (Leonardo, 2026-11-28). The gate still builds the
+integration projects a change touches, so a compile error stays the PR's. **A builder runs, before
+its push, the Postgres suites of the kits and apps its change touches**, as it runs the E2E of what
+it touched: the daily run is the net, not the first time a new handler test runs. One red there
+holds every product's cut that night, as a failed browser suite holds its own.
 
 | Layer | Proves | Lives in |
 |---|---|---|
