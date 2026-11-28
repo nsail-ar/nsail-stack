@@ -124,6 +124,31 @@ public class QaWalkTests
         Assert.Equal([2, 3, 5], again.Keys.Order());
     }
 
+    // A walker sent to a tenant the board does not name found it behind: it is not seated again on the
+    // story while every build is the one it was said of, and a restart keeps the short clock.
+    [Fact]
+    public void AWalkersNotLiveStandsUntilABuildChanges()
+    {
+        var at = new DateTimeOffset(2026, 11, 20, 15, 0, 0, TimeSpan.Zero);
+        JobRecord[] jobs =
+        [
+            Walk(1, at, "walked: NotLive at a/v1 b/v2"),
+            new JobRecord("1120160000-qa-1", "qa #1", 1, at.AddHours(1), at.AddHours(1).AddSeconds(5), "walked: NotLive", "log", "ok"),
+            Walk(2, at, "walked: NotLive at a/v1 b/v2"),
+            Walk(2, at.AddHours(1), "walked: Doubt"),
+            new JobRecord("1120150000-dev-3", "dev #3", 3, at, at.AddMinutes(20), "pushed", "log", "ok", true),
+        ];
+
+        Assert.True(QaJob.StoodNotLive(jobs, 1, "a/v1 b/v2"));
+        Assert.False(QaJob.StoodNotLive(jobs, 1, "a/v1 b/v3"));
+        Assert.False(QaJob.StoodNotLive(jobs, 2, "a/v1 b/v2"));
+        Assert.False(QaJob.StoodNotLive(jobs, 3, "a/v1 b/v2"));
+
+        var (walked, again) = QaJob.Remembered(jobs);
+        Assert.Empty(walked);
+        Assert.Equal(at.AddHours(1).AddSeconds(5) + QaJob.NotLiveRecheck, again[1]);
+    }
+
     static JobRecord Walk(int story, DateTimeOffset started, string outcome)
     {
         return new JobRecord($"{started:MMddHHmmss}-qa-{story}", $"qa #{story}", story, started, started.AddMinutes(20), outcome, "log", "ok", true);

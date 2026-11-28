@@ -66,6 +66,14 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             await w.WriteLineAsync($"{ctx.Names.Ref(n)} — not live on {behind.Product.Name} yet (it runs {behind.Tag ?? "nothing it says"}), not walked");
             return new JobOutcome($"walked: NotLive", Event: "NotLive", Report: "");
         }
+        // The check above reads the product the board names; a walker goes where the story's thread sends it, and
+        // one that found that tenant behind said so of these builds. Until one of them changes the answer is the same.
+        var builds = string.Join(' ', live.Select(l => l.Tag ?? "-"));
+        if (StoodNotLive(history.Jobs(), n, builds))
+        {
+            await w.WriteLineAsync($"{ctx.Names.Ref(n)} — a walker found it not live on these builds ({builds}) and none has changed, not walked");
+            return new JobOutcome($"walked: NotLive", Event: "NotLive", Report: "");
+        }
 
         // The QA column is what is being walked: the story enters it here and leaves it by its verdict. A walk that
         // gave none (a doubt, a dead walker, the quota wall) puts it back where it waits its turn.
@@ -145,7 +153,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             if (quota is not null && evt == "NoVerdict") return new JobOutcome("walk stopped at the quota wall", quota);
             if (evt is "Bug" && await Before(n, WorkerTypes.QaBugMarker, ct)) evt = "BugAgain";
             if (evt is "Doubt" && await Before(n, WorkerTypes.QaDoubtMarker, ct)) evt = "DoubtAgain";
-            return new JobOutcome($"walked: {evt}", quota, Event: evt, Failed: evt == "NoVerdict", Report: report);
+            return new JobOutcome(evt == "NotLive" ? $"{Walked}NotLive{At}{builds}" : $"{Walked}{evt}", quota, Event: evt, Failed: evt == "NoVerdict", Report: report);
         }
     }
 
@@ -260,6 +268,25 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
 
     const string Walked = "walked: ";
 
+    // What follows a walker's own NotLive in its job's outcome: the builds it was said of.
+    const string At = " at ";
+
+    // Whether the last walk of the story a walker made here ended NotLive of exactly these builds.
+    internal static bool StoodNotLive(IEnumerable<JobRecord> jobs, int story, string builds)
+    {
+        var last = jobs.Where(j => j.Story == story && j is { Seated: true, Ended: not null, Outcome: not null } && j.Outcome.StartsWith(Walked, StringComparison.Ordinal))
+            .MaxBy(j => j.Ended);
+        return last?.Outcome == $"{Walked}NotLive{At}{builds}";
+    }
+
+    // The event a walk's outcome names: its first word.
+    static string EventOf(string outcome)
+    {
+        var word = outcome[Walked.Length..];
+        var end = word.IndexOf(' ');
+        return end < 0 ? word : word[..end];
+    }
+
     // What this machine's own record says of its walks, for a harness that just started: the stories
     // it walked and when, and the ones a walk left to be tried again and until when. Without it a
     // restart forgets both clocks and walks everything again at once.
@@ -270,7 +297,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         foreach (var job in jobs.Where(j => j is { Story: not null, Ended: not null, Outcome: not null } && j.Outcome.StartsWith(Walked, StringComparison.Ordinal)).OrderBy(j => j.Ended))
         {
             var n = job.Story!.Value;
-            var outcome = new JobOutcome(job.Outcome!, Event: job.Outcome![Walked.Length..]);
+            var outcome = new JobOutcome(job.Outcome!, Event: EventOf(job.Outcome!));
             walked.Remove(n);
             again.Remove(n);
             if (WaitsForTheCut(outcome))
